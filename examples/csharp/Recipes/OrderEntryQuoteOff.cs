@@ -81,7 +81,7 @@ Planned calls:
                 await s.ChangeAsync(window, "TP_ITEMS", "items", "unit_quantity", o.Quantity);
                 if (o.DirectShip)
                 {
-                    await s.ChangeAsync(window, "TP_ITEMS", "items", "disposition", "D");   // only at line entry
+                    await s.ChangeAsync(window, "TP_ITEMS", "items", "disposition", "D");   // at entry, or later once the line holds no allocation
                     await s.ChangeAsync(window, "TP_ITEMS", "items", "po_cost", o.PoCost);
                     await s.SelectTabAsync(window, "TABPAGE_1");
                     await s.ChangeAsync(window, "TABPAGE_1", "order", "c_create_po", "ON");

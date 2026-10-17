@@ -656,6 +656,8 @@ Verified on 26.1 (August 2026) with a controlled A/B — identical request seque
 
 Both users could open the window, load the order, and set every other field on the line. Only this column differed, and nothing in the response says *why*.
 
+> **Check allocation first.** A re-test on play 26.1.5950.0 (2026-10-17) found a stronger cause for this particular refusal: `disposition` is disabled on any line that holds allocated stock, for every user. The same service account set `D` on unallocated lines, and on allocated lines after `TP_EXTDINFO.extd_info.allocated_qty = 0`. The general rule in this section still stands: `Column is disabled` can come from roles and DynaChange rules. Rule out the record's own state before you change a role. See [Changing a saved line to direct ship](04-Interactive-API.md#changing-a-saved-line-to-direct-ship).
+
 **What makes a column disabled for a user:** DynaChange data-change rules scoped to a role, Application Security settings, and window-level permissions — the same machinery documented under [DynaChange and Popup Handling](#dynachange-and-popup-handling) and [Application Security settings](00-Authentication.md#application-security-settings-that-affect-api-access). The API surfaces all of it as one undifferentiated message.
 
 **What this means in practice:**

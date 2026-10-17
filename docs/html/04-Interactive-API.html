@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">27</span></summary>
+            <summary>Recipes <span class="nav-count">28</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -633,6 +633,7 @@
             <li><a href="recipes/item-document-links.html">Attach a Document to an Item, Assembly or Kit (Document Links)</a></li>
             <li><a href="recipes/link-production-order.html">Link an Existing Production Order to a Sales-Order Line</a></li>
             <li><a href="recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
+            <li><a href="recipes/order-line-to-direct-ship.html">Change a Saved Order Line to Direct Ship</a></li>
             <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
             <li><a href="recipes/purchase-receive-vouch.html">Purchasing: Stock PO → Receipt → Voucher, and Drop Ship</a></li>
@@ -726,10 +727,10 @@
 </li>
 <li><a href="#driving-an-in-window-wizard-direct-ship-po-generation">Driving an In-Window Wizard (Direct-Ship PO Generation)</a><ul>
 <li><a href="#set-quote-to-off-first-the-window-can-open-in-quote-mode">Set quote to OFF first: the window can open in quote mode</a></li>
-<li><a href="#why-this-cannot-start-in-the-transaction-api">Why this cannot start in the Transaction API</a></li>
+<li><a href="#where-a-direct-ship-line-can-start">Where a direct-ship line can start</a></li>
 <li><a href="#the-flow">The flow</a></li>
 <li><a href="#related-dead-ends">Related dead ends</a></li>
-<li><a href="#setting-disposition-only-at-line-entry">Setting disposition — only at line entry</a></li>
+<li><a href="#changing-a-saved-line-to-direct-ship">Changing a saved line to direct ship</a></li>
 <li><a href="#verified-run">Verified run</a></li>
 </ul>
 </li>
@@ -4068,8 +4069,8 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <li><strong>The wizard did not open for an internal supplier.</strong> When the item's primary supplier at the location was the company's own intercompany supplier, the save succeeded with <strong>no</strong> wizard and <strong>no</strong> PO, whether <code>c_create_po</code> was set on the new order or on the re-opened one. Changing the primary supplier to an outside supplier, with everything else the same, made the wizard open.</li>
 <li><code>c_create_po</code> needs a user with a Buyer ID. The password user without one got <code>Status: 2</code>, <em>"To create a PO, you must have a valid Buyer ID."</em>; the examples take a consumer-key option (<code>P21_CONSUMER_KEY</code> + <code>P21_CONSUMER_USERNAME</code>) to run as a user who has one.</li>
 </ul>
-<h3 id="why-this-cannot-start-in-the-transaction-api">Why this cannot start in the Transaction API</h3>
-<p>The line's <code>disposition</code> field is the trigger for a direct-ship line, and it is a <strong>disabled column</strong> — <code>Column is disabled: disposition</code>, verified both through <code>/transaction</code> and through an interactive change on an existing line. Its valid values are <code>B</code>, <code>C</code>, <code>D</code>, <code>H</code>, <code>M</code>, <code>P</code>, <code>S</code>; <code>D</code> is direct ship. Set it <strong>as the line is entered</strong>, in the Interactive window — there is no stateless path.</p>
+<h3 id="where-a-direct-ship-line-can-start">Where a direct-ship line can start</h3>
+<p>The line's <code>disposition</code> field is the trigger for a direct-ship line. Its valid values are <code>B</code>, <code>C</code>, <code>D</code>, <code>H</code>, <code>M</code>, <code>P</code>, <code>S</code>; <code>D</code> is direct ship. You can set it at line entry or on a saved line, through the Interactive window or <code>/transaction</code>. The column is disabled only while the line holds allocated stock; see <a href="#changing-a-saved-line-to-direct-ship">Changing a saved line to direct ship</a>. Creating the PO is the step that needs the Interactive API, because it runs through the wizard.</p>
 <h3 id="the-flow">The flow</h3>
 <ol>
 <li>Create and save the sales order with its <code>D</code> line <strong>first</strong>. Requesting the PO in the same save does not work — a new order's save stacks other prompts ahead of the wizard and the sequence derails.</li>
@@ -4150,35 +4151,163 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <blockquote>
 <p><strong>Credit:</strong> <em>@mrwuss</em> — verified on play 26.1, October 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/169">#169</a>). The Transaction API path <a href="#the-transaction-api-path-works-on-26159500">above</a> is the one <a href="https://github.com/AWestemeier">Alex Westemeier</a> reported working on his play tenant in August 2026 (<code>receive_all = 'Y'</code>, <code>print_invoice = 'N'</code>, <code>fax_invoice = 'N'</code>, and <strong>never</strong> <code>c_email_invoice</code>). It returned an empty result on 26.1.5940.0 and confirmed in full on 26.1.5950.0, 2026-10-10 (scratch test, read back as above).</p>
 </blockquote>
-<h3 id="setting-disposition-only-at-line-entry">Setting <code>disposition</code> — only at line entry</h3>
-<p><code>disposition</code> behaves as a <strong>disabled column everywhere except a line being entered</strong>. Verified three ways on 26.1:</p>
+<h3 id="changing-a-saved-line-to-direct-ship">Changing a saved line to direct ship</h3>
+<p><code>disposition</code> on a <strong>saved</strong> order line is editable through both APIs. What disables it is <strong>allocated stock on the line</strong>, not the line being saved: a line that holds an allocation returns <code>Column is disabled: disposition</code> from every surface, and a line with no allocation accepts <code>D</code>. Release the allocation first and the column opens. Verified on play 26.1.5950.0, 2026-10-17, on fresh orders, for both a password login and a consumer-key service account:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>Attempt</th>
+<th>Line state</th>
+<th>Surface</th>
 <th>Result</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>POST /transaction</code> with <code>disposition</code> on <code>TP_ITEMS.items</code></td>
+<td>Saved, nothing allocated (<code>disposition = 'B'</code>)</td>
+<td>Interactive change</td>
+<td><strong><code>Status: 1</code></strong>, saved as <code>D</code></td>
+</tr>
+<tr>
+<td>Saved, nothing allocated</td>
+<td><code>POST /transaction</code></td>
+<td><strong><code>Succeeded: 1</code></strong> once <code>po_cost</code> is in the row (see below)</td>
+</tr>
+<tr>
+<td>Saved, allocated (<code>qty_allocated &gt; 0</code>, <code>disposition</code> blank)</td>
+<td>Interactive change or <code>/transaction</code></td>
 <td><code>Column is disabled: disposition</code></td>
 </tr>
 <tr>
-<td>Interactive change on an <strong>existing</strong> saved line</td>
-<td><code>Column is disabled: disposition</code></td>
+<td>Saved, allocated, <code>TP_EXTDINFO.extd_info.allocated_qty = 0</code> first</td>
+<td>Interactive change or <code>/transaction</code></td>
+<td><strong>accepted</strong>, saved as <code>D</code> with <code>qty_allocated = 0</code></td>
 </tr>
 <tr>
-<td>Interactive change on the line <strong>as it is entered</strong></td>
-<td><strong><code>Status: 1</code></strong> — accepted <em>(for a user permitted to set it)</em></td>
+<td>Line already on a pick ticket</td>
+<td>—</td>
+<td>not tested; reverse the pick ticket first</td>
 </tr>
 </tbody>
 </table></div>
-<p>So there is no way to convert an existing order line to direct ship through either API, and no stateless path at all. The line must be created in the window with <code>disposition = 'D'</code> set during entry.</p>
+<p>Two rules hold on every surface:</p>
+<ul>
+<li><strong>Send the code value <code>D</code>.</strong> The display text <code>Direct Ship</code> is refused with <code>Invalid disposition value: Direct Ship</code>.</li>
+<li><strong>Releasing the allocation resets <code>disposition</code> to <code>B</code></strong> and enables the column in the same response. Order the edits allocation first, then <code>disposition</code>, then <code>po_cost</code>.</li>
+</ul>
+<p>Complete Python and C# programs for the Interactive path: <a href="recipes/order-line-to-direct-ship.html">order-line-to-direct-ship</a>.</p>
+<h4 id="interactive-api_1">Interactive API</h4>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Call</th>
+<th>Body</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>POST {ui}/api/ui/interactive/sessions</code></td>
+<td><code>{"ResponseWindowHandlingEnabled": true}</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>POST {ui}/api/ui/interactive/v2/window</code></td>
+<td><code>{"ServiceName": "Order"}</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>PUT {ui}/api/ui/interactive/v2/change</code></td>
+<td><code>quote</code> = <code>OFF</code>, then <code>order_no</code> = <code>1001234</code> on <code>TABPAGE_1</code> / <code>order</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>PUT {ui}/api/ui/interactive/v2/tab</code></td>
+<td><code>{"WindowId": "{windowId}", "PageName": "TP_ITEMS"}</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>GET {ui}/api/ui/interactive/v2/data?id={windowId}</code></td>
+<td>find the row in <code>items</code> by <code>user_line_no</code> (<code>"001"</code>); the grid has no <code>line_no</code> column</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>PUT {ui}/api/ui/interactive/v2/row</code></td>
+<td><code>{"WindowId": "{windowId}", "DatawindowName": "items", "Row": n}</code> (1-based)</td>
+</tr>
+<tr>
+<td>7</td>
+<td><em>only if allocated:</em> <code>PUT .../v2/tab</code> <code>TP_EXTDINFO</code>, then <code>PUT .../v2/change</code></td>
+<td><code>allocated_qty</code> = <code>0</code> on <code>TP_EXTDINFO</code> / <code>extd_info</code>; then back to <code>TP_ITEMS</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>PUT {ui}/api/ui/interactive/v2/change</code></td>
+<td><code>disposition</code> = <code>D</code> on <code>TP_ITEMS</code> / <code>items</code></td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>PUT {ui}/api/ui/interactive/v2/change</code></td>
+<td><code>po_cost</code> = <code>8</code> on <code>TP_ITEMS</code> / <code>items</code> (optional; flows to the PO line price)</td>
+</tr>
+<tr>
+<td>10</td>
+<td><em>to create the PO in the same save:</em> <code>PUT .../v2/tab</code> <code>TABPAGE_1</code>, <code>PUT .../v2/change</code></td>
+<td><code>c_create_po</code> = <code>ON</code> on <code>TABPAGE_1</code> / <code>order</code> (needs a Buyer ID)</td>
+</tr>
+<tr>
+<td>11</td>
+<td><code>PUT {ui}/api/ui/interactive/v2/data</code></td>
+<td><code>"{windowId}"</code> (save)</td>
+</tr>
+<tr>
+<td>12</td>
+<td><code>DELETE</code> the window and the session</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<p>With <code>c_create_po = ON</code>, the save in step 11 returns <code>Status: 3</code> and opens the "Create RFQ/Purchase Orders" wizard (<code>w_create_po_from_oe_wzd</code>) on the re-opened order, with <code>quote_item = N</code>. Drive it as in <a href="#the-flow">The flow</a>: identify it by <code>cb_finish</code>, press <code>cb_next</code> (<strong>the PO is committed here</strong>), read <code>po_no</code> from <code>po_print</code>, then press <code>cb_finish</code>. Answer <code>w_message</code> prompts such as <em>"The order line does not have a PO Cost specified. Proceed?"</em> with <code>cb_1</code>. One save is enough: the advice in <a href="#the-flow">The flow</a> to save the <code>D</code> line and re-open before setting <code>c_create_po</code> is not needed on 26.1.5950.0. Two saves also work.</p>
+<p>Result, read back from the tables:</p>
+<ul>
+<li><code>oe_line.disposition = 'D'</code>, <code>qty_allocated = 0</code>, <code>po_cost = 8</code>.</li>
+<li><code>oe_line_po</code>: <code>po_no = 500100</code>, <code>po_line_number = 1</code>, <code>connection_type = 'P'</code>, <code>quantity_on_po = 1</code>.</li>
+<li><code>po_hdr</code>: <code>po_type = 'D'</code>, <code>approved = 'Y'</code>, the item's primary supplier at the location.</li>
+<li><code>po_line.unit_price = 8</code> (from <code>po_cost</code>).</li>
+<li><code>inv_loc.qty_allocated</code> for the item no longer counts the line.</li>
+</ul>
+<h4 id="transaction-api">Transaction API</h4>
+<p>The Transaction API changes the disposition but <strong>cannot create the PO</strong>: <code>c_create_po</code> opens a wizard, which the Transaction API <a href="03-Transaction-API.html#limitations">cannot drive</a>. Use it to convert lines in bulk, then run the PO wizard in the Interactive API, or let a buyer generate the POs.</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST {ui}/api/v2/transaction</span>
+<span class="err">{</span>
+<span class="err">  &quot;Name&quot;: &quot;Order&quot;,</span>
+<span class="err">  &quot;UseCodeValues&quot;: false,</span>
+<span class="err">  &quot;Transactions&quot;: [{</span>
+<span class="err">    &quot;Status&quot;: &quot;New&quot;,</span>
+<span class="err">    &quot;DataElements&quot;: [</span>
+<span class="err">      {&quot;Name&quot;: &quot;TABPAGE_1.order&quot;, &quot;Type&quot;: &quot;Form&quot;, &quot;Keys&quot;: [&quot;order_no&quot;],</span>
+<span class="err">       &quot;Rows&quot;: [{&quot;Edits&quot;: [{&quot;Name&quot;: &quot;order_no&quot;, &quot;Value&quot;: &quot;1001234&quot;}], &quot;RelativeDateEdits&quot;: []}]},</span>
+<span class="err">      {&quot;Name&quot;: &quot;TP_ITEMS.items&quot;, &quot;Type&quot;: &quot;List&quot;, &quot;Keys&quot;: [&quot;user_line_no&quot;],</span>
+<span class="err">       &quot;Rows&quot;: [{&quot;Edits&quot;: [{&quot;Name&quot;: &quot;user_line_no&quot;, &quot;Value&quot;: &quot;001&quot;}], &quot;RelativeDateEdits&quot;: []}]},</span>
+<span class="err">      {&quot;Name&quot;: &quot;TP_EXTDINFO.extd_info&quot;, &quot;Type&quot;: &quot;Form&quot;, &quot;Keys&quot;: [],</span>
+<span class="err">       &quot;Rows&quot;: [{&quot;Edits&quot;: [{&quot;Name&quot;: &quot;allocated_qty&quot;, &quot;Value&quot;: &quot;0&quot;}], &quot;RelativeDateEdits&quot;: []}]},</span>
+<span class="err">      {&quot;Name&quot;: &quot;TP_ITEMS.items&quot;, &quot;Type&quot;: &quot;List&quot;, &quot;Keys&quot;: [&quot;user_line_no&quot;],</span>
+<span class="err">       &quot;Rows&quot;: [{&quot;Edits&quot;: [{&quot;Name&quot;: &quot;user_line_no&quot;, &quot;Value&quot;: &quot;001&quot;},</span>
+<span class="err">                           {&quot;Name&quot;: &quot;disposition&quot;, &quot;Value&quot;: &quot;D&quot;},</span>
+<span class="err">                           {&quot;Name&quot;: &quot;po_cost&quot;, &quot;Value&quot;: &quot;8&quot;}], &quot;RelativeDateEdits&quot;: []}]}</span>
+<span class="err">    ]</span>
+<span class="err">  }]</span>
+<span class="err">}</span>
+</code></pre></div>
+
+<ul>
+<li>The first <code>TP_ITEMS.items</code> element makes the line the active row, so the <code>TP_EXTDINFO.extd_info</code> form edits that line. Leave out both of these elements when the line holds no allocation.</li>
+<li><strong>Include <code>po_cost</code>.</strong> Without it the save raises <em>"The order line does not have a PO Cost specified. Proceed with accepting the order line item?"</em>, the Transaction API answers it <code>No</code>, and the result is <code>Failed: 1</code> with nothing written.</li>
+<li>Without the allocation release, an allocated line fails with <code>General Exception: Column is disabled: disposition</code>.</li>
+</ul>
 <blockquote>
-<p><strong>Correction for quote mode (October 2026).</strong> A later run on play 26.1 found that the window had been opening in <a href="#set-quote-to-off-first-the-window-can-open-in-quote-mode">quote mode</a>. With <code>quote = OFF</code> set first, the <strong>service account</strong> set <code>disposition = D</code> at line entry with <code>Status: 1</code>, and the wizard then built a <code>po_type = 'D'</code> PO. Whether the A/B result below was also a quote-mode artifact has not been re-tested; check <code>quote</code> before you conclude a user is gated. <em>(@mrwuss, <a href="https://github.com/mrwuss/p21-api-documentation/issues/169">#169</a>.)</em></p>
-<p><strong>And it is user-gated on top of that.</strong> In a controlled A/B on the same tenant — identical request sequence, two tokens differing only in the user — a CSR login set <code>disposition</code> successfully while a <strong>service account was refused with <code>Column is disabled: disposition</code></strong>, even after that account was given a Buyer ID. The Buyer ID clears the <code>c_create_po</code> gate; it does not clear this one. See <a href="03-Transaction-API.html#column-is-disabled-can-mean-disabled-for-you"><code>Column is disabled</code> Can Mean "Disabled For You"</a>.</p>
-<p><strong>Consequence for automation:</strong> a service account may be able to <em>trigger</em> the wizard and still be unable to <em>create the line that feeds it</em>. Verify both gates against the account that will actually run the integration before designing around this flow.</p>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — verified on play 26.1.5950.0, 2026-10-17.</p>
+<p><strong>The service-account A/B, re-read.</strong> An earlier A/B found a CSR login could set <code>disposition</code> and a service account could not. On 2026-10-17 the same kind of consumer-key service account set <code>D</code> on saved, unallocated lines through both surfaces, and on an allocated line once the allocation was released; the password login was refused on an allocated line until it released the allocation. On this tenant, allocation was the gate in every run, not the user. If you see <code>Column is disabled: disposition</code>, read <code>oe_line.qty_allocated</code> before you suspect roles.</p>
 </blockquote>
 <h3 id="verified-run">Verified run</h3>
 <p>Driven end-to-end on a 26.1 play tenant (August 2026):</p>
@@ -6171,10 +6300,10 @@ Row 5 selected → Detail shows row 4 (1 behind)
 </li>
 <li><a href="#driving-an-in-window-wizard-direct-ship-po-generation">Driving an In-Window Wizard (Direct-Ship PO Generation)</a><ul>
 <li><a href="#set-quote-to-off-first-the-window-can-open-in-quote-mode">Set quote to OFF first: the window can open in quote mode</a></li>
-<li><a href="#why-this-cannot-start-in-the-transaction-api">Why this cannot start in the Transaction API</a></li>
+<li><a href="#where-a-direct-ship-line-can-start">Where a direct-ship line can start</a></li>
 <li><a href="#the-flow">The flow</a></li>
 <li><a href="#related-dead-ends">Related dead ends</a></li>
-<li><a href="#setting-disposition-only-at-line-entry">Setting disposition — only at line entry</a></li>
+<li><a href="#changing-a-saved-line-to-direct-ship">Changing a saved line to direct ship</a></li>
 <li><a href="#verified-run">Verified run</a></li>
 </ul>
 </li>
