@@ -62,7 +62,7 @@ POST {ui_server}/api/v2/process/pdfreport
 > | `true` | `S`, or omitted | PDF |
 > | `true` | `Sales Order` | Empty HTTP 500 on three attempts in a row; a label under `UseCodeValues: true` is a deterministic failure, not a transient one |
 >
-> A **direct-ship** pick ticket (the one `DirectShipConfirmation` creates) returned HTTP 200 with an empty array `[]` — no document and no error — on every attempt, while a stock ticket from the same location printed. Check for an empty array as well as for a failed `ResponseStatus`. The production-ticket case is under [Verify](#verify). Before you treat any other 5xx as a payload problem, read [An empty 5xx has several causes](../03-Transaction-API.md#an-empty-5xx-has-several-causes-and-is-usually-transient); on the Play tenant at 26.1.5910.3 *every* report returned an empty HTTP 500.
+> A **direct-ship** pick ticket (`oe_pick_ticket.direct_shipment` = `Y`, the kind `DirectShipConfirmation` creates) returned HTTP 200 with an empty array `[]` in every test: no document and no error. This is a known limitation, and no API workaround was found; see [Direct-ship pick tickets do not reprint](#direct-ship-pick-tickets-do-not-reprint). Check for an empty array as well as for a failed `ResponseStatus`. The production-ticket case is under [Verify](#verify). Before you treat any other 5xx as a payload problem, read [An empty 5xx has several causes](../03-Transaction-API.md#an-empty-5xx-has-several-causes-and-is-usually-transient); on the Play tenant at 26.1.5910.3 *every* report returned an empty HTTP 500.
 
 For any *other* report, swap `Name` and the criteria `Edits` (field names from `GET /api/v2/definition/{name}`); the endpoint, `Status`/`Type: 0`, `Keys: []`, and the `DocumentData` extraction stay the same.
 
@@ -497,8 +497,21 @@ All verified live — details in [PDF Report Generation](../03-Transaction-API.m
 - **`m_picktickets` prerequisite (production order)**: the production order's form must already be printed (`prod_order_hdr.printed = 'Y'`) — run a `ProductionOrder` transaction with `print_form = ON` first. No date range is needed for a production order (a sales order needs all three — see [Eligibility traps](#eligibility-traps)); `location_id` is the location the components pick from.
 - **`m_picktickets` has a side effect**: the pick-ticket row now exists in P21 at that location and can be confirmed/completed like any other.
 - **Print flags on `/transaction` have limits.** A service's print flags (e.g. `ProductionOrder` `print_pick_ticket`/`print_form` on `TABPAGE_1.tp_1_dw_1`) return PDFs at `Results.Transactions[].Documents[].DocumentData`, but only on a **savable** transaction (a bare reprint errors with *"Save is not enabled"*), and `print_pick_ticket` emits only at the order's **make location** — if components stock elsewhere, generate with `m_picktickets` at the stock `location_id` instead.
-- **An empty array is not success.** A sales-order run whose criteria match nothing printable returns HTTP 200 with `[]` and creates no ticket — see [Eligibility traps](#eligibility-traps).
+- **An empty array is not success.** A sales-order run whose criteria match nothing printable returns HTTP 200 with `[]` and creates no ticket — see [Eligibility traps](#eligibility-traps). The direct-ship tickets tested always reprinted as `[]` — see [Direct-ship pick tickets do not reprint](#direct-ship-pick-tickets-do-not-reprint).
 - **Success is a JSON array** (even for one document); **errors use the P21 error envelope** (`ErrorType`/`ErrorMessage`), not the `Summary`/`Messages` format of `/transaction` — e.g. *"No records to print for this range."* when the range matches nothing.
+
+### Direct-ship pick tickets do not reprint
+
+**Known limitation.** `m_reprintpicktickets` returned HTTP 200 with `[]` for every direct-ship pick ticket tested (`oe_pick_ticket.direct_shipment` = `Y`), on every attempt. No workaround through the API was found:
+
+- **The ticket state matches.** The direct-ship tickets were printed, invoiced and not deleted, like the stock tickets that reprinted, and their `oe_pick_ticket_detail` rows have the same shape: `print_quantity`, `ship_quantity`, `qty_to_pick` and `invoice_line_uid` are all filled. Three header columns differ: `direct_shipment` (`Y`), `tracking_no` (an empty string instead of NULL) and `exported_to_router_flag` (`N` instead of NULL). The direct-ship path writes all three, so the test could not separate them.
+- **The location is not the cause.** Invoiced stock tickets at the **same** location as the direct-ship tickets reprinted, each as a one-page PDF.
+- **No criteria field includes them.** The [definition](../../definitions/m_reprintpicktickets.json) has no direct-ship option. `print_dea_pick_tickets` concerns DEA (controlled-substance) tickets, not direct shipments.
+- **The selection cannot be inspected through the API.** Report criteria windows expose no `SELECT` ([SQL Information limits](window-sql-information.md)).
+
+The most likely explanation is that the report's own selection excludes direct-ship tickets, which no criteria field can change. Treat `[]` for a direct-ship ticket as expected, not as a fault to retry. Not tested: unprinted or partly shipped direct-ship tickets, other builds, and which report the client uses for direct-ship paperwork.
+
+*Verified on play 26.1.5950.0, 2026-10-17 ([#214](https://github.com/mrwuss/p21-api-documentation/issues/214)): two direct-ship tickets returned `[]`; four invoiced stock tickets returned `Success` with a PDF, two at the direct-ship tickets' location and two at another location. The payload was identical apart from the ticket number and location (`UseCodeValues: false`, `pick_ticket_type` = `Sales Order`, `print_qty` = `1`).* — *@mrwuss*
 
 ## Verify
 
