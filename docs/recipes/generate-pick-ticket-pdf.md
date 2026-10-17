@@ -686,7 +686,8 @@ def save_documents(result: list) -> None:
         pdf_bytes = base64.b64decode(doc["DocumentData"])
         # FileName is like "PT<nnn> PICK_TICKET.pdf"; <nnn> is a document
         # counter, not the pick-ticket number
-        path = os.path.join(OUTPUT_DIR, doc.get("FileName") or f"pick_ticket_{ORDER_NO}.pdf")
+        name = os.path.basename(doc.get("FileName") or f"pick_ticket_{ORDER_NO}.pdf")
+        path = os.path.join(OUTPUT_DIR, name)
         with open(path, "wb") as f:
             f.write(pdf_bytes)
         print(f"Saved {path} ({len(pdf_bytes)} bytes, starts with {pdf_bytes[:4]!r})")
@@ -971,7 +972,7 @@ static void SaveDocuments(List<JsonElement> documents, string orderNo)
         // counter, not the pick-ticket number
         var filename = doc.TryGetProperty("FileName", out var f) && !string.IsNullOrEmpty(f.GetString())
             ? f.GetString()! : $"pick_ticket_{orderNo}.pdf";
-        var path = Path.Combine(OutputDir, filename);
+        var path = Path.Combine(OutputDir, Path.GetFileName(filename));
         File.WriteAllBytes(path, pdfBytes);
         Console.WriteLine($"Saved {path} ({pdfBytes.Length} bytes, starts with " +
                           $"{Encoding.ASCII.GetString(pdfBytes, 0, 4)})");
