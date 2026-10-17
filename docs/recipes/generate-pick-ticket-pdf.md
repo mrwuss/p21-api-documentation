@@ -491,7 +491,7 @@ All verified live — details in [PDF Report Generation](../03-Transaction-API.m
 - **Retry an empty 5xx before believing it.** The report engine faults intermittently — a production integration generating PO PDFs all day logged **3 empty 500s and one dropped connection against 154 successes in a single afternoon**, and every affected PO succeeded moments later. Generating a document is an idempotent read, so retry (3 attempts, 0.5 s × attempt) as the examples above do. A *deterministic* empty 5xx is a different animal: criteria that match nothing (a wrong `company_id`), a PO `reprint_flag` that doesn't match `po_hdr.printed`, a record that isn't printable, or an environment where report generation isn't available. See [An empty 5xx has several causes](../03-Transaction-API.md#an-empty-5xx-has-several-causes-and-is-usually-transient).
 - **Read the error envelope before the status code.** This endpoint returns P21's `ErrorType`/`ErrorMessage` envelope, and it can arrive on a **200** as well as a 4xx/5xx. Checking `response.status_code` first discards the one message that explains the failure — the examples above parse the body first for that reason.
 - **Check the record exists first.** A missing record and a transient engine fault both surface as an unhelpful 5xx. A cheap OData read before the report call turns "not found" into your own clear error and leaves the 5xx meaning only "the engine faulted".
-- **`UseCodeValues` requirements vary per report service, and within `m_picktickets` per ticket type.** `m_reprintpurchaseorders` works with `UseCodeValues: false`. A production-order `m_picktickets` run **requires `UseCodeValues: true` with code values** — `create_pick_ticket_type` must be the code `"P"`; the display label `"Production Order"` is rejected, and `UseCodeValues: false` returns HTTP 500. A sales-order run is the reverse: the label `"Sales Order"` with `UseCodeValues: false` works, and `true` with `"S"` or `"O"` returned an empty HTTP 500 (play 26.1.5950.0, 2026-10-17). When a report errors on seemingly-correct criteria, retry with `UseCodeValues: true` and the code values from the definition's `ValidValues`.
+- **`UseCodeValues` requirements vary per report service, and within `m_picktickets` per ticket type.** `m_reprintpurchaseorders` works with `UseCodeValues: false`. A production-order `m_picktickets` run **requires `UseCodeValues: true` with code values** — `create_pick_ticket_type` must be the code `"P"`; the display label `"Production Order"` is rejected, and `UseCodeValues: false` returns HTTP 500. A sales-order run is the reverse: the label `"Sales Order"` with `UseCodeValues: false` works, and `true` with `"S"` or `"O"` returned an empty HTTP 500 (play 26.1.5950.0, 2026-10-17). When a report errors on seemingly-correct criteria, try the other setting: `UseCodeValues: true` with the code values from the definition's `ValidValues`, or `false` with the labels.
 - **`m_reprintpurchaseorders`: `reprint_flag` must equal `po_hdr.printed`.** `N` renders only never-printed POs and `Y` only printed ones; the wrong one is a deterministic empty 500 that a retry never clears. Read `printed` over OData before each call, including before a retry, because another user can print the PO in between. A first print marks the PO printed.
 - **`Status` is `"New"`, `Type` is `"Form"`**, with `Keys: []`. Older copies of these payloads sent the integers `0`/`0`; integer `0` binds to the same enum member, so they rendered the same PDF, but integers are never range-checked. Send the strings.
 - **`m_picktickets` prerequisite (production order)**: the production order's form must already be printed (`prod_order_hdr.printed = 'Y'`) — run a `ProductionOrder` transaction with `print_form = ON` first. No date range is needed for a production order (a sales order needs all three — see [Eligibility traps](#eligibility-traps)); `location_id` is the location the components pick from.
@@ -668,9 +668,10 @@ def run_report(client: httpx.Client, ui_server: str, headers: dict,
         if attempt < attempts:
             time.sleep(0.5 * attempt)
     if response.status_code >= 400:
-        raise SystemExit(f"HTTP {response.status_code} after {attempts} attempts. "
-                         f"Body: {(response.text or '(empty)')[:300]} -- an attempt may "
-                         "still have created the ticket; check oe_pick_ticket before rerunning.")
+        hint = (" -- an attempt may still have created the ticket; check oe_pick_ticket "
+                "before rerunning." if response.status_code >= 500 else "")
+        raise SystemExit(f"HTTP {response.status_code} after {attempt} attempt(s). "
+                         f"Body: {(response.text or '(empty)')[:300]}{hint}")
     if not isinstance(result, list):
         raise SystemExit(f"Unexpected response: {str(result)[:300]}")
     return result
@@ -954,10 +955,12 @@ static async Task<List<JsonElement>> RunReportAsync(
             // Only a 5xx is worth retrying.
             if ((int)response.StatusCode < 500 || attempt >= attempts)
             {
+                var hint = (int)response.StatusCode >= 500
+                    ? " -- an attempt may still have created the ticket; check oe_pick_ticket before rerunning."
+                    : "";
                 throw new InvalidOperationException(
-                    $"HTTP {(int)response.StatusCode} after {attempts} attempts. " +
-                    $"Body: {(string.IsNullOrEmpty(bodyText) ? "(empty)" : bodyText)} -- an " +
-                    "attempt may still have created the ticket; check oe_pick_ticket before rerunning.");
+                    $"HTTP {(int)response.StatusCode} after {attempt} attempt(s). " +
+                    $"Body: {(string.IsNullOrEmpty(bodyText) ? "(empty)" : bodyText)}{hint}");
             }
         }
         await Task.Delay(TimeSpan.FromSeconds(0.5 * attempt));
