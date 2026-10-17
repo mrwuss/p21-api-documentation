@@ -193,6 +193,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | **Enable, disable or re-scope a DynaChange business rule** through the API | [04 § Managing Business Rules Through the DynaChange Organizer](04-Interactive-API.md#managing-business-rules-through-the-dynachange-organizer) — the `dc.organizer.rule` tool on any open window · runnable: [`dynachange_rule_toggle.py`](../examples/python/recipes/dynachange_rule_toggle.py) |
 | Interactive order saved as a **quote** / `disposition` looks disabled / wizard made an RFQ · build a direct-ship PO | [04 § Set `quote` to `OFF` first](04-Interactive-API.md#set-quote-to-off-first-the-window-can-open-in-quote-mode) · runnable: [`order_entry_quote_off.py`](../examples/python/recipes/order_entry_quote_off.py) |
 | **Create an item in the Item window** (unit flags, one location per session) | [04 § Creating an Item in the Item Window](04-Interactive-API.md#creating-an-item-in-the-item-window) — Units of Measure tab can be `Column is disabled` for your role (not reproducible on play) |
+| **Attach a document to an item, assembly or kit** (Document Links) — Transaction API says `Column is disabled: link_name` | [recipe: item-document-links](recipes/item-document-links.md) — upload with the file handler, add through the `Item` window's `m_addlink` dialog, save · [04 § Adding a Document Link in the Item Window](04-Interactive-API.md#adding-a-document-link-in-the-item-window) |
 | **Add a price library to a customer** · library order (`sequence_number`) | [04 § Customer Window: Adding a Price Library](04-Interactive-API.md#customer-window-adding-a-price-library) — edit order decides the sequence · runnable: [`customer_price_library.py`](../examples/python/recipes/customer_price_library.py) |
 | Answer a `w_message` dialog — it's fully controllable, not just auto-answered | [04 § Worked Example: w_message](04-Interactive-API.md#worked-example-w_message-save-changes-before-closing) |
 | Fill fields in a popup (`TabName: null`) | [04 § Response Window Handling (Tabless)](04-Interactive-API.md#response-window-handling-tabless-windows) |
@@ -234,6 +235,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Production pick ticket at a specific location | [03 § m_picktickets example](03-Transaction-API.md#example-generate-a-production-order-pick-ticket-m_picktickets) |
 | PDFs from print flags on a normal transaction | [03 § PDFs from the /transaction endpoint](03-Transaction-API.md#pdfs-from-the-transaction-endpoint-print-flags) |
 | **Merge several report PDFs** — barcodes print as text | [03 § Merging Several Report PDFs into One File](03-Transaction-API.md#merging-several-report-pdfs-into-one-file) — rename the font-subset tags |
+| **Put an assembly's drawing on its pick ticket** · does an API pick-ticket PDF include linked documents? | [recipe: item-document-links](recipes/item-document-links.md) — display area `3453` Sales Order Pick Ticket; the API's pick-ticket PDF never includes the linked file, with *Transmit Document Links* on or off |
 
 ## When something breaks
 

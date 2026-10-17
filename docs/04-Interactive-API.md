@@ -3091,6 +3091,17 @@ The Transaction API [cannot create an item](03-Transaction-API.md#item-service-g
 
 **Not reproduced on play 26.1.5950.0 (October 2026), so there is no runnable example.** Step 1 behaved as described (`Status: 2` with `tabpageenabled` events, then `item_desc` and both discount groups — `sales_discount_group_id` / `purchase_discount_group_id` — accepted). Step 2 failed: every change on `TABPAGE_2.tp_2_dw_2` (`unit_id`, `unit_size`, the four unit flags) returned **HTTP 400 `Column is disabled: unit_id`**, for a password user and for a consumer-key user alike, and the save then failed *"A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified."* That is the screen-version lock in the last bullet above. Locations, product group (with the GL prompt answered Yes), supplier and location-supplier steps were accepted, so steps 3–6 are unverified only because the save never got past step 2. No item was created.
 
+## Adding a Document Link in the Item Window
+
+Item links — the **Document Links** tab — cannot be added through the Transaction API: the `Item` and `Assembly` services both expose `DOCUMENT_LINK.document_link`, and both refuse `link_name` with `Column is disabled`. The Interactive `Item` window adds them the way the client does:
+
+1. Change `item_id` on `TABPAGE_1`, select the `DOCUMENT_LINK` tab.
+2. Run `m_addlink` **with `DatawindowName: "document_link"`** — it is a datawindow-level tool, listed only by `GET /v2/tools?windowId=…&dwName=document_link`. It opens the tabless *Document Link* dialog (`w_inventory_sheet`, datawindow `_dw_link`, area lists `source` and `target`).
+3. Set `link_path`, `link_name`, `outside_use_flag`, `mandatory_flag` on `_dw_link`; `cb_selectall` selects every display area; `cb_ok` closes the dialog.
+4. Save the `Item` window. Only the save writes `document_link` and its `document_link_area` rows.
+
+Assemblies and kits use the same item link: the Assembly window's Document Links tab only views links (`m_viewlink`) and shows the ones whose display areas include Assembly Maintenance (`1302`). Selecting a single display area needs a row selection the API has not been seen to make (`cb_select` stays disabled). Full recipe, both languages, with the file upload and the pick-ticket area: [recipes/item-document-links](recipes/item-document-links.md). *(play 26.1.5950.0, 2026-10-17 — [#200](https://github.com/mrwuss/p21-api-documentation/issues/200))*
+
 ## Customer Window: Adding a Price Library
 
 A customer's price libraries are a grid on the Customer window's Sales Pricing tab. The window's service name is **`Customer`** (not `CustomerMaintenance`); its tabs are named `TABPAGE_1`, `TABPAGE_2`, and so on, and the price-library grid is **`TABPAGE_7.tp_7_dw_price_library`**.

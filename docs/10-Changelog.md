@@ -18,6 +18,10 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-10-17
+
+- **docs:** **[Attach a document to an item, assembly or kit](recipes/item-document-links.md)** — new recipe, Python and C#, both run on play 26.1.5950.0: upload with the file handler, add the link through the `Item` window's `m_addlink` dialog, save, read back. The Transaction API can't add one (`Column is disabled: link_name` on `Item` and `Assembly`). An assembly's document is an item link shown in Assembly Maintenance through display area `1302`; `3453` is the Sales Order Pick Ticket area. `cb_selectall` sets every area; a single area could not be selected through the API. A sales-order pick-ticket PDF from the API does not include linked documents, with *Transmit Document Links* on or off. Closes [#200](https://github.com/mrwuss/p21-api-documentation/issues/200) — *@mrwuss*
+
 ## 2026-10-11 — v1.29.3
 
 - **docs:** **[The fix for "Required value missing for Jurisdiction ID (for Order Header Tax)"](03-Transaction-API.md#order-service-gotchas)** on a Transaction API order create: send a `TP_TAX.tp_tax` row keyed `jurisdiction_id`; the header `taxable` column is disabled, so tax can't be switched off instead. Verified on play 26.1.5950.0. Closes [#197](https://github.com/mrwuss/p21-api-documentation/issues/197) — *@mrwuss*

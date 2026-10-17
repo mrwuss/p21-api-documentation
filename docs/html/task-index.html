@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">24</span></summary>
+            <summary>Recipes <span class="nav-count">25</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -630,6 +630,7 @@
             <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
             <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
             <li><a href="recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
+            <li><a href="recipes/item-document-links.html">Attach a Document to an Item, Assembly or Kit (Document Links)</a></li>
             <li><a href="recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
             <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
@@ -1437,6 +1438,10 @@
 <td><a href="04-Interactive-API.html#creating-an-item-in-the-item-window">04 § Creating an Item in the Item Window</a> — Units of Measure tab can be <code>Column is disabled</code> for your role (not reproducible on play)</td>
 </tr>
 <tr>
+<td><strong>Attach a document to an item, assembly or kit</strong> (Document Links) — Transaction API says <code>Column is disabled: link_name</code></td>
+<td><a href="recipes/item-document-links.html">recipe: item-document-links</a> — upload with the file handler, add through the <code>Item</code> window's <code>m_addlink</code> dialog, save · <a href="04-Interactive-API.html#adding-a-document-link-in-the-item-window">04 § Adding a Document Link in the Item Window</a></td>
+</tr>
+<tr>
 <td><strong>Add a price library to a customer</strong> · library order (<code>sequence_number</code>)</td>
 <td><a href="04-Interactive-API.html#customer-window-adding-a-price-library">04 § Customer Window: Adding a Price Library</a> — edit order decides the sequence · runnable: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/customer_price_library.py"><code>customer_price_library.py</code></a></td>
 </tr>
@@ -1581,6 +1586,10 @@
 <tr>
 <td><strong>Merge several report PDFs</strong> — barcodes print as text</td>
 <td><a href="03-Transaction-API.html#merging-several-report-pdfs-into-one-file">03 § Merging Several Report PDFs into One File</a> — rename the font-subset tags</td>
+</tr>
+<tr>
+<td><strong>Put an assembly's drawing on its pick ticket</strong> · does an API pick-ticket PDF include linked documents?</td>
+<td><a href="recipes/item-document-links.html">recipe: item-document-links</a> — display area <code>3453</code> Sales Order Pick Ticket; the API's pick-ticket PDF never includes the linked file, with <em>Transmit Document Links</em> on or off</td>
 </tr>
 </tbody>
 </table></div>

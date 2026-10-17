@@ -660,6 +660,8 @@ For an adjustment path with a fully verified success case regardless of tag stat
 
 Routes to a real network file share — not a P21 business object at all, but a general-purpose file store the middleware exposes over REST. Every route was exercised end to end.
 
+The `/file/path` upload is also the first step of attaching a document to an item, assembly or kit — see [recipes/item-document-links](recipes/item-document-links.md).
+
 ### Routes
 
 | Route | Method | Notes |

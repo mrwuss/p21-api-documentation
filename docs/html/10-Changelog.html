@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">24</span></summary>
+            <summary>Recipes <span class="nav-count">25</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -630,6 +630,7 @@
             <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
             <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
             <li><a href="recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
+            <li><a href="recipes/item-document-links.html">Attach a Document to an Item, Assembly or Kit (Document Links)</a></li>
             <li><a href="recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
             <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
@@ -655,6 +656,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-10-17">2026-10-17</a></li>
 <li><a href="#2026-10-11-v1293">2026-10-11 — v1.29.3</a></li>
 <li><a href="#2026-10-11-v1292">2026-10-11 — v1.29.2</a></li>
 <li><a href="#2026-10-11-v1291">2026-10-11 — v1.29.1</a></li>
@@ -758,6 +760,10 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-10-17">2026-10-17</h2>
+<ul>
+<li><strong>docs:</strong> <strong><a href="recipes/item-document-links.html">Attach a document to an item, assembly or kit</a></strong> — new recipe, Python and C#, both run on play 26.1.5950.0: upload with the file handler, add the link through the <code>Item</code> window's <code>m_addlink</code> dialog, save, read back. The Transaction API can't add one (<code>Column is disabled: link_name</code> on <code>Item</code> and <code>Assembly</code>). An assembly's document is an item link shown in Assembly Maintenance through display area <code>1302</code>; <code>3453</code> is the Sales Order Pick Ticket area. <code>cb_selectall</code> sets every area; a single area could not be selected through the API. A sales-order pick-ticket PDF from the API does not include linked documents, with <em>Transmit Document Links</em> on or off. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/200">#200</a> — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-10-11-v1293">2026-10-11 — v1.29.3</h2>
 <ul>
 <li><strong>docs:</strong> <strong><a href="03-Transaction-API.html#order-service-gotchas">The fix for "Required value missing for Jurisdiction ID (for Order Header Tax)"</a></strong> on a Transaction API order create: send a <code>TP_TAX.tp_tax</code> row keyed <code>jurisdiction_id</code>; the header <code>taxable</code> column is disabled, so tax can't be switched off instead. Verified on play 26.1.5950.0. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/197">#197</a> — <em>@mrwuss</em></li>
@@ -1715,6 +1721,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-10-17">2026-10-17</a></li>
 <li><a href="#2026-10-11-v1293">2026-10-11 — v1.29.3</a></li>
 <li><a href="#2026-10-11-v1292">2026-10-11 — v1.29.2</a></li>
 <li><a href="#2026-10-11-v1291">2026-10-11 — v1.29.1</a></li>
