@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link an Existing Production Order to a Sales-Order Line - P21 API Documentation</title>
+    <style>
+        /* ===== Reset & Base ===== */
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            background: #f5f6fa;
+            display: flex;
+        }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            background: #1a2332;
+            color: #c8d6e5;
+            overflow-y: auto;
+            padding: 0;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 16px 16px;
+            font-size: 1.05rem;
+            color: #fff;
+            border-bottom: 1px solid #2c3e50;
+        }
+
+        .sidebar-header a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        /* Collapsible whole-nav fold (collapsed by JS on narrow screens) */
+        .sidebar-fold > .sidebar-fold-summary {
+            display: none;             /* invisible on desktop -- nav is just open */
+            padding: 10px 16px;
+            cursor: pointer;
+            color: #e8eef4;
+            font-weight: 600;
+            list-style: none;
+        }
+
+        .nav-group {
+            padding: 10px 0 2px;
+        }
+
+        .nav-group > summary {
+            padding: 0 16px 6px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7f95;
+            font-weight: 600;
+            cursor: pointer;
+            list-style: none;          /* custom marker below */
+            user-select: none;
+        }
+
+        .nav-group > summary::-webkit-details-marker { display: none; }
+
+        .nav-group > summary::before {
+            content: "▸";
+            display: inline-block;
+            width: 1em;
+            transition: transform 0.15s;
+        }
+
+        .nav-group[open] > summary::before {
+            transform: rotate(90deg);
+        }
+
+        .nav-group > summary:hover {
+            color: #a0b4c8;
+        }
+
+        .nav-count {
+            font-weight: 400;
+            color: #55697f;
+            margin-left: 4px;
+        }
+
+        .nav-pages {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-pages li a {
+            display: block;
+            padding: 5px 16px;
+            color: #a0b4c8;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .nav-pages li a:hover {
+            background: #232f3e;
+            color: #e8eef4;
+        }
+
+        .nav-pages li.active a {
+            color: #fff;
+            background: #232f3e;
+            border-left-color: #3498db;
+            font-weight: 600;
+        }
+
+        /* ===== On-this-page ToC (right rail + inline fallback) ===== */
+        .toc-rail {
+            width: 240px;
+            min-width: 240px;
+            flex-shrink: 0;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            overflow-y: auto;
+            padding: 28px 16px 40px 8px;
+            font-size: 0.875rem;
+        }
+
+        .toc-rail-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #7a8a99;
+            font-weight: 600;
+            padding: 0 8px 8px;
+        }
+
+        .toc-inline {
+            display: none;             /* shown only when the rail is hidden */
+            margin: 0 0 24px;
+            border: 1px solid #d5dde5;
+            border-radius: 6px;
+            background: #f8f9fa;
+        }
+
+        .toc-inline > summary {
+            padding: 10px 14px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #2874a6;
+            font-size: 0.9rem;
+        }
+
+        .toc-inline .page-toc {
+            padding: 0 8px 10px;
+        }
+
+        .page-toc {
+            padding: 0 8px;
+        }
+
+        .page-toc ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .page-toc li {
+            margin: 0;
+        }
+
+        .page-toc a {
+            display: block;
+            padding: 3px 8px;
+            color: #5f7183;
+            text-decoration: none;
+            font-size: 0.82rem;
+            border-left: 2px solid #dfe6ec;
+            transition: color 0.15s, border-color 0.15s;
+        }
+
+        .page-toc a:hover {
+            color: #1a5276;
+        }
+
+        .page-toc a.active {
+            color: #2874a6;
+            border-left-color: #2874a6;
+            font-weight: 600;
+        }
+
+        /* Indent h3 items */
+        .page-toc .toc-h3 {
+            padding-left: 20px;
+            font-size: 0.78rem;
+        }
+
+
+        /* ===== Main Content ===== */
+        .content {
+            /* Long unbreakable tokens appear in plain prose too, not just in
+               code spans (e.g. PurchaseDiscountGroup/SalesDiscountGroup). Let
+               any word break rather than push the page sideways; `break-word`
+               only acts when the word genuinely cannot fit. */
+            overflow-wrap: break-word;
+            flex: 1 1 0;
+            /* Without min-width: 0 a flex item refuses to shrink below its
+               content, so the sidebar + content overflow the viewport and the
+               whole PAGE scrolls sideways. */
+            min-width: 0;
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 40px 48px;
+            background: #fff;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            margin-top: 0;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        h4 {
+            color: #34495e;
+            margin-top: 20px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        /* Inline code carries long identifiers (d_dw_price_page_x_location_maint).
+           Break them rather than let them widen the line -- `break-word` only
+           breaks when the token genuinely cannot fit. Code BLOCKS are exempt:
+           they scroll inside their own box, where wrapping would corrupt the
+           code's meaning. */
+        :not(pre) > code {
+            /* `anywhere`, not `break-word`: only `anywhere` reduces the
+               element's min-content width, which is what lets a narrow
+               container actually shrink instead of being forced wide by an
+               unbreakable identifier. Code BLOCKS are exempt -- they scroll in
+               their own box, where wrapping would corrupt the code. */
+            overflow-wrap: anywhere;
+        }
+
+        /* Tables size their columns by CONTENT. `break-word` (not `anywhere`)
+           is deliberate: `anywhere` lowers every cell's min-content width to
+           ~one character, so the browser stops distributing width by content
+           and identifier-heavy columns get squeezed to a sliver while plain
+           prose columns hoard the surplus. With `break-word` a column is never
+           narrower than its longest token (part numbers stay on one line), a
+           token still breaks if it alone exceeds the available width, and a
+           table whose token widths genuinely cannot fit scrolls INSIDE
+           .table-wrap instead of squishing its columns. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
+        table {
+            width: 100%;
+            max-width: 100%;
+            table-layout: auto;
+            border-collapse: collapse;
+            margin: 0;
+            font-size: 0.95em;
+        }
+
+        th, td {
+            overflow-wrap: break-word;
+            word-break: normal;
+        }
+
+        /* Inline code in a cell wraps between tokens but keeps whole tokens
+           intact (break-word, overriding the prose `anywhere` rule above) --
+           the token's width is what the column is sized by. */
+        td code, th code {
+            white-space: normal;
+            overflow-wrap: break-word;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* ===== Print ===== */
+        @media print {
+            body {
+                display: block;
+                background: #fff;
+            }
+            .sidebar,
+            .toc-rail,
+            .toc-inline {
+                display: none;
+            }
+            .content {
+                max-width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+            .print-btn {
+                display: none;
+            }
+            .copy-section-btn { display: none; }
+            h1 { page-break-after: avoid; margin-top: 0; }
+            h2 { page-break-after: avoid; margin-top: 20pt; }
+            h3 { page-break-after: avoid; margin-top: 15pt; }
+            pre, table, blockquote { page-break-inside: avoid; }
+            p { orphans: 3; widows: 3; }
+            .tab-buttons { display: none; }
+            .tab-panel { display: block !important; }
+            .tab-panel::before {
+                content: attr(data-lang);
+                display: block;
+                font-weight: bold;
+                color: #333;
+                font-size: 0.85em;
+                margin-bottom: 2px;
+                text-transform: uppercase;
+            }
+        }
+
+        /* ===== Responsive ===== */
+        /* Not enough room for the right rail: fold the ToC into the content. */
+        @media (max-width: 1380px) {
+            .toc-rail {
+                display: none;
+            }
+            .toc-inline {
+                display: block;
+            }
+        }
+
+        /* ===== Mobile ===== */
+        @media (max-width: 1100px) {
+            body {
+                display: block;
+            }
+            .sidebar {
+                width: 100%;
+                min-width: unset;
+                height: auto;
+                position: relative;
+            }
+            /* The whole nav becomes one collapsible block (JS closes it on
+               load) so page content is one tap away, not two screens down. */
+            .sidebar-fold > .sidebar-fold-summary {
+                display: block;
+            }
+            .content {
+                padding: 20px;
+            }
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+
+        /* On a narrow screen a floating button pinned to the right edge is both
+           the wrong pattern and a source of horizontal overflow -- it is sized
+           from the layout viewport, so it widens the very box it is measured
+           against. Let it flow with the content instead. */
+        @media (max-width: 600px) {
+            .print-btn {
+                position: static;
+                display: block;
+                width: 100%;
+                margin: 0 0 20px;
+                box-shadow: none;
+            }
+        }
+
+        /* ===== Copy-section button ===== */
+        .copy-section-btn {
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1;
+            vertical-align: middle;
+            margin-left: 12px;
+            padding: 4px 9px;
+            color: #2874a6;
+            background: #eaf2f8;
+            border: 1px solid #aed6f1;
+            border-radius: 4px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity .15s ease, background .15s ease;
+        }
+
+        h2:hover > .copy-section-btn,
+        h3:hover > .copy-section-btn,
+        h4:hover > .copy-section-btn,
+        .copy-section-btn:focus {
+            opacity: 1;
+        }
+
+        .copy-section-btn:hover {
+            background: #d4e6f1;
+        }
+
+        .copy-section-btn.copied {
+            opacity: 1;
+            color: #1e8449;
+            background: #eafaf1;
+            border-color: #a9dfbf;
+        }
+
+        .copy-section-btn.failed {
+            opacity: 1;
+            color: #a93226;
+            background: #fdedec;
+            border-color: #f5b7b1;
+        }
+
+        /* Touch devices never hover -- keep the buttons visible there. */
+        @media (hover: none) {
+            .copy-section-btn { opacity: 1; }
+        }
+
+        /* ===== Code Tabs ===== */
+        .code-tabs {
+            margin: 20px 0;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 7px 16px;
+            border: none;
+            background: #1a2836;
+            color: #8a9bb5;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            border-radius: 5px 5px 0 0;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .tab-btn:hover {
+            background: #243447;
+            color: #c8d6e5;
+        }
+
+        .tab-btn.active {
+            background: #2c3e50;
+            color: #ecf0f1;
+            font-weight: 600;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .code-tabs .tab-panel pre {
+            margin-top: 0;
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:first-of-type pre {
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:last-of-type pre {
+            border-radius: 0 0 5px 5px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="../index.html"><strong>P21 API Docs</strong></a>
+        </div>
+        <details class="sidebar-fold" open id="sidebar-fold">
+        <summary class="sidebar-fold-summary">Documentation</summary>
+        <details class="nav-group" open>
+            <summary>Start Here</summary>
+            <ul class="nav-pages">
+            <li><a href="../task-index.html">Task Index</a></li>
+            <li><a href="../00-Authentication.html">Authentication</a></li>
+            <li><a href="../01-API-Selection-Guide.html">API Selection Guide</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>API Reference</summary>
+            <ul class="nav-pages">
+            <li><a href="../02-OData-API.html">OData API</a></li>
+            <li><a href="../03-Transaction-API.html">Transaction API</a></li>
+            <li><a href="../04-Interactive-API.html">Interactive API</a></li>
+            <li><a href="../05-Entity-API.html">Entity API</a></li>
+            <li><a href="../11-Inventory-REST-API.html">Inventory REST API</a></li>
+            <li><a href="../12-Production-Labor-API.html">Production & Labor</a></li>
+            <li><a href="../13-UDT-Service-API.html">UDT Service API</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>Guides & Troubleshooting</summary>
+            <ul class="nav-pages">
+            <li><a href="../14-Breaking-Changes.html">Breaking Changes</a></li>
+            <li><a href="../06-Error-Handling.html">Error Handling</a></li>
+            <li><a href="../07-Session-Pool-Troubleshooting.html">Session Pool Issues</a></li>
+            <li><a href="../08-SalesPricePage-Codes.html">SalesPricePage Codes</a></li>
+            <li><a href="../09-Batch-Processing-Patterns.html">Batch Processing</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>Project</summary>
+            <ul class="nav-pages">
+            <li><a href="../10-Changelog.html">Changelog</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>More</summary>
+            <ul class="nav-pages">
+            <li><a href="../15-Other-REST-Families.html">Other REST Endpoint Families</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>Recipes <span class="nav-count">27</span></summary>
+            <ul class="nav-pages">
+            <li><a href="../recipes/README.html">Recipes Overview</a></li>
+            <li><a href="../recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
+            <li><a href="../recipes/create-bins.html">Create Bins (Bulk)</a></li>
+            <li><a href="../recipes/create-customer.html">Create a Customer</a></li>
+            <li><a href="../recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
+            <li><a href="../recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="../recipes/create-ship-to.html">Create a Ship-To</a></li>
+            <li><a href="../recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
+            <li><a href="../recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
+            <li><a href="../recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
+            <li><a href="../recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+            <li><a href="../recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
+            <li><a href="../recipes/item-document-links.html">Attach a Document to an Item, Assembly or Kit (Document Links)</a></li>
+            <li class="active"><a href="../recipes/link-production-order.html">Link an Existing Production Order to a Sales-Order Line</a></li>
+            <li><a href="../recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
+            <li><a href="../recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
+            <li><a href="../recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+            <li><a href="../recipes/purchase-receive-vouch.html">Purchasing: Stock PO → Receipt → Voucher, and Drop Ship</a></li>
+            <li><a href="../recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
+            <li><a href="../recipes/rebate-assembly-program.html">Rebate-Tracked Assembly Program</a></li>
+            <li><a href="../recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+            <li><a href="../recipes/sales-order-to-invoice.html">Sales Order → Pick Ticket → Invoice</a></li>
+            <li><a href="../recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
+            <li><a href="../recipes/update-contract-lines.html">Update Contract Lines</a></li>
+            <li><a href="../recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
+            <li><a href="../recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
+            <li><a href="../recipes/window-sql-information.html">Read a Window's SQL (SQL Information)</a></li>
+            </ul>
+        </details>
+        </details>
+    </nav>
+
+    <main class="content">
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+<details class="toc-inline">
+    <summary>On this page</summary>
+    <div class="page-toc">
+        <div class="toc">
+<ul>
+<li><a href="#prerequisites">Prerequisites</a></li>
+<li><a href="#call-sequence">Call sequence</a></li>
+<li><a href="#what-the-save-writes">What the save writes</a></li>
+<li><a href="#complete-example">Complete example</a></li>
+<li><a href="#gotchas-verified-on-play-26159500-2026-10-17">Gotchas (verified on play 26.1.5950.0, 2026-10-17)</a></li>
+<li><a href="#verify">Verify</a></li>
+</ul>
+</div>
+
+    </div>
+</details>
+<h1 id="link-an-existing-production-order-to-a-sales-order-line">Link an Existing Production Order to a Sales-Order Line</h1>
+<p>Attach a production order that already exists (built to stock, or entered before the sale) to an open sales-order line for the same assembly, through the Production Order window's <strong>Transactions To Assign</strong> tab.</p>
+<p><strong>API:</strong> Interactive (<code>ProductionOrder</code> window) + OData read-back · <strong>Service:</strong> <code>ProductionOrder</code> · <strong>Deep dive:</strong> <a href="../12-Production-Labor-API.html#production-order-gotchas-field-verified">12 § Production Order Gotchas</a> · <strong>Full schema:</strong> <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/ProductionOrder.json">ProductionOrder.json</a></p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>P21 credentials — the complete example below authenticates itself; nothing to install but <code>httpx</code> (Python) or a bare <code>net8.0</code>-or-later console project (C#).</li>
+<li>A user whose role can open and save the <code>ProductionOrder</code> window.</li>
+<li>An <strong>open production order</strong> for the assembly, with quantity left to assign.</li>
+<li>A <strong>sales-order line for the same assembly that is already a production-order assembly line</strong>: <code>oe_line.assembly = 'P'</code> and <code>disposition = 'P'</code>. Entering the assembly item in the Interactive <code>Order</code> window and answering the "add as assembly?" prompt with <code>cb_1</code> produces this (<a href="order-with-assembly.html">order-with-assembly</a>). On the verified tenant the save did not create a production order by itself, so the line stayed unlinked.</li>
+</ul>
+<blockquote>
+<p><strong>The Transaction API cannot do this, and the obvious control is a decoy.</strong> The tab's <code>retrieve_open_transactions</code> column is a constant (<code>'Y'</code>) in the tab's <code>SELECT</code> and is disabled for every role, so no write to it fills the grid. A Transaction row keyed <code>trans_number</code> + <code>customer_id</code> fails <em>"Object reference not set"</em>. The real control is the grid's <strong>right-click tool</strong>, <code>m_retrieveotheropentransactions</code> ("Retrieve Other Open Transactions").</p>
+</blockquote>
+<h2 id="call-sequence">Call sequence</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Call</th>
+<th>Body</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>POST {ui}/api/ui/interactive/sessions</code></td>
+<td><code>{"ResponseWindowHandlingEnabled": true}</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>POST {ui}/api/ui/interactive/v2/window</code></td>
+<td><code>{"ServiceName": "ProductionOrder"}</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>PUT {ui}/api/ui/interactive/v2/change</code></td>
+<td><code>prod_order_number</code> on <code>TABPAGE_1</code> / <code>tp_1_dw_1</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>PUT {ui}/api/ui/interactive/v2/tab</code></td>
+<td><code>{"WindowId": "{windowId}", "PageName": "TABPAGE_TRANSACTIONS_TO_ASSIGN"}</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>POST {ui}/api/ui/interactive/v2/tools</code></td>
+<td><code>m_retrieveotheropentransactions</code> (below)</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>GET {ui}/api/ui/interactive/v2/data?id={windowId}</code></td>
+<td>find the row: <code>cf_transaction_type</code> <code>Sales Order</code>, <code>trans_number</code>, <code>line_number</code></td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>PUT {ui}/api/ui/interactive/v2/row</code></td>
+<td><code>{"WindowId": "{windowId}", "DatawindowName": "tabpage_transactions_to_assign", "Row": n}</code> (1-based)</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>PUT {ui}/api/ui/interactive/v2/change</code></td>
+<td><code>assigned</code> = <code>ON</code> on <code>TABPAGE_TRANSACTIONS_TO_ASSIGN</code> / <code>tabpage_transactions_to_assign</code></td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>PUT {ui}/api/ui/interactive/v2/data</code></td>
+<td><code>"{windowId}"</code> (save — the body is the bare window id)</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>DELETE</code> the window and the session</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<p>The retrieve tool (step 5):</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST {ui}/api/ui/interactive/v2/tools</span>
+<span class="err">{&quot;WindowId&quot;: &quot;{windowId}&quot;, &quot;ToolName&quot;: &quot;m_retrieveotheropentransactions&quot;,</span>
+<span class="err"> &quot;DatawindowName&quot;: &quot;tabpage_transactions_to_assign&quot;, &quot;FieldName&quot;: null, &quot;Row&quot;: 0, &quot;Text&quot;: null}</span>
+</code></pre></div>
+
+<p>It returns <code>Status: 1</code> with one <code>dwcontentchanged</code> event and no popup. The grid then holds one row per open, unassigned demand line for the item:</p>
+<div class="highlight"><pre><span></span><code>{&quot;assigned&quot;: &quot;N&quot;, &quot;cf_transaction_type&quot;: &quot;Sales Order&quot;, &quot;trans_number&quot;: &quot;1001234&quot;,
+ &quot;line_number&quot;: &quot;1&quot;, &quot;customer_id&quot;: &quot;100198&quot;, &quot;qty_remaining&quot;: &quot;1.000000000&quot;, &quot;qty_to_assign&quot;: &quot;0&quot;}
+</code></pre></div>
+
+<p>Ticking <code>assigned</code> (step 8) fills <code>qty_to_assign</code> with the line's remaining quantity. The save raised no prompt and returned a <code>savesucceeded</code> event carrying <code>__prod_order_number</code>.</p>
+<p><strong>Finding the tool.</strong> It is not in the window-level list. Ask for the datawindow's own tools: <code>GET {ui}/api/ui/interactive/v2/tools?windowId={windowId}&amp;dwName=tabpage_transactions_to_assign</code> lists <code>m_retrieveotheropentransactions</code> and <code>m_reset</code> among the right-click options. The tab's <code>SELECT</code> (from <code>m_sqlinformation</code>, see <a href="window-sql-information.html">window-sql-information</a>) reads only existing <code>prod_order_line_link</code> rows, which is why switching to the tab alone shows nothing to assign.</p>
+<h2 id="what-the-save-writes">What the save writes</h2>
+<p>One <code>prod_order_line_link</code> row. Nothing on <code>oe_line</code> changes — <code>assembly</code> and <code>disposition</code> stay <code>P</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>prod_order_number</code>, <code>prod_order_line_number</code></td>
+<td>the production order and its assembly line</td>
+</tr>
+<tr>
+<td><code>trans_type</code></td>
+<td><code>O</code> (sales order)</td>
+</tr>
+<tr>
+<td><code>transaction_uid</code></td>
+<td>the sales line's <code>oe_line.oe_line_uid</code></td>
+</tr>
+<tr>
+<td><code>quantity</code></td>
+<td>the assigned quantity</td>
+</tr>
+<tr>
+<td><code>row_status_flag</code></td>
+<td><code>O</code></td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="complete-example">Complete example</h2>
+<p>Link a production order to a sales-order line. The three record numbers are arguments (<code>python link_production_order.py 1000123 1001234 1</code>); without <code>--save</code> the program retrieves the open transactions and ticks the row but writes nothing. After a save it reads the link back from OData and compares its <code>transaction_uid</code> with the sales line's <code>oe_line_uid</code>.</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Link an existing production order to an open sales-order line (Interactive API).</span>
+
+<span class="sd">The Production Order window&#39;s Transactions To Assign tab fills through the</span>
+<span class="sd">datawindow&#39;s right-click tool m_retrieveotheropentransactions. Tick `assigned`</span>
+<span class="sd">on the sales-order row and save: P21 writes one prod_order_line_link row.</span>
+
+<span class="sd">    python link_production_order.py [PROD_ORDER ORDER_NO LINE_NO] [--save]</span>
+
+<span class="sd">Without --save it retrieves the open transactions and ticks the row, then stops</span>
+<span class="sd">without saving (dry run).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
+<span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
+<span class="n">PROD_ORDER</span> <span class="o">=</span> <span class="s2">&quot;1000123&quot;</span>                    <span class="c1"># the existing, open production order</span>
+<span class="n">ORDER_NO</span> <span class="o">=</span> <span class="s2">&quot;1001234&quot;</span>                      <span class="c1"># the sales order to link it to</span>
+<span class="n">LINE_NO</span> <span class="o">=</span> <span class="s2">&quot;1&quot;</span>                             <span class="c1"># that order&#39;s production-order assembly line</span>
+<span class="n">SAVE</span> <span class="o">=</span> <span class="kc">False</span>                              <span class="c1"># True writes the link; False is a dry run</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="n">TAB</span> <span class="o">=</span> <span class="s2">&quot;TABPAGE_TRANSACTIONS_TO_ASSIGN&quot;</span>
+<span class="n">DW</span> <span class="o">=</span> <span class="s2">&quot;tabpage_transactions_to_assign&quot;</span>
+<span class="n">SHOW</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;assigned&quot;</span><span class="p">,</span> <span class="s2">&quot;cf_transaction_type&quot;</span><span class="p">,</span> <span class="s2">&quot;trans_number&quot;</span><span class="p">,</span> <span class="s2">&quot;line_number&quot;</span><span class="p">,</span> <span class="s2">&quot;customer_id&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;qty_remaining&quot;</span><span class="p">,</span> <span class="s2">&quot;qty_to_assign&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;v2 token endpoint -- credentials go in the body, never in headers.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">PASSWORD</span><span class="p">},</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>  <span class="c1"># some middleware answers in XML</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;AccessToken&gt;([^&lt;]+)&lt;/AccessToken&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No AccessToken in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Transaction and Interactive calls go to the UI server, not BASE_URL.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/ui/router/v1/?urlType=external&quot;</span><span class="p">,</span>  <span class="c1"># trailing slash avoids a 307</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;Url&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;Url&gt;([^&lt;]+)&lt;/Url&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No Url in router response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">checked</span><span class="p">(</span><span class="n">r</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Response</span><span class="p">,</span> <span class="n">what</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The answer, refusing HTTP errors, Status 2 (failure) and Status 3 (a prompt).&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">&gt;=</span> <span class="mi">400</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">what</span><span class="si">}</span><span class="s2">: HTTP </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">300</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">body</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">content</span> <span class="k">else</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">body</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">body</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Status&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">what</span><span class="si">}</span><span class="s2">: Status </span><span class="si">{</span><span class="n">body</span><span class="p">[</span><span class="s1">&#39;Status&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">body</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Messages&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">body</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">body</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="p">{}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">rows_of</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">,</span> <span class="n">iapi</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">window_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dw_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The rows of one datawindow on the window&#39;s active surface, as column -&gt; value dicts.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/v2/data&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">})</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">dw</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">dw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Name&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">dw_name</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">dw</span><span class="p">[</span><span class="s2">&quot;Columns&quot;</span><span class="p">],</span> <span class="n">row</span><span class="p">))</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">dw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Data&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]]</span>
+    <span class="k">return</span> <span class="p">[]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">number</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalize a decimal string such as &#39;1001234.0&#39; to &#39;1001234&#39;.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">odata</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">,</span> <span class="n">table</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">where</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;One OData table read.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/table/</span><span class="si">{</span><span class="n">table</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="n">where</span><span class="p">})</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve the open transactions, tick the sales-order row, optionally save.&quot;&quot;&quot;</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">if</span> <span class="n">a</span> <span class="o">!=</span> <span class="s2">&quot;--save&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">args</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="s2">&quot;Pass all three record numbers, or none to use the constants&quot;</span><span class="p">)</span>
+    <span class="n">prod_order</span><span class="p">,</span> <span class="n">order_no</span><span class="p">,</span> <span class="n">line_no</span> <span class="o">=</span> <span class="n">args</span> <span class="k">if</span> <span class="n">args</span> <span class="k">else</span> <span class="p">(</span><span class="n">PROD_ORDER</span><span class="p">,</span> <span class="n">ORDER_NO</span><span class="p">,</span> <span class="n">LINE_NO</span><span class="p">)</span>
+    <span class="n">save</span> <span class="o">=</span> <span class="n">SAVE</span> <span class="ow">or</span> <span class="s2">&quot;--save&quot;</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span>
+    <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="p">(</span><span class="n">prod_order</span><span class="p">,</span> <span class="n">order_no</span><span class="p">,</span> <span class="n">line_no</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">value</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>  <span class="c1"># these go into an OData filter</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Not a number: </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">VERIFY_SSL</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+        <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+        <span class="n">ui_server</span> <span class="o">=</span> <span class="n">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
+        <span class="n">client</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                               <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+                               <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">})</span>
+        <span class="n">iapi</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/api/ui/interactive&quot;</span>
+
+        <span class="n">checked</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/sessions&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ResponseWindowHandlingEnabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}),</span>
+                <span class="s2">&quot;open session&quot;</span><span class="p">)</span>
+        <span class="n">window_id</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">opened</span> <span class="o">=</span> <span class="n">checked</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/v2/window&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ServiceName&quot;</span><span class="p">:</span> <span class="s2">&quot;ProductionOrder&quot;</span><span class="p">}),</span>
+                             <span class="s2">&quot;open ProductionOrder&quot;</span><span class="p">)</span>
+            <span class="n">window_id</span> <span class="o">=</span> <span class="n">opened</span><span class="p">[</span><span class="s2">&quot;WindowId&quot;</span><span class="p">]</span>
+
+            <span class="c1"># 1. Load the production order, 2. switch to the Transactions To Assign tab.</span>
+            <span class="n">checked</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/v2/change&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;List&quot;</span><span class="p">:</span> <span class="p">[{</span>
+                <span class="s2">&quot;TabName&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_1&quot;</span><span class="p">,</span> <span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="s2">&quot;tp_1_dw_1&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;FieldName&quot;</span><span class="p">:</span> <span class="s2">&quot;prod_order_number&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">prod_order</span><span class="p">}]}),</span> <span class="s2">&quot;load production order&quot;</span><span class="p">)</span>
+            <span class="n">checked</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/v2/tab&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;PageName&quot;</span><span class="p">:</span> <span class="n">TAB</span><span class="p">}),</span>
+                    <span class="s2">&quot;select tab&quot;</span><span class="p">)</span>
+
+            <span class="c1"># 3. The grid&#39;s right-click tool fills it with open, unassigned demand. The</span>
+            <span class="c1">#    window-level tool list does not show it; ask for the datawindow&#39;s tools:</span>
+            <span class="c1">#    GET /v2/tools?windowId=...&amp;dwName=tabpage_transactions_to_assign</span>
+            <span class="n">checked</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/v2/tools&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;ToolName&quot;</span><span class="p">:</span> <span class="s2">&quot;m_retrieveotheropentransactions&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="n">DW</span><span class="p">,</span> <span class="s2">&quot;FieldName&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Row&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;Text&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">}),</span> <span class="s2">&quot;retrieve&quot;</span><span class="p">)</span>
+            <span class="n">grid</span> <span class="o">=</span> <span class="n">rows_of</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">iapi</span><span class="p">,</span> <span class="n">window_id</span><span class="p">,</span> <span class="n">DW</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">grid</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  open:&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">SHOW</span><span class="p">})</span>
+            <span class="n">match</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">grid</span><span class="p">)</span>
+                     <span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cf_transaction_type&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;Sales Order&quot;</span>
+                     <span class="ow">and</span> <span class="n">number</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;trans_number&quot;</span><span class="p">))</span> <span class="o">==</span> <span class="n">order_no</span>
+                     <span class="ow">and</span> <span class="n">number</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;line_number&quot;</span><span class="p">))</span> <span class="o">==</span> <span class="n">line_no</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="s2">&quot;That sales-order line is not among the open transactions&quot;</span><span class="p">)</span>
+
+            <span class="c1"># 4. Make it the current row (1-based), 5. tick `assigned`; P21 fills qty_to_assign.</span>
+            <span class="n">checked</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/v2/row&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="n">DW</span><span class="p">,</span> <span class="s2">&quot;Row&quot;</span><span class="p">:</span> <span class="n">match</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">}),</span> <span class="s2">&quot;select row&quot;</span><span class="p">)</span>
+            <span class="n">checked</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/v2/change&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;List&quot;</span><span class="p">:</span> <span class="p">[{</span>
+                <span class="s2">&quot;TabName&quot;</span><span class="p">:</span> <span class="n">TAB</span><span class="p">,</span> <span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="n">DW</span><span class="p">,</span>
+                <span class="s2">&quot;FieldName&quot;</span><span class="p">:</span> <span class="s2">&quot;assigned&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;ON&quot;</span><span class="p">}]}),</span> <span class="s2">&quot;tick assigned&quot;</span><span class="p">)</span>
+            <span class="n">ticked</span> <span class="o">=</span> <span class="n">rows_of</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">iapi</span><span class="p">,</span> <span class="n">window_id</span><span class="p">,</span> <span class="n">DW</span><span class="p">)[</span><span class="n">match</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  ticked:&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">ticked</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">SHOW</span><span class="p">})</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">save</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Dry run: not saved (set SAVE = True or pass --save)&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="c1"># 6. Save -- the body is the bare window id.</span>
+            <span class="n">checked</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/v2/data&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">window_id</span><span class="p">),</span> <span class="s2">&quot;save&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  saved&quot;</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">window_id</span><span class="p">:</span>
+                <span class="n">client</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/v2/window&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">})</span>
+            <span class="n">client</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/sessions&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Read back: one prod_order_line_link row whose transaction_uid is the sales line&#39;s uid.</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="n">odata</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="s2">&quot;oe_line&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;order_no eq &#39;</span><span class="si">{</span><span class="n">order_no</span><span class="si">}</span><span class="s2">&#39; and line_no eq </span><span class="si">{</span><span class="n">line_no</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">links</span> <span class="o">=</span> <span class="n">odata</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="s2">&quot;prod_order_line_link&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;prod_order_number eq </span><span class="si">{</span><span class="n">prod_order</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  oe_line:&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">line</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;oe_line_uid&quot;</span><span class="p">,</span> <span class="s2">&quot;assembly&quot;</span><span class="p">,</span> <span class="s2">&quot;disposition&quot;</span><span class="p">)})</span>
+        <span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">links</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  link:&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">link</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span>
+                <span class="s2">&quot;prod_order_number&quot;</span><span class="p">,</span> <span class="s2">&quot;prod_order_line_number&quot;</span><span class="p">,</span> <span class="s2">&quot;trans_type&quot;</span><span class="p">,</span> <span class="s2">&quot;quantity&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;row_status_flag&quot;</span><span class="p">,</span> <span class="s2">&quot;transaction_uid&quot;</span><span class="p">)})</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">link</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;transaction_uid&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">line</span><span class="p">[</span><span class="s2">&quot;oe_line_uid&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">links</span><span class="p">):</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="s2">&quot;No prod_order_line_link row for that sales-order line&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Linked.&quot;</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="c1">// Link an existing production order to an open sales-order line (Interactive API).</span>
+<span class="c1">// The Production Order window&#39;s Transactions To Assign tab fills through the datawindow&#39;s</span>
+<span class="c1">// right-click tool m_retrieveotheropentransactions. Tick `assigned` on the sales-order</span>
+<span class="c1">// row and save: P21 writes one prod_order_line_link row.</span>
+<span class="c1">//</span>
+<span class="c1">//   dotnet run -- [PROD_ORDER ORDER_NO LINE_NO] [--save]</span>
+<span class="c1">//</span>
+<span class="c1">// Without --save it retrieves the open transactions and ticks the row, then stops (dry run).</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
+
+<span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
+<span class="kt">string</span><span class="w"> </span><span class="n">prodOrder</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;1000123&quot;</span><span class="p">;</span><span class="w">                        </span><span class="c1">// the existing, open production order</span>
+<span class="kt">string</span><span class="w"> </span><span class="n">orderNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;1001234&quot;</span><span class="p">;</span><span class="w">                          </span><span class="c1">// the sales order to link it to</span>
+<span class="kt">string</span><span class="w"> </span><span class="n">lineNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;1&quot;</span><span class="p">;</span><span class="w">                                 </span><span class="c1">// that order&#39;s production-order assembly line</span>
+<span class="kt">bool</span><span class="w"> </span><span class="n">save</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span><span class="p">;</span><span class="w">                                   </span><span class="c1">// true writes the link; false is a dry run</span>
+<span class="c1">// ---------------------------------------------------------------------------</span>
+
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Tab</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_TRANSACTIONS_TO_ASSIGN&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Dw</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;tabpage_transactions_to_assign&quot;</span><span class="p">;</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">positional</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">args</span><span class="p">.</span><span class="n">Where</span><span class="p">(</span><span class="n">a</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;--save&quot;</span><span class="p">).</span><span class="n">ToArray</span><span class="p">();</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">positional</span><span class="p">.</span><span class="n">Length</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="p">(</span><span class="mi">0</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="mi">3</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">&quot;Pass all three record numbers, or none to use the constants&quot;</span><span class="p">);</span><span class="w"> </span><span class="k">return</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">positional</span><span class="p">.</span><span class="n">Length</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">prodOrder</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">positional</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span><span class="w"> </span><span class="n">orderNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">positional</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span><span class="w"> </span><span class="n">lineNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">positional</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span><span class="w"> </span><span class="p">}</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">args</span><span class="p">.</span><span class="n">Contains</span><span class="p">(</span><span class="s">&quot;--save&quot;</span><span class="p">))</span><span class="w"> </span><span class="n">save</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="p">;</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">prodOrder</span><span class="p">,</span><span class="w"> </span><span class="n">orderNo</span><span class="p">,</span><span class="w"> </span><span class="n">lineNo</span><span class="w"> </span><span class="p">})</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="k">value</span><span class="p">.</span><span class="n">Length</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">!</span><span class="k">value</span><span class="p">.</span><span class="n">All</span><span class="p">(</span><span class="kt">char</span><span class="p">.</span><span class="n">IsAsciiDigit</span><span class="p">))</span><span class="w">   </span><span class="c1">// these go into an OData filter</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Not a number: {value}&quot;</span><span class="p">);</span><span class="w"> </span><span class="k">return</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// Test tenants often present a self-signed cert. Delete this line in production.</span>
+<span class="w">    </span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="n">HttpClientHandler</span><span class="p">.</span><span class="n">DangerousAcceptAnyServerCertificateValidator</span><span class="p">,</span>
+<span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromMinutes</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">MediaTypeWithQualityHeaderValue</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">uiServer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetUiServerAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">iapi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{uiServer}/api/ui/interactive&quot;</span><span class="p">;</span>
+
+<span class="k">await</span><span class="w"> </span><span class="nf">SendAsync</span><span class="p">(</span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Post</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;{iapi}/sessions&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">ResponseWindowHandlingEnabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="s">&quot;open session&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">windowId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">;</span>
+<span class="k">try</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">opened</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">SendAsync</span><span class="p">(</span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Post</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;{iapi}/v2/window&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">ServiceName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ProductionOrder&quot;</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="s">&quot;open ProductionOrder&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">windowId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">opened</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;WindowId&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">()</span><span class="o">!</span><span class="p">;</span>
+
+<span class="w">    </span><span class="c1">// 1. Load the production order, 2. switch to the Transactions To Assign tab.</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nf">ChangeAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;TABPAGE_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;tp_1_dw_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;prod_order_number&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">prodOrder</span><span class="p">);</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nf">SendAsync</span><span class="p">(</span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Put</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;{iapi}/v2/tab&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">WindowId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="n">PageName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Tab</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="s">&quot;select tab&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// 3. The grid&#39;s right-click tool fills it with open, unassigned demand. The window-level</span>
+<span class="w">    </span><span class="c1">//    tool list does not show it; ask for the datawindow&#39;s tools:</span>
+<span class="w">    </span><span class="c1">//    GET /v2/tools?windowId=...&amp;dwName=tabpage_transactions_to_assign</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nf">SendAsync</span><span class="p">(</span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Post</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;{iapi}/v2/tools&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">WindowId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="n">ToolName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;m_retrieveotheropentransactions&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="n">DatawindowName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Dw</span><span class="p">,</span><span class="w"> </span><span class="n">FieldName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">string?</span><span class="p">)</span><span class="k">null</span><span class="p">,</span><span class="w"> </span><span class="n">Row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">Text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">string?</span><span class="p">)</span><span class="k">null</span><span class="p">,</span>
+<span class="w">    </span><span class="p">},</span><span class="w"> </span><span class="s">&quot;retrieve&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">grid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">RowsAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="n">Dw</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">grid</span><span class="p">.</span><span class="n">Count</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">grid</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+<span class="w">        </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  open: {Cell(row, &quot;</span><span class="n">cf_transaction_type</span><span class="s">&quot;)} {Cell(row, &quot;</span><span class="n">trans_number</span><span class="s">&quot;)}&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">            </span><span class="s">$&quot; line {Cell(row, &quot;</span><span class="n">line_number</span><span class="s">&quot;)} assigned={Cell(row, &quot;</span><span class="n">assigned</span><span class="s">&quot;)} remaining={Cell(row, &quot;</span><span class="n">qty_remaining</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">Cell</span><span class="p">(</span><span class="n">row</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;cf_transaction_type&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;Sales Order&quot;</span>
+<span class="w">            </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">Number</span><span class="p">(</span><span class="n">Cell</span><span class="p">(</span><span class="n">row</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;trans_number&quot;</span><span class="p">))</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">orderNo</span>
+<span class="w">            </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">Number</span><span class="p">(</span><span class="n">Cell</span><span class="p">(</span><span class="n">row</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;line_number&quot;</span><span class="p">))</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">lineNo</span><span class="p">)</span>
+<span class="w">            </span><span class="n">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">i</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">match</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">&quot;That sales-order line is not among the open transactions&quot;</span><span class="p">);</span><span class="w"> </span><span class="k">return</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// 4. Make it the current row (1-based), 5. tick `assigned`; P21 fills qty_to_assign.</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nf">SendAsync</span><span class="p">(</span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Put</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;{iapi}/v2/row&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">WindowId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="n">DatawindowName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Dw</span><span class="p">,</span><span class="w"> </span><span class="n">Row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">match</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="s">&quot;select row&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nf">ChangeAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="n">Tab</span><span class="p">,</span><span class="w"> </span><span class="n">Dw</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;assigned&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ON&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">ticked</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">RowsAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="n">Dw</span><span class="p">))[</span><span class="n">match</span><span class="p">];</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  ticked: assigned={Cell(ticked, &quot;</span><span class="n">assigned</span><span class="s">&quot;)} qty_to_assign={Cell(ticked, &quot;</span><span class="n">qty_to_assign</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">save</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">&quot;Dry run: not saved (set save = true or pass --save)&quot;</span><span class="p">);</span><span class="w"> </span><span class="k">return</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// 6. Save -- the body is the bare window id.</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nf">SendAsync</span><span class="p">(</span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Put</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;{iapi}/v2/data&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;save&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">&quot;  saved&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="k">finally</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">windowId</span><span class="p">.</span><span class="n">Length</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">DeleteAsync</span><span class="p">(</span><span class="s">$&quot;{iapi}/v2/window?id={windowId}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">DeleteAsync</span><span class="p">(</span><span class="s">$&quot;{iapi}/sessions&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Read back: one prod_order_line_link row whose transaction_uid is the sales line&#39;s uid.</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">lines</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">ODataAsync</span><span class="p">(</span><span class="s">&quot;oe_line&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;order_no eq &#39;{orderNo}&#39; and line_no eq {lineNo}&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">links</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">ODataAsync</span><span class="p">(</span><span class="s">&quot;prod_order_line_link&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;prod_order_number eq {prodOrder}&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">lineUid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;oe_line_uid&quot;</span><span class="p">).</span><span class="n">GetDecimal</span><span class="p">();</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  oe_line: uid {lineUid:0} assembly={lines[0].GetProperty(&quot;</span><span class="n">assembly</span><span class="s">&quot;)} disposition={lines[0].GetProperty(&quot;</span><span class="n">disposition</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">link</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">links</span><span class="p">)</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  link: order {link.GetProperty(&quot;</span><span class="n">prod_order_number</span><span class="s">&quot;)} line {link.GetProperty(&quot;</span><span class="n">prod_order_line_number</span><span class="s">&quot;)}&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">        </span><span class="s">$&quot; trans_type={link.GetProperty(&quot;</span><span class="n">trans_type</span><span class="s">&quot;)} quantity={link.GetProperty(&quot;</span><span class="n">quantity</span><span class="s">&quot;)}&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">        </span><span class="s">$&quot; row_status_flag={link.GetProperty(&quot;</span><span class="n">row_status_flag</span><span class="s">&quot;)} transaction_uid={link.GetProperty(&quot;</span><span class="n">transaction_uid</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">links</span><span class="p">.</span><span class="n">Any</span><span class="p">(</span><span class="n">l</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">l</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;transaction_uid&quot;</span><span class="p">).</span><span class="n">GetDecimal</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">lineUid</span><span class="p">))</span>
+<span class="p">{</span><span class="w"> </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">&quot;No prod_order_line_link row for that sales-order line&quot;</span><span class="p">);</span><span class="w"> </span><span class="k">return</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">&quot;Linked.&quot;</span><span class="p">);</span>
+
+<span class="c1">// --- helpers ---------------------------------------------------------------</span>
+
+<span class="c1">// One Interactive call; refuses HTTP errors, Status 2 (failure) and Status 3 (a prompt).</span>
+<span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JsonElement</span><span class="o">&gt;</span><span class="w"> </span><span class="n">SendAsync</span><span class="p">(</span><span class="n">HttpMethod</span><span class="w"> </span><span class="n">method</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">url</span><span class="p">,</span><span class="w"> </span><span class="kt">object</span><span class="w"> </span><span class="n">body</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">what</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">request</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpRequestMessage</span><span class="p">(</span><span class="n">method</span><span class="p">,</span><span class="w"> </span><span class="n">url</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">Content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="n">body</span><span class="p">),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">),</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">SendAsync</span><span class="p">(</span><span class="n">request</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">();</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="n">response</span><span class="p">.</span><span class="n">StatusCode</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">400</span><span class="p">)</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span><span class="s">$&quot;{what}: HTTP {(int)response.StatusCode} {text[..Math.Min(300, text.Length)]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">answer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">text</span><span class="p">.</span><span class="n">Length</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="s">&quot;{}&quot;</span><span class="p">).</span><span class="n">RootElement</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">text</span><span class="p">).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">Clone</span><span class="p">();</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">answer</span><span class="p">.</span><span class="n">ValueKind</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">JsonValueKind</span><span class="p">.</span><span class="n">Object</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">answer</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;Status&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">status</span><span class="p">)</span>
+<span class="w">        </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">status</span><span class="p">.</span><span class="n">ValueKind</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">JsonValueKind</span><span class="p">.</span><span class="n">Number</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">status</span><span class="p">.</span><span class="n">GetInt32</span><span class="p">()</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span><span class="s">$&quot;{what}: Status {status}: {answer.GetProperty(&quot;</span><span class="n">Messages</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">answer</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">Task</span><span class="o">&lt;</span><span class="n">JsonElement</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ChangeAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">window</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">tab</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">dw</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">field</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="k">value</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span>
+<span class="w">    </span><span class="n">SendAsync</span><span class="p">(</span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Put</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;{iapi}/v2/change&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">WindowId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">window</span><span class="p">,</span>
+<span class="w">        </span><span class="n">List</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">TabName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tab</span><span class="p">,</span><span class="w"> </span><span class="n">DatawindowName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">dw</span><span class="p">,</span><span class="w"> </span><span class="n">FieldName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">field</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">},</span><span class="w"> </span><span class="s">$&quot;change {field}&quot;</span><span class="p">);</span>
+
+<span class="c1">// The rows of one datawindow on the active surface, as column -&gt; value maps.</span>
+<span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="o">&gt;&gt;&gt;</span><span class="w"> </span><span class="n">RowsAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">window</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">dwName</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">json</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetStringAsync</span><span class="p">(</span><span class="s">$&quot;{iapi}/v2/data?id={window}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="o">&gt;&gt;</span><span class="p">();</span>
+<span class="w">    </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">dw</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">json</span><span class="p">).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">EnumerateArray</span><span class="p">())</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">dw</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Name&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">()</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">dwName</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">columns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">dw</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Columns&quot;</span><span class="p">).</span><span class="n">EnumerateArray</span><span class="p">().</span><span class="n">Select</span><span class="p">(</span><span class="n">c</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">GetString</span><span class="p">()</span><span class="o">!</span><span class="p">).</span><span class="n">ToList</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">dw</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;Data&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">data</span><span class="p">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">data</span><span class="p">.</span><span class="n">ValueKind</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">JsonValueKind</span><span class="p">.</span><span class="n">Array</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">        </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">data</span><span class="p">.</span><span class="n">EnumerateArray</span><span class="p">())</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="kt">var</span><span class="w"> </span><span class="n">map</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="w">            </span><span class="kt">var</span><span class="w"> </span><span class="n">cells</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">row</span><span class="p">.</span><span class="n">EnumerateArray</span><span class="p">().</span><span class="n">ToList</span><span class="p">();</span>
+<span class="w">            </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">columns</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">cells</span><span class="p">.</span><span class="n">Count</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span>
+<span class="w">                </span><span class="n">map</span><span class="p">[</span><span class="n">columns</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cells</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">ValueKind</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">JsonValueKind</span><span class="p">.</span><span class="n">Null</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">cells</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">ToString</span><span class="p">();</span>
+<span class="w">            </span><span class="n">rows</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="n">map</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">rows</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">Cell</span><span class="p">(</span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">row</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">column</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">row</span><span class="p">.</span><span class="n">TryGetValue</span><span class="p">(</span><span class="n">column</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">v</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">;</span>
+
+<span class="c1">// Normalize a decimal string such as &quot;1001234.0&quot; to &quot;1001234&quot;.</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">Number</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="k">value</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="k">value</span><span class="p">.</span><span class="n">Split</span><span class="p">(</span><span class="sc">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">];</span>
+
+<span class="c1">// One OData table read.</span>
+<span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">JsonElement</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">ODataAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">table</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">filter</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/table/{table}?$filter={Uri.EscapeDataString(filter)}&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="n">url</span><span class="p">);</span>
+<span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">())</span>
+<span class="w">        </span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;value&quot;</span><span class="p">).</span><span class="n">EnumerateArray</span><span class="p">().</span><span class="n">Select</span><span class="p">(</span><span class="n">e</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">Clone</span><span class="p">()).</span><span class="n">ToList</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="c1">// v2 token endpoint — credentials go in the body, never in headers.</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">client</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Username</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/api/security/token/v2&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;AccessToken&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Transaction and Interactive calls go to the UI server, not BaseUrl.</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetUiServerAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">token</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">request</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpRequestMessage</span><span class="p">(</span>
+<span class="w">        </span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Get</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;{BaseUrl}/api/ui/router/v1/?urlType=external&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">request</span><span class="p">.</span><span class="n">Headers</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">SendAsync</span><span class="p">(</span><span class="n">request</span><span class="p">);</span>
+<span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;Url&quot;</span><span class="p">).</span><span class="n">TrimEnd</span><span class="p">(</span><span class="sc">&#39;/&#39;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Some middleware answers these two endpoints in XML even when asked for JSON.</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">field</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">payload</span><span class="p">).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="n">field</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="k">value</span><span class="p">))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="k">value</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="n">ex</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">JsonException</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="n">KeyNotFoundException</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">Text</span><span class="p">.</span><span class="n">RegularExpressions</span><span class="p">.</span><span class="n">Regex</span><span class="p">.</span><span class="n">Match</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;&lt;{field}&gt;([^&lt;]+)&lt;/{field}&gt;&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">match</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;No {field} in response: {payload[..Math.Min(200, payload.Length)]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">match</span><span class="p">.</span><span class="n">Groups</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<h2 id="gotchas-verified-on-play-26159500-2026-10-17">Gotchas (verified on play 26.1.5950.0, 2026-10-17)</h2>
+<ul>
+<li><strong>Only open demand for the order's item appears.</strong> The retrieve fills the grid with the open demand lines for the production order's item; a line already linked to this order shows <code>assigned = Y</code>, so a second run finds the row already ticked. A line that is not in the grid cannot be ticked; the program stops with "not among the open transactions" and writes nothing.</li>
+<li><strong>A plain sales line cannot be switched afterwards.</strong> A line entered with <code>assembly = 'N'</code> cannot be changed to disposition <code>P</code> later. Enter it as a production-order assembly line first.</li>
+<li><strong>A user-defined field can block a production-order save.</strong> On the verified tenant a header UD field was required when <em>creating</em> the production order (the save is refused until it is set). Loading an existing order and linking it saved without touching that field. If your tenant refuses the save, set the required field on the header first (<a href="production-order-runbook.html">production-order-runbook</a>).</li>
+<li><strong>Save, not tick, writes.</strong> Closing the window after ticking <code>assigned</code> writes nothing.</li>
+<li><strong>The window row index is 1-based.</strong> <code>PUT /v2/row</code> takes the position in the grid as listed; the program adds one to its 0-based list index.</li>
+</ul>
+<h2 id="verify">Verify</h2>
+<div class="highlight"><pre><span></span><code>GET /odataservice/odata/table/prod_order_line_link?$filter=prod_order_number eq 1000123
+</code></pre></div>
+
+<p>Expect one row with <code>trans_type</code> <code>O</code>, <code>row_status_flag</code> <code>O</code>, and <code>transaction_uid</code> equal to the sales line's <code>oe_line_uid</code>. The example prints it and exits with an error if the link is missing.</p>
+    </main>
+
+    <aside class="toc-rail" id="toc-rail">
+        <div class="toc-rail-title">On this page</div>
+        <div class="page-toc" id="page-toc">
+            <div class="toc">
+<ul>
+<li><a href="#prerequisites">Prerequisites</a></li>
+<li><a href="#call-sequence">Call sequence</a></li>
+<li><a href="#what-the-save-writes">What the save writes</a></li>
+<li><a href="#complete-example">Complete example</a></li>
+<li><a href="#gotchas-verified-on-play-26159500-2026-10-17">Gotchas (verified on play 26.1.5950.0, 2026-10-17)</a></li>
+<li><a href="#verify">Verify</a></li>
+</ul>
+</div>
+
+        </div>
+    </aside>
+
+    <script>
+        // Add IDs to headers for linking
+        document.querySelectorAll('h2, h3, h4').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+
+        // Narrow screens: site nav starts collapsed so page content is one
+        // tap away. Wide screens: nav is forced open (its summary is hidden
+        // there, so a stuck-closed fold would be unrecoverable).
+        (function() {
+            var fold = document.getElementById('sidebar-fold');
+            if (!fold) return;
+            var mq = window.matchMedia('(max-width: 1100px)');
+            function apply() {
+                if (mq.matches) { fold.removeAttribute('open'); }
+                else { fold.setAttribute('open', ''); }
+            }
+            if (mq.addEventListener) { mq.addEventListener('change', apply); }
+            else if (mq.addListener) { mq.addListener(apply); }
+            apply();
+        })();
+
+        // Highlight current ToC item on scroll
+        (function() {
+            var tocLinks = document.querySelectorAll('.page-toc a');
+            if (!tocLinks.length) return;
+
+            var headers = [];
+            tocLinks.forEach(function(link) {
+                var id = link.getAttribute('href');
+                if (id && id.startsWith('#')) {
+                    var el = document.getElementById(id.slice(1));
+                    if (el) headers.push({ el: el, link: link });
+                }
+            });
+
+            function updateActive() {
+                var scrollY = window.scrollY + 80;
+                var active = null;
+                for (var i = 0; i < headers.length; i++) {
+                    if (headers[i].el.offsetTop <= scrollY) {
+                        active = headers[i];
+                    }
+                }
+                tocLinks.forEach(function(l) { l.classList.remove('active'); });
+                if (active) active.link.classList.add('active');
+            }
+
+            window.addEventListener('scroll', updateActive, { passive: true });
+            updateActive();
+        })();
+
+        // Code tab switching with global language sync + localStorage persistence
+        (function() {
+            var savedLang = localStorage.getItem('p21-docs-lang');
+
+            document.querySelectorAll('.code-tabs').forEach(function(container) {
+                var buttons = container.querySelectorAll('.tab-btn');
+                var panels = container.querySelectorAll('.tab-panel');
+
+                // Restore saved language preference
+                if (savedLang) {
+                    var target = container.querySelector('.tab-btn[data-lang="' + savedLang + '"]');
+                    if (target) {
+                        buttons.forEach(function(b) { b.classList.remove('active'); });
+                        panels.forEach(function(p) { p.classList.remove('active'); });
+                        target.classList.add('active');
+                        var panel = container.querySelector('.tab-panel[data-lang="' + savedLang + '"]');
+                        if (panel) panel.classList.add('active');
+                    }
+                }
+
+                // Click handlers
+                buttons.forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var lang = this.getAttribute('data-lang');
+                        localStorage.setItem('p21-docs-lang', lang);
+
+                        // Switch ALL tab groups on the page to this language
+                        document.querySelectorAll('.code-tabs').forEach(function(c) {
+                            var cBtns = c.querySelectorAll('.tab-btn');
+                            var cPanels = c.querySelectorAll('.tab-panel');
+                            var hasLang = c.querySelector('.tab-btn[data-lang="' + lang + '"]');
+                            if (hasLang) {
+                                cBtns.forEach(function(b) { b.classList.remove('active'); });
+                                cPanels.forEach(function(p) { p.classList.remove('active'); });
+                                hasLang.classList.add('active');
+                                var p = c.querySelector('.tab-panel[data-lang="' + lang + '"]');
+                                if (p) p.classList.add('active');
+                            }
+                        });
+                    });
+                });
+            });
+        })();
+
+
+    </script>
+</body>
+</html>

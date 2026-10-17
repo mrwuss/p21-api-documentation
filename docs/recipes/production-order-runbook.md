@@ -28,6 +28,7 @@ Two paths ([deep dive](../12-Production-Labor-API.md#how-production-orders-get-c
 
 - **Path A — sales order auto-create (make-to-order).** Enter a sales order line for a `production_order_processing = Y` assembly (via the Interactive API when the line must explode — [order-with-assembly recipe](order-with-assembly.md)). With `auto_create_prod_order = Y`, P21 **nets against available stock**: stock on hand → the line allocates it and **no production order spawns**; short → an order spawns for the shortfall, linked via `prod_order_line_link`.
 - **Path B — direct build-to-stock.** Drive the `ProductionOrder` window: header `source_loc_id` (the make location) plus any required user-defined fields, then on `TABPAGE_17.tp_17_dw_17` set `assembly_item_id` and `qty_to_make` (add + select a row per extra line). No sales order involved.
+- **Path C — link an existing order to a sales line.** Both exist and are unlinked: [link-production-order](link-production-order.md).
 
 **The traps:** on Path A, the customer's **salesrep must be valid at the sales location** (a DynaChange rule blocks the order otherwise) and the **order date must differ from the required date**. A production order commonly gets **two pick tickets** — parts, plus labor/intangibles when intangible components source from a paired non-stock location.
 

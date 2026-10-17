@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group" open>
-            <summary>Recipes <span class="nav-count">26</span></summary>
+            <summary>Recipes <span class="nav-count">27</span></summary>
             <ul class="nav-pages">
             <li><a href="../recipes/README.html">Recipes Overview</a></li>
             <li><a href="../recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -631,6 +631,7 @@
             <li><a href="../recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
             <li><a href="../recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
             <li><a href="../recipes/item-document-links.html">Attach a Document to an Item, Assembly or Kit (Document Links)</a></li>
+            <li><a href="../recipes/link-production-order.html">Link an Existing Production Order to a Sales-Order Line</a></li>
             <li><a href="../recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
             <li><a href="../recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li class="active"><a href="../recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
@@ -718,6 +719,7 @@
 <ul>
 <li><strong>Path A — sales order auto-create (make-to-order).</strong> Enter a sales order line for a <code>production_order_processing = Y</code> assembly (via the Interactive API when the line must explode — <a href="order-with-assembly.html">order-with-assembly recipe</a>). With <code>auto_create_prod_order = Y</code>, P21 <strong>nets against available stock</strong>: stock on hand → the line allocates it and <strong>no production order spawns</strong>; short → an order spawns for the shortfall, linked via <code>prod_order_line_link</code>.</li>
 <li><strong>Path B — direct build-to-stock.</strong> Drive the <code>ProductionOrder</code> window: header <code>source_loc_id</code> (the make location) plus any required user-defined fields, then on <code>TABPAGE_17.tp_17_dw_17</code> set <code>assembly_item_id</code> and <code>qty_to_make</code> (add + select a row per extra line). No sales order involved.</li>
+<li><strong>Path C — link an existing order to a sales line.</strong> Both exist and are unlinked: <a href="link-production-order.html">link-production-order</a>.</li>
 </ul>
 <p><strong>The traps:</strong> on Path A, the customer's <strong>salesrep must be valid at the sales location</strong> (a DynaChange rule blocks the order otherwise) and the <strong>order date must differ from the required date</strong>. A production order commonly gets <strong>two pick tickets</strong> — parts, plus labor/intangibles when intangible components source from a paired non-stock location.</p>
 <h3 id="stage-2-log-labor-before-printing">Stage 2 — Log labor BEFORE printing</h3>
