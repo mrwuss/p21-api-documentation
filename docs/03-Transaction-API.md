@@ -658,7 +658,7 @@ Both users could open the window, load the order, and set every other field on t
 
 > **Check allocation first.** A re-test on play 26.1.5950.0 (2026-10-17) found a stronger cause for this particular refusal: `disposition` is disabled on any line that holds allocated stock, for every user. The same service account set `D` on unallocated lines, and on allocated lines after `TP_EXTDINFO.extd_info.allocated_qty = 0`. The general rule in this section still stands: `Column is disabled` can come from roles and DynaChange rules. Rule out the record's own state before you change a role. See [Changing a saved line to direct ship](04-Interactive-API.md#changing-a-saved-line-to-direct-ship).
 
-**What makes a column disabled for a user:** DynaChange data-change rules scoped to a role, Application Security settings, and window-level permissions — the same machinery documented under [DynaChange and Popup Handling](#dynachange-and-popup-handling) and [Application Security settings](00-Authentication.md#application-security-settings-that-affect-api-access). The API surfaces all of it as one undifferentiated message.
+**What makes a column disabled for a user:** DynaChange data-change rules scoped to a role, Application Security settings, window-level permissions, and **screen versions**, including the web client's Version Manager versions, which are stored apart from the classic ones (see [04 § The locked Units of Measure grid](04-Interactive-API.md#the-locked-units-of-measure-grid-a-web-screen-version) for where they live and a query that finds them) — the same machinery documented under [DynaChange and Popup Handling](#dynachange-and-popup-handling) and [Application Security settings](00-Authentication.md#application-security-settings-that-affect-api-access). The API surfaces all of it as one undifferentiated message.
 
 **What this means in practice:**
 
@@ -1768,7 +1768,7 @@ Read back `job_price_customer_shipto` for the contract (the new row has `row_sta
 
 **`IgnoreDisabled` is not needed on 26.1.5950.0** — the grid row landed without it, and the header was not re-saved (`job_price_hdr.date_last_modified` unchanged). The run credited below sent `IgnoreDisabled: true`; if your build refuses the row as disabled, add it at the payload top level and then [never trust `Passed` alone](#ignoredisabled).
 
-**The customer must have Job/Contract Pricing enabled.** A ship-to whose customer has `customer.job_pricing = 'N'` fails *"Job/Contract Pricing is not enabled for Customer ID …"*. On the test tenant `job_pricing` (`Customer` service, `TABPAGE_7.tp_7_dw_7`) was `Column is disabled` for the API user on both create and update, and `IgnoreDisabled` turned that into a [false success](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing) — so a customer created through the API could not be put on a contract; set the flag in the Customer window first.
+**The customer must have Job/Contract Pricing enabled.** A ship-to whose customer has `customer.job_pricing = 'N'` fails *"Job/Contract Pricing is not enabled for Customer ID …"*. On the test tenant `job_pricing` (`Customer` service, `TABPAGE_7.tp_7_dw_7`) was `Column is disabled` for the API user on both create and update, and `IgnoreDisabled` turned that into a [false success](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing) — so a customer created through the API could not be put on a contract; set the flag in the Customer window first. The cause is still open: no web-client screen version disables `job_pricing`, `always_use_job_price` or `allow_non_job_item` on that tenant (checked with the [screen-version query](04-Interactive-API.md#check-for-a-web-screen-version-on-the-grid), filtered on `m.object_name`).
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified on play, September 2026 (a blank-price order to the newly added ship-to auto-priced from the contract). **Re-run here:** Python and C# examples run on play 26.1.5950.0, 2026-10-10 — a ship-to attached to each of two throwaway contracts, confirmed by the `job_price_customer_shipto` read-back. The order-pricing step was not re-run.
 
@@ -3875,7 +3875,7 @@ Summary: {"Failed": 1, "Succeeded": 0}
 General Exception: This pick ticket has already been invoiced.
 ```
 
-The error is attributed to `DataElement: tp_1_dw_1, Column: pick_ticket_no` — **not** to `tracking_no`. That attribution is the tell: the gate fires at **record selection**, before any field-level validation, so **there is no edit you can drop from the payload to get past it.** Sending `tracking_no` alone fails exactly the same way.
+The error is attributed to `DataElement: tp_1_dw_1, Column: pick_ticket_no` — **not** to `tracking_no`. That attribution is the tell: the gate fires at **record selection**, before any field-level validation, so **there is no edit you can drop from the payload to get past it.** Sending `tracking_no` alone fails exactly the same way. It is not a screen version either: the only web-client screen version on the Shipping window that names `tracking_no` changes its color, not its enabled state (checked with the [screen-version query](04-Interactive-API.md#check-for-a-web-screen-version-on-the-grid), filtered on `m.object_name`).
 
 #### Other services expose a tracking column, but none writes this one
 
