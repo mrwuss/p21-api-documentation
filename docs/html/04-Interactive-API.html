@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">24</span></summary>
+            <summary>Recipes <span class="nav-count">25</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -630,6 +630,7 @@
             <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
             <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
             <li><a href="recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
+            <li><a href="recipes/item-document-links.html">Attach a Document to an Item, Assembly or Kit (Document Links)</a></li>
             <li><a href="recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
             <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
@@ -734,6 +735,7 @@
 <li><a href="#production-order-notes-header">Production Order Notes (Header)</a></li>
 <li><a href="#standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows (Item/Customer/Supplier)</a></li>
 <li><a href="#creating-an-item-in-the-item-window">Creating an Item in the Item Window</a></li>
+<li><a href="#adding-a-document-link-in-the-item-window">Adding a Document Link in the Item Window</a></li>
 <li><a href="#customer-window-adding-a-price-library">Customer Window: Adding a Price Library</a><ul>
 <li><a href="#p21-renumbers-sequence_number-on-save">P21 renumbers sequence_number on save</a></li>
 </ul>
@@ -1775,7 +1777,14 @@
 - <strong>Table name</strong> — the underlying database table</p>
 <p>This is the most reliable way to determine the exact names the API expects.</p>
 <h3 id="6-browser-devtools">6. Browser DevTools</h3>
-<p>When using the P21 Web Client, open your browser's Developer Tools (F12) and watch the <strong>Network</strong> tab. Every action you perform in the UI generates REST calls to the Interactive API. This lets you see the exact payloads, endpoints, and field names the web client uses — which you can replicate in your automation.</p>
+<p>When the P21 web client can do something the API docs don't show how to do, capture the request the web client sends and replay it. This is the prudent way to find an undocumented call:</p>
+<ol>
+<li>Open the window in the P21 web client (<code>{base}/Prophet21/</code>) on a test tenant, and open the browser's Developer Tools (F12) on the <strong>Network</strong> tab.</li>
+<li>Perform the one UI action you can't reproduce, and read the request it sends — URL and request payload. The web client talks to its own surface, <code>{ui_server}/ui/full/v2/...</code>, not to <code>/api/ui/interactive/</code>, so the call you need may exist only there.</li>
+<li>Replay that exact request with the API bearer token, against the window your Interactive session opened. Confirm the effect — a button enabled, a row moved — before you rely on it.</li>
+<li>Record what you tried that failed, too.</li>
+</ol>
+<p>Guessing is the slow route: the server ignores body fields it does not know, so a wrong guess looks like a right one until it fails, often as an empty HTTP 500. <strong>Worked example:</strong> selecting one display area in the Item window's Add Link dialog. Every body guessed for <code>PUT /api/ui/interactive/v2/rows/selected</code> returned an empty 500; one captured click on an Available Area row gave the exact call, <code>POST {ui_server}/ui/full/v2/data/select</code> — see <a href="#adding-a-document-link-in-the-item-window">Adding a Document Link in the Item Window</a>. Some windows are not enabled in the web client, and then there is nothing to capture — see <a href="#the-uifull-surface-the-web-clients-own-rest-api">The ui/full Surface</a>.</p>
 <h3 id="7-transaction-api-service-definition">7. Transaction API Service Definition</h3>
 <p>For windows that also exist as Transaction API services (Order, PurchaseOrder, Item, etc.), <code>GET /api/v2/definition/{ServiceName}</code> returns the full schema: every DataElement with its <code>DatawindowName</code>, <code>Type</code> (<code>Form</code>/<code>List</code>), <code>KeyFields</code>, and <code>FieldDefinitions[]</code> (field <code>Name</code>, <code>DbColumnName</code>, <code>DataType</code>, <code>Required</code>). This is the fastest way to enumerate which datawindows exist and which column names a write needs. See <a href="03-Transaction-API.html#get-service-definition">Get Service Definition</a> in the Transaction API guide.</p>
 <blockquote>
@@ -4299,6 +4308,15 @@ GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1001237'</cod
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — verified on production, September 2026 (two items created end to end).</p>
 </blockquote>
 <p><strong>Not reproduced on play 26.1.5950.0 (October 2026), so there is no runnable example.</strong> Step 1 behaved as described (<code>Status: 2</code> with <code>tabpageenabled</code> events, then <code>item_desc</code> and both discount groups — <code>sales_discount_group_id</code> / <code>purchase_discount_group_id</code> — accepted). Step 2 failed: every change on <code>TABPAGE_2.tp_2_dw_2</code> (<code>unit_id</code>, <code>unit_size</code>, the four unit flags) returned <strong>HTTP 400 <code>Column is disabled: unit_id</code></strong>, for a password user and for a consumer-key user alike, and the save then failed <em>"A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified."</em> That is the screen-version lock in the last bullet above. Locations, product group (with the GL prompt answered Yes), supplier and location-supplier steps were accepted, so steps 3–6 are unverified only because the save never got past step 2. No item was created.</p>
+<h2 id="adding-a-document-link-in-the-item-window">Adding a Document Link in the Item Window</h2>
+<p>Item links — the <strong>Document Links</strong> tab — cannot be added through the Transaction API: the <code>Item</code> and <code>Assembly</code> services both expose <code>DOCUMENT_LINK.document_link</code>, and both refuse <code>link_name</code> with <code>Column is disabled</code>. The Interactive <code>Item</code> window adds them the way the client does:</p>
+<ol>
+<li>Change <code>item_id</code> on <code>TABPAGE_1</code>, select the <code>DOCUMENT_LINK</code> tab.</li>
+<li>Run <code>m_addlink</code> <strong>with <code>DatawindowName: "document_link"</code></strong> — it is a datawindow-level tool, listed only by <code>GET /v2/tools?windowId=…&amp;dwName=document_link</code>. It opens the tabless <em>Document Link</em> dialog (<code>w_inventory_sheet</code>, datawindow <code>_dw_link</code>, area lists <code>source</code> and <code>target</code>).</li>
+<li>Set <code>link_path</code>, <code>link_name</code>, <code>outside_use_flag</code>, <code>mandatory_flag</code> on <code>_dw_link</code>. Add display areas: <code>cb_selectall</code> for every area, or, per area, select its row in <code>source</code> with <code>POST {ui_server}/ui/full/v2/data/select</code> and run <code>cb_select</code>. <code>cb_ok</code> closes the dialog.</li>
+<li>Save the <code>Item</code> window. Only the save writes <code>document_link</code> and its <code>document_link_area</code> rows.</li>
+</ol>
+<p>Assemblies and kits use the same item link: the Assembly window's Document Links tab only views links (<code>m_viewlink</code>) and shows the ones whose display areas include Assembly Maintenance (<code>1302</code>). A single display area needs a <em>selected</em> <code>source</code> row before <code>cb_select</code> is enabled. The Interactive API cannot select one — <code>PUT /v2/row</code> only moves the current row, and <code>PUT /v2/rows/selected</code> returns an empty HTTP 500 — but the web client's <code>POST {ui_server}/ui/full/v2/data/select</code> (<code>{"WindowId": dialog, "DatawindowName": "source", "TabPageName": null, "RowsToSelect": [n], "ActiveRowSpecification": "*"}</code>, <code>n</code> 1-based) does, on the Interactive-opened dialog, with the API token. Full recipe, both languages, with the file upload and the pick-ticket area: <a href="recipes/item-document-links.html">recipes/item-document-links</a>. <em>(play 26.1.5950.0, 2026-10-17 — <a href="https://github.com/mrwuss/p21-api-documentation/issues/200">#200</a>)</em></p>
 <h2 id="customer-window-adding-a-price-library">Customer Window: Adding a Price Library</h2>
 <p>A customer's price libraries are a grid on the Customer window's Sales Pricing tab. The window's service name is <strong><code>Customer</code></strong> (not <code>CustomerMaintenance</code>); its tabs are named <code>TABPAGE_1</code>, <code>TABPAGE_2</code>, and so on, and the price-library grid is <strong><code>TABPAGE_7.tp_7_dw_price_library</code></strong>.</p>
 <div class="table-wrap"><table>
@@ -4747,6 +4765,7 @@ GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1001237'</cod
 <blockquote>
 <p><strong>When to reach for it.</strong> Prefer a registered service and the Interactive API whenever one exists — this surface is less documented and its failure reporting is thinner (see the gotchas below). Reach for <code>ui/full</code> when <code>frame_menu.service_name</code> is NULL and the window is web-client enabled.</p>
 </blockquote>
+<p>Single <code>ui/full</code> calls also work on a window the Interactive API opened, with the same API token: <code>POST {ui-server}/ui/full/v2/data/select</code> selects datawindow rows by window id, which the Interactive API cannot do — see <a href="#adding-a-document-link-in-the-item-window">Adding a Document Link in the Item Window</a> (play 26.1.5950.0).</p>
 <h3 id="base-url-and-route-shape">Base URL and route shape</h3>
 <p>The base is the <strong>UI server</strong> from the <a href="00-Authentication.html#ui-server-url">router handshake</a> — the same host the Interactive API uses. The routes, however, carry <strong>no <code>/api/</code> prefix</strong>:</p>
 <div class="highlight"><pre><span></span><code><span class="err">POST {ui-server}/ui/full/v1/window/          ← correct</span>
@@ -6074,6 +6093,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <li><a href="#production-order-notes-header">Production Order Notes (Header)</a></li>
 <li><a href="#standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows (Item/Customer/Supplier)</a></li>
 <li><a href="#creating-an-item-in-the-item-window">Creating an Item in the Item Window</a></li>
+<li><a href="#adding-a-document-link-in-the-item-window">Adding a Document Link in the Item Window</a></li>
 <li><a href="#customer-window-adding-a-price-library">Customer Window: Adding a Price Library</a><ul>
 <li><a href="#p21-renumbers-sequence_number-on-save">P21 renumbers sequence_number on save</a></li>
 </ul>

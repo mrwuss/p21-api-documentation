@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">24</span></summary>
+            <summary>Recipes <span class="nav-count">25</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -630,6 +630,7 @@
             <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
             <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
             <li><a href="recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
+            <li><a href="recipes/item-document-links.html">Attach a Document to an Item, Assembly or Kit (Document Links)</a></li>
             <li><a href="recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
             <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
@@ -1405,6 +1406,10 @@
 <td><a href="04-Interactive-API.html#finding-field-names">04 § Finding Field Names</a> · <a href="04-Interactive-API.html#window-discovery-techniques">04 § Window Discovery</a></td>
 </tr>
 <tr>
+<td><strong>An action works in the client but not the API</strong> — capture the web client's request and replay it</td>
+<td><a href="04-Interactive-API.html#6-browser-devtools">04 § Browser DevTools</a> — the web client calls <code>ui/full</code>, not <code>/api/ui/interactive</code>; worked example: selecting one row (<code>ui/full/v2/data/select</code>)</td>
+</tr>
+<tr>
 <td>Open a window (use <code>ServiceName</code> — Name/Title can 400) · map window→service</td>
 <td><a href="04-Interactive-API.html#2-open-window">04 § Open Window</a> · <a href="04-Interactive-API.html#8-window-to-service-discovery-frame_menu">04 § Window→Service Discovery</a></td>
 </tr>
@@ -1435,6 +1440,10 @@
 <tr>
 <td><strong>Create an item in the Item window</strong> (unit flags, one location per session)</td>
 <td><a href="04-Interactive-API.html#creating-an-item-in-the-item-window">04 § Creating an Item in the Item Window</a> — Units of Measure tab can be <code>Column is disabled</code> for your role (not reproducible on play)</td>
+</tr>
+<tr>
+<td><strong>Attach a document to an item, assembly or kit</strong> (Document Links) — Transaction API says <code>Column is disabled: link_name</code></td>
+<td><a href="recipes/item-document-links.html">recipe: item-document-links</a> — upload with the file handler, add through the <code>Item</code> window's <code>m_addlink</code> dialog (one display area at a time via <code>ui/full/v2/data/select</code> + <code>cb_select</code>, or all with <code>cb_selectall</code>), save · <a href="04-Interactive-API.html#adding-a-document-link-in-the-item-window">04 § Adding a Document Link in the Item Window</a></td>
 </tr>
 <tr>
 <td><strong>Add a price library to a customer</strong> · library order (<code>sequence_number</code>)</td>
@@ -1581,6 +1590,10 @@
 <tr>
 <td><strong>Merge several report PDFs</strong> — barcodes print as text</td>
 <td><a href="03-Transaction-API.html#merging-several-report-pdfs-into-one-file">03 § Merging Several Report PDFs into One File</a> — rename the font-subset tags</td>
+</tr>
+<tr>
+<td><strong>Put an assembly's drawing on its pick ticket</strong> · does an API pick-ticket PDF include linked documents?</td>
+<td><a href="recipes/item-document-links.html">recipe: item-document-links</a> — display area <code>3453</code> Sales Order Pick Ticket; in the tests (<code>print_tix</code>, <code>m_reprintpicktickets</code>) the API's pick-ticket PDF did not include the linked file, with <em>Transmit Document Links</em> on or off; what the client prints was not tested</td>
 </tr>
 </tbody>
 </table></div>
