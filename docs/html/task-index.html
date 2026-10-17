@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">25</span></summary>
+            <summary>Recipes <span class="nav-count">26</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -643,6 +643,7 @@
             <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
             <li><a href="recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
             <li><a href="recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
+            <li><a href="recipes/window-sql-information.html">Read a Window's SQL (SQL Information)</a></li>
             </ul>
         </details>
         </details>
@@ -1404,6 +1405,10 @@
 <tr>
 <td>Find field / tab / datawindow names</td>
 <td><a href="04-Interactive-API.html#finding-field-names">04 § Finding Field Names</a> · <a href="04-Interactive-API.html#window-discovery-techniques">04 § Window Discovery</a></td>
+</tr>
+<tr>
+<td><strong>Read a window's SQL</strong> — the datawindow's full <code>SELECT</code>, its column → <code>table.column</code> map, and one field's table, datatype, and update table</td>
+<td><a href="04-Interactive-API.html#5-p21-sql-information">04 § P21 SQL Information</a> · <a href="recipes/window-sql-information.html">recipe: window-sql-information</a> — run <code>m_sqlinformation</code> with <code>POST /v2/tools</code>; the <code>SELECT</code> comes back only from <code>POST ui/full/v2/window/page</code> <code>{"PageName": "SQL"}</code> on the dialog, as <code>TextBoxes[].Text</code></td>
 </tr>
 <tr>
 <td><strong>An action works in the client but not the API</strong> — capture the web client's request and replay it</td>

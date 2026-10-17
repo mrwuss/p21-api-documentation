@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">25</span></summary>
+            <summary>Recipes <span class="nav-count">26</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -643,6 +643,7 @@
             <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
             <li><a href="recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
             <li><a href="recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
+            <li><a href="recipes/window-sql-information.html">Read a Window's SQL (SQL Information)</a></li>
             </ul>
         </details>
         </details>
@@ -683,6 +684,7 @@
 <li><a href="#2-get-available-tools">2. Get Available Tools</a></li>
 <li><a href="#3-get-current-data">3. Get Current Data</a></li>
 <li><a href="#4-check-result-events">4. Check Result Events</a></li>
+<li><a href="#5-p21-sql-informationkeep-the-heading-text-so-the5-p21-sql-informationanchor-stays-second-block-a-row-fordocsindexmd-in-the-table-that-holds-find-field-tab-datawindow-names">5. P21 SQL Information(keep the heading text so the#5-p21-sql-informationanchor stays). Second block: a row fordocs/INDEX.md`, in the table that holds "Find field / tab / datawindow names".</a></li>
 <li><a href="#5-p21-sql-information">5. P21 SQL Information</a></li>
 <li><a href="#6-browser-devtools">6. Browser DevTools</a></li>
 <li><a href="#7-transaction-api-service-definition">7. Transaction API Service Definition</a></li>
@@ -1408,6 +1410,7 @@
 <li>Select <strong>Help &gt; SQL Information</strong></li>
 <li>Note the datawindow name and column name</li>
 </ol>
+<p>The API can run the same dialog without the client, and returns the datawindow's full <code>SELECT</code> as well — see <a href="#5-p21-sql-information">P21 SQL Information</a>.</p>
 <hr />
 <h2 id="window-discovery-techniques">Window Discovery Techniques</h2>
 <blockquote>
@@ -1770,12 +1773,98 @@
 <p>Call <code>GetData()</code> (SDK) or <code>GET /api/ui/interactive/v2/data?id={windowId}</code> (REST) to retrieve the current data in each datawindow on the active tab. Returns column names, row data, active row index, and total row count.</p>
 <h3 id="4-check-result-events">4. Check Result Events</h3>
 <p>Every API response includes an <code>Events</code> collection. When a response window opens, look for <code>Name: "windowopened"</code> events. When tabs become enabled, look for <code>Name: "tabpageenabled"</code> events. When a new record is saved, look for <code>Name: "keygenerated"</code> events.</p>
+<h3 id="5-p21-sql-informationkeep-the-heading-text-so-the5-p21-sql-informationanchor-stays-second-block-a-row-fordocsindexmd-in-the-table-that-holds-find-field-tab-datawindow-names">5. P21 SQL Information<code>(keep the heading text so the</code>#5-p21-sql-information<code>anchor stays). Second block: a row for</code>docs/INDEX.md`, in the table that holds "Find field / tab / datawindow names".</h3>
+<hr />
 <h3 id="5-p21-sql-information">5. P21 SQL Information</h3>
 <p>In the P21 desktop or web client, right-click any field and select <strong>Help &gt; SQL Information</strong>. This dialog shows:
 - <strong>Datawindow name</strong> — the name to use in <code>DatawindowName</code> for change requests
 - <strong>Column name</strong> — the field name to use in <code>FieldName</code>
-- <strong>Table name</strong> — the underlying database table</p>
-<p>This is the most reliable way to determine the exact names the API expects.</p>
+- <strong>Table name</strong> — the underlying database table
+- <strong>The datawindow's full <code>SELECT</code></strong> — joins, computed columns, and the <code>/*MAIN WHERE CLAUSE*/</code> markers P21 fills at run time</p>
+<p>This is the most reliable way to determine the exact names the API expects. You do not need the client for it: the dialog is a tool, <code>m_sqlinformation</code>, and the API runs it the same way the right-click does.</p>
+<p>Full runnable version: <a href="recipes/window-sql-information.html">Read a window's SQL (SQL Information)</a> — Python and C#.</p>
+<h4 id="run-sql-information-through-the-api">Run SQL Information through the API</h4>
+<ol>
+<li>Open the window and select the tab that holds the datawindow (<code>PUT /v2/tab</code>). Some windows refuse the tool until a record is loaded — Order Entry answers <code>A valid customer ID must first be entered.</code> on the Items tab — so retrieve an existing record first. Do not save.</li>
+<li>Run the tool. <code>FieldName</code> is optional; <code>Row</code> is 1-based, and <code>0</code> works for a form:</li>
+</ol>
+<p><code>http
+   POST {ui_server}/api/ui/interactive/v2/tools
+   {"WindowId": "{windowId}", "ToolName": "m_sqlinformation",
+    "DatawindowName": "document_link", "FieldName": null, "Row": 0, "Text": null}</code></p>
+<p>The result is <code>Status</code> 3 with a <code>windowopened</code> event. Its <code>windowid</code> is the dialog (<code>w_sql_info_expanded_response</code>), titled <code>SQL Information for {Tab} Tab on {Window}</code>, with tab pages <code>SQL INFO</code>, <code>LIST</code>, <code>SQL INFORMATION REPORT</code>, <code>SQL</code>, and <code>COMBINED REPORT</code>.
+3. Read the <code>SQL INFO</code> text: <code>GET {ui_server}/ui/full/v1/grid/{popupId}/elements/state?dwName=sqlinfo&amp;activeRows=*</code> (or the Interactive <code>GET /v2/data?id={popupId}</code>, since <code>SQL INFO</code> is the active tab on open). <code>Data["SQL INFO.sqlinfo"][0].text</code> holds the datawindow name, the window class (<code>Window Name:</code>), and the URL handler menu class.
+4. Read the column map: select the page with <code>POST {ui_server}/ui/full/v2/window/page</code> <code>{"WindowId": "{popupId}", "PageName": "SQL INFORMATION REPORT"}</code>, then the same <code>elements/state</code> call with <code>dwName=showreport</code>. Each <code>info</code> row reads <code>Column N: {Label} = {table}.{column}</code>; computed columns come back as <code>{Label} = {expression}</code>.
+5. Read the <code>SELECT</code>: select the <code>SQL</code> page on the web client's surface. The SQL is in the response — there is no follow-up read:</p>
+<p><code>http
+   POST {ui_server}/ui/full/v2/window/page
+   {"WindowId": "{popupId}", "PageName": "SQL"}</code></p>
+<p><code>jsonc
+   {
+     "Result": {"TabDefinition": {
+       "Name": "SQL",
+       "Sections": [],
+       "TextBoxes": [{"Name": "mle_text", "Type": "TextBox",
+                      "Text": "--Document Links Tab on Item Maintenance\r\nSELECT document_link.document_link_uid ..."}]
+     }},
+     "Success": true, "State": "Normal"
+   }</code></p>
+<ol>
+<li>Close the dialog (<code>DELETE /v2/window?id={popupId}</code>), then the window.</li>
+</ol>
+<blockquote>
+<p><strong>The <code>SELECT</code> is not a datawindow, so the Interactive API never returns it.</strong> The <code>SQL</code> tab holds a text box (<code>mle_text</code>), and the Interactive window definition lists datawindows only. <code>PUT /v2/tab</code> to <code>SQL</code> succeeds, and <code>GET /v2/data</code> then returns the <code>showreport</code> rows from the previous tab. The web client's <code>POST /ui/full/v2/window/page</code> returns the tab's controls — text box included — and accepts the popup the Interactive API opened, with the same API token.</p>
+<p><strong>Grid rows come back empty on <code>ui/full</code> until you ask for them.</strong> <code>GET /ui/full/v2/data/data?id={popupId}&amp;dw=showreport</code> returns <code>[]</code> with <code>TotalRows: 8</code> in <code>DataInformation</code>. <code>GET /ui/full/v1/grid/{popupId}/elements/state?dwName=showreport&amp;activeRows=*</code> returns the rows, and <code>data/data</code> returns them too from then on.</p>
+</blockquote>
+<p><strong>Example output</strong> (Item window, Document Links tab, trimmed; the text arrives whitespace-collapsed on one line — the line breaks here are added):</p>
+<div class="highlight"><pre><span></span><code>SQL INFO:
+  No column was selected
+  DataWindow Name: document_link
+  Window Name: w_inventory_sheet
+  URL Handler Menu Name: m_inventorymastermaintenance
+
+SQL INFORMATION REPORT:
+  Column 1: Document Link Uid = document_link.document_link_uid
+  Column 2: Source Area = document_link.source_area_cd
+  Column 9: Link Name = document_link.link_name
+  Column 10: Link Path = document_link.link_path
+
+SQL:
+  --Document Links Tab on Item Maintenance
+  SELECT document_link.document_link_uid
+        ,document_link.source_area_cd
+        ,document_link.key1_cd
+        ,document_link.key1_value
+        ...
+        ,inv_mast.item_id
+        ,document_link_area.display_area_cd
+        ,COALESCE (document_link_entity_req.send_outside_use_docs_flag, &#39;N&#39;) send_outside_use_docs_flag
+        ...
+  /*MAIN FROM CLAUSE*/
+  FROM   document_link
+         INNER JOIN document_link_area ON (document_link_area.document_link_uid = document_link.document_link_uid)
+         LEFT JOIN inv_mast ON (Cast(inv_mast.inv_mast_uid AS VARCHAR(50)) = document_link.key1_value)
+                           AND (document_link.key1_cd = &#39;inv_mast_uid&#39;)
+         LEFT OUTER JOIN document_link_entity_req ON ...
+  /*MAIN WHERE CLAUSE*/
+  /*MAIN GROUP BY CLAUSE*/
+  GROUP BY document_link.document_link_uid, ...
+</code></pre></div>
+
+<p><strong>Passing <code>FieldName</code></strong> turns the <code>SQL INFO</code> text into a column report. Item window, <code>tp_1_dw_1</code>, <code>FieldName</code> <code>item_id</code>:</p>
+<div class="highlight"><pre><span></span><code>Database name for &#39;Item ID&#39; is inv_mast.item_id.
+Column datatype is char(40).
+The table to be updated is inv_mast.
+The field name is item_id
+The column usage is: The id used to refer to the item in the application..
+DataWindow Name: tp_1_dw_1
+Window Name: w_inventory_sheet
+</code></pre></div>
+
+<p>On a grid, pass <code>Row</code> too (Order Entry <code>items</code>, <code>FieldName</code> <code>unit_price</code>, <code>Row</code> <code>1</code> → <code>oe_line.unit_price</code>, <code>decimal(9)</code>, updates <code>oe_line</code>). A name that is not a column of the datawindow is ignored without an error, and the text reads <code>No column was selected</code>. The <code>SELECT</code> and the column map do not change with <code>FieldName</code>.</p>
+<p><strong>What the <code>SELECT</code> is, and is not.</strong> It is the datawindow's design-time SQL, including its retrieval arguments (<code>WHERE inv_mast.item_id = :item_id</code> on the Item header). The filter P21 adds at run time goes in at the <code>/*MAIN WHERE CLAUSE*/</code> marker and is not shown — the Order Entry <code>items</code> SQL ends in <code>WHERE oe_line.delete_flag = 'N'</code> with no order number. Site customizations are included: user-defined (<code>*_ud</code>) joins and columns appear in the <code>SELECT</code>, so treat the output as tenant-specific before you copy it anywhere public. The dialog title carries the record caption (for example <code>Order Entry: 1001234 (ACME Supply Company)</code>).</p>
+<p><strong>Report windows.</strong> The Interactive API refuses report windows by service name (<code>Cannot open window  because is not available or user … does not have permission.</code>). Open them on <a href="#the-uifull-surface-the-web-clients-own-rest-api">the <code>ui/full</code> surface</a> by menu class instead, and run the same tool through <code>POST {ui_server}/ui/full/v2/window/tools</code> with the same body. On <code>ui/full</code> that call returns <code>Success: false</code> and <code>State: "Blocked"</code> — the dialog is a response window — and the dialog's id is in the <code>windowopened</code> event's <code>EventData.windowid</code>. A report's criteria datawindow has no <code>SELECT</code>: Purchase Order Report (<code>m_reprintpurchaseorders</code>, <code>poreportcriteriadw</code>) returns <code>External source data; no SQL select associated with displayed data</code>, and its column map lists the bare criteria names (<code>beg_po_no</code>, <code>end_po_no</code>, <code>print_qty</code>).</p>
+<p>Verified on play 26.1.5950.0, October 2026: Item (<code>document_link</code>, <code>tp_1_dw_1</code>), Shipping (<code>document_link</code>), Order Entry (<code>order</code>, <code>items</code>), and Purchase Order Report (<code>poreportcriteriadw</code>). The tool reads only; nothing was saved.</p>
 <h3 id="6-browser-devtools">6. Browser DevTools</h3>
 <p>When the P21 web client can do something the API docs don't show how to do, capture the request the web client sends and replay it. This is the prudent way to find an undocumented call:</p>
 <ol>
@@ -6041,6 +6130,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <li><a href="#2-get-available-tools">2. Get Available Tools</a></li>
 <li><a href="#3-get-current-data">3. Get Current Data</a></li>
 <li><a href="#4-check-result-events">4. Check Result Events</a></li>
+<li><a href="#5-p21-sql-informationkeep-the-heading-text-so-the5-p21-sql-informationanchor-stays-second-block-a-row-fordocsindexmd-in-the-table-that-holds-find-field-tab-datawindow-names">5. P21 SQL Information(keep the heading text so the#5-p21-sql-informationanchor stays). Second block: a row fordocs/INDEX.md`, in the table that holds "Find field / tab / datawindow names".</a></li>
 <li><a href="#5-p21-sql-information">5. P21 SQL Information</a></li>
 <li><a href="#6-browser-devtools">6. Browser DevTools</a></li>
 <li><a href="#7-transaction-api-service-definition">7. Transaction API Service Definition</a></li>

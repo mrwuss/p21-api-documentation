@@ -372,6 +372,8 @@ To find the correct field and datawindow names:
 4. Select **Help > SQL Information**
 5. Note the datawindow name and column name
 
+The API can run the same dialog without the client, and returns the datawindow's full `SELECT` as well — see [P21 SQL Information](#5-p21-sql-information).
+
 ---
 
 ## Window Discovery Techniques
@@ -730,14 +732,117 @@ Call `GetData()` (SDK) or `GET /api/ui/interactive/v2/data?id={windowId}` (REST)
 
 Every API response includes an `Events` collection. When a response window opens, look for `Name: "windowopened"` events. When tabs become enabled, look for `Name: "tabpageenabled"` events. When a new record is saved, look for `Name: "keygenerated"` events.
 
+### 5. P21 SQL Information` (keep the heading text so the `#5-p21-sql-information` anchor stays). Second block: a row for `docs/INDEX.md`, in the table that holds "Find field / tab / datawindow names".
+
+---
+
 ### 5. P21 SQL Information
 
 In the P21 desktop or web client, right-click any field and select **Help > SQL Information**. This dialog shows:
 - **Datawindow name** — the name to use in `DatawindowName` for change requests
 - **Column name** — the field name to use in `FieldName`
 - **Table name** — the underlying database table
+- **The datawindow's full `SELECT`** — joins, computed columns, and the `/*MAIN WHERE CLAUSE*/` markers P21 fills at run time
 
-This is the most reliable way to determine the exact names the API expects.
+This is the most reliable way to determine the exact names the API expects. You do not need the client for it: the dialog is a tool, `m_sqlinformation`, and the API runs it the same way the right-click does.
+
+Full runnable version: [Read a window's SQL (SQL Information)](recipes/window-sql-information.md) — Python and C#.
+
+#### Run SQL Information through the API
+
+1. Open the window and select the tab that holds the datawindow (`PUT /v2/tab`). Some windows refuse the tool until a record is loaded — Order Entry answers `A valid customer ID must first be entered.` on the Items tab — so retrieve an existing record first. Do not save.
+2. Run the tool. `FieldName` is optional; `Row` is 1-based, and `0` works for a form:
+
+   ```http
+   POST {ui_server}/api/ui/interactive/v2/tools
+   {"WindowId": "{windowId}", "ToolName": "m_sqlinformation",
+    "DatawindowName": "document_link", "FieldName": null, "Row": 0, "Text": null}
+   ```
+
+   The result is `Status` 3 with a `windowopened` event. Its `windowid` is the dialog (`w_sql_info_expanded_response`), titled `SQL Information for {Tab} Tab on {Window}`, with tab pages `SQL INFO`, `LIST`, `SQL INFORMATION REPORT`, `SQL`, and `COMBINED REPORT`.
+3. Read the `SQL INFO` text: `GET {ui_server}/ui/full/v1/grid/{popupId}/elements/state?dwName=sqlinfo&activeRows=*` (or the Interactive `GET /v2/data?id={popupId}`, since `SQL INFO` is the active tab on open). `Data["SQL INFO.sqlinfo"][0].text` holds the datawindow name, the window class (`Window Name:`), and the URL handler menu class.
+4. Read the column map: select the page with `POST {ui_server}/ui/full/v2/window/page` `{"WindowId": "{popupId}", "PageName": "SQL INFORMATION REPORT"}`, then the same `elements/state` call with `dwName=showreport`. Each `info` row reads `Column N: {Label} = {table}.{column}`; computed columns come back as `{Label} = {expression}`.
+5. Read the `SELECT`: select the `SQL` page on the web client's surface. The SQL is in the response — there is no follow-up read:
+
+   ```http
+   POST {ui_server}/ui/full/v2/window/page
+   {"WindowId": "{popupId}", "PageName": "SQL"}
+   ```
+
+   ```jsonc
+   {
+     "Result": {"TabDefinition": {
+       "Name": "SQL",
+       "Sections": [],
+       "TextBoxes": [{"Name": "mle_text", "Type": "TextBox",
+                      "Text": "--Document Links Tab on Item Maintenance\r\nSELECT document_link.document_link_uid ..."}]
+     }},
+     "Success": true, "State": "Normal"
+   }
+   ```
+
+6. Close the dialog (`DELETE /v2/window?id={popupId}`), then the window.
+
+> **The `SELECT` is not a datawindow, so the Interactive API never returns it.** The `SQL` tab holds a text box (`mle_text`), and the Interactive window definition lists datawindows only. `PUT /v2/tab` to `SQL` succeeds, and `GET /v2/data` then returns the `showreport` rows from the previous tab. The web client's `POST /ui/full/v2/window/page` returns the tab's controls — text box included — and accepts the popup the Interactive API opened, with the same API token.
+>
+> **Grid rows come back empty on `ui/full` until you ask for them.** `GET /ui/full/v2/data/data?id={popupId}&dw=showreport` returns `[]` with `TotalRows: 8` in `DataInformation`. `GET /ui/full/v1/grid/{popupId}/elements/state?dwName=showreport&activeRows=*` returns the rows, and `data/data` returns them too from then on.
+
+**Example output** (Item window, Document Links tab, trimmed; the text arrives whitespace-collapsed on one line — the line breaks here are added):
+
+```text
+SQL INFO:
+  No column was selected
+  DataWindow Name: document_link
+  Window Name: w_inventory_sheet
+  URL Handler Menu Name: m_inventorymastermaintenance
+
+SQL INFORMATION REPORT:
+  Column 1: Document Link Uid = document_link.document_link_uid
+  Column 2: Source Area = document_link.source_area_cd
+  Column 9: Link Name = document_link.link_name
+  Column 10: Link Path = document_link.link_path
+
+SQL:
+  --Document Links Tab on Item Maintenance
+  SELECT document_link.document_link_uid
+        ,document_link.source_area_cd
+        ,document_link.key1_cd
+        ,document_link.key1_value
+        ...
+        ,inv_mast.item_id
+        ,document_link_area.display_area_cd
+        ,COALESCE (document_link_entity_req.send_outside_use_docs_flag, 'N') send_outside_use_docs_flag
+        ...
+  /*MAIN FROM CLAUSE*/
+  FROM   document_link
+         INNER JOIN document_link_area ON (document_link_area.document_link_uid = document_link.document_link_uid)
+         LEFT JOIN inv_mast ON (Cast(inv_mast.inv_mast_uid AS VARCHAR(50)) = document_link.key1_value)
+                           AND (document_link.key1_cd = 'inv_mast_uid')
+         LEFT OUTER JOIN document_link_entity_req ON ...
+  /*MAIN WHERE CLAUSE*/
+  /*MAIN GROUP BY CLAUSE*/
+  GROUP BY document_link.document_link_uid, ...
+```
+
+**Passing `FieldName`** turns the `SQL INFO` text into a column report. Item window, `tp_1_dw_1`, `FieldName` `item_id`:
+
+```text
+Database name for 'Item ID' is inv_mast.item_id.
+Column datatype is char(40).
+The table to be updated is inv_mast.
+The field name is item_id
+The column usage is: The id used to refer to the item in the application..
+DataWindow Name: tp_1_dw_1
+Window Name: w_inventory_sheet
+```
+
+On a grid, pass `Row` too (Order Entry `items`, `FieldName` `unit_price`, `Row` `1` → `oe_line.unit_price`, `decimal(9)`, updates `oe_line`). A name that is not a column of the datawindow is ignored without an error, and the text reads `No column was selected`. The `SELECT` and the column map do not change with `FieldName`.
+
+**What the `SELECT` is, and is not.** It is the datawindow's design-time SQL, including its retrieval arguments (`WHERE inv_mast.item_id = :item_id` on the Item header). The filter P21 adds at run time goes in at the `/*MAIN WHERE CLAUSE*/` marker and is not shown — the Order Entry `items` SQL ends in `WHERE oe_line.delete_flag = 'N'` with no order number. Site customizations are included: user-defined (`*_ud`) joins and columns appear in the `SELECT`, so treat the output as tenant-specific before you copy it anywhere public. The dialog title carries the record caption (for example `Order Entry: 1001234 (ACME Supply Company)`).
+
+**Report windows.** The Interactive API refuses report windows by service name (`Cannot open window  because is not available or user … does not have permission.`). Open them on [the `ui/full` surface](#the-uifull-surface-the-web-clients-own-rest-api) by menu class instead, and run the same tool through `POST {ui_server}/ui/full/v2/window/tools` with the same body. On `ui/full` that call returns `Success: false` and `State: "Blocked"` — the dialog is a response window — and the dialog's id is in the `windowopened` event's `EventData.windowid`. A report's criteria datawindow has no `SELECT`: Purchase Order Report (`m_reprintpurchaseorders`, `poreportcriteriadw`) returns `External source data; no SQL select associated with displayed data`, and its column map lists the bare criteria names (`beg_po_no`, `end_po_no`, `print_qty`).
+
+Verified on play 26.1.5950.0, October 2026: Item (`document_link`, `tp_1_dw_1`), Shipping (`document_link`), Order Entry (`order`, `items`), and Purchase Order Report (`poreportcriteriadw`). The tool reads only; nothing was saved.
 
 ### 6. Browser DevTools
 
