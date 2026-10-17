@@ -18,7 +18,7 @@ Assemblies priced off a job contract cost wrong when the parent's cost rolls up 
 |---|---|---|
 | Customer and ship-tos | `CUST-100`, ship-tos `CUST-100-A`, `CUST-100-B` | Every ship-to that orders must be on the contract or it does not price |
 | Contract | `job_no` `JOB-001`, `contract_no` `CONTRACT-001` | Approved, in date |
-| Ship-from (source) location | `30` | Decides which primary supplier — and so which vendor — the rebate goes to |
+| Source location | `30` | The line's `source_loc_id`. Its primary supplier usually becomes `oe_line.supplier_id`, and so the rebate vendor. On a transfer line it differs from the ship location (the runbooks' `--ship-from` is used as the order's sales location and the line's source location; a stock line then ships from it too, so the runbooks never exercise a source location that differs from the sales location) |
 | Rebate vendor | created in step 3 | Track Rebates on |
 | Rebate schedule | percent by component product code | From the supplier agreement — confirm with the supplier (manual) |
 | Pricing rule | price = true cost ÷ (1 − target margin) | A business decision (manual) |
@@ -34,7 +34,7 @@ python examples/python/recipes/rebate_assembly_program.py --company ACME --custo
     --price 45.00 --true-cost 30.60 --rebated-cost 24.00 --execute
 ```
 
-Step 6 sells one unit, so the assembled part must be **in stock at the ship-from location** first (built on a production order, or received).
+Step 6 sells one unit, so the assembled part must be **in stock at the source location** first (built on a production order, or received).
 
 ## Runbook
 
@@ -43,7 +43,7 @@ Step 6 sells one unit, so the assembled part must be **in stock at the ship-from
 | 1 | Catalog what the customer buys | OData (read-only) | Run on play 26.1.5950.0, 2026-10-10 |
 | 2 | Fix the BOMs | Transaction `Assembly` | Run on play 26.1.5950.0, 2026-10-10 (quantity fix) |
 | 3 | Create the rebate vendor | Transaction `Vendor` | Run on play 26.1.5950.0, 2026-10-10 |
-| 4 | Primary supplier at the ship-from location | Transaction `Item` | Run on play 26.1.5950.0, 2026-10-10 |
+| 4 | Primary supplier at the source location | Transaction `Item` | Run on play 26.1.5950.0, 2026-10-10 |
 | 5 | Price and cost the contract lines | Transaction `JobContractPricing` | Run on play 26.1.5950.0, 2026-10-10 |
 | 6 | Order entry and invoicing | Transaction `Order` + Interactive `Shipping` | Run on play 26.1.5950.0, 2026-10-10 |
 | — | GL check, supplier claim, rebate schedule | — | Manual |
@@ -68,14 +68,14 @@ Create the vendor with `vendor` = `ON`, `track_rebates` = `ON`, terms by descrip
 
 Some programs book the receivable against a dedicated internal vendor (one per location) rather than the real supplier, and file the claim to the supplier separately; P21 does not care which, as long as Track Rebates is on.
 
-### Step 4 — Make it the primary supplier at the ship-from location (Transaction `Item`) (Verified; run on play 26.1.5950.0, 2026-10-10)
+### Step 4 — Make it the primary supplier at the source location (Transaction `Item`) (Verified; run on play 26.1.5950.0, 2026-10-10)
 
-Per assembly item, at the **ship-from** location — not the sales location:
+Per assembly item, at the **source** location (`source_loc_id`; the ship location, except on a transfer line). When the sales location differs from it, the sales location's primary supplier does not count; the runbooks use one location for both:
 
 1. Insert the vendor's supplier row on the location's supplier list: Transaction `Item`, `SUPPLIER_X_LOCATION` keyed on both `location_id` and `supplier_id`, `IgnoreDisabled: true` ([details](../03-Transaction-API.md#adding-a-location-supplier-row-the-prerequisite-insert)).
 2. Flip it to primary. Items with a zero supplier cost or list price trip the *Item Issues Detected* rule, which the Transaction API cannot answer — use the [Interactive fallback](../04-Interactive-API.md#worked-example-item-issues-detected-rule-callback) and answer `cb_1`, or [fix the data](../03-Transaction-API.md#item-issues-detected-popup-root-cause-and-data-fix). (The verification item did not trip it.)
 
-Read back `inv_loc.primary_supplier_id` at the ship-from location — the flag write can succeed and flip nothing.
+Read back `inv_loc.primary_supplier_id` at the source location — the flag write can succeed and flip nothing — and, after order entry, read `oe_line.supplier_id`: it is usually, not always, that primary supplier.
 
 ### Step 5 — Price and cost the contract lines (Transaction `JobContractPricing`) (Verified; run on play 26.1.5950.0, 2026-10-10)
 
@@ -99,7 +99,7 @@ On a test order shipped and invoiced (the runbooks check the first three automat
 - GL for the invoice: the Sales Journal books COGS at the full moving average, then a Rebate Journal entry debits the rebate receivable (re-suffixed to the sales location) and credits COGS — net COGS = the contract value. The full entry, line by line: [The GL flow of a contract rebate](../03-Transaction-API.md#the-gl-flow-of-a-contract-rebate).
 - No charge lines on the exploded order.
 
-If COGS dropped but **no** `vendor_rebate` row appeared, the line's supplier is not the Track Rebates vendor: `vendor_rebate.vendor_id` is `oe_line.supplier_id`, stamped at entry from the primary supplier at the ship-from location (step 4). The parent line accrues the same way whether the assembly was built on a production order linked to the sale, built to stock, or sold as a plain stock line; a kit parent on a contract whose own supplier does not track rebates instead lets its components accrue from their own rebate pages, with no parent row (a parent supplier that tracks rebates is untested). Verified on play 26.1.5950.0, 2026-10-17: [Rebates on assembled parents](../03-Transaction-API.md#rebates-on-assembled-parents-production-orders-build-to-stock-and-kits) · [GL flow](../03-Transaction-API.md#the-gl-flow-of-a-contract-rebate).
+If COGS dropped but **no** `vendor_rebate` row appeared, the line's supplier is not the Track Rebates vendor: `vendor_rebate.vendor_id` is `oe_line.supplier_id`, usually stamped at entry from the primary supplier at the line's source location (step 4); read it back to confirm. The parent line accrues the same way whether the assembly was built on a production order linked to the sale, built to stock, or sold as a plain stock line; a kit parent on a contract whose own supplier does not track rebates instead lets its components accrue from their own rebate pages, with no parent row (a parent supplier that tracks rebates is untested). Verified on play 26.1.5950.0, 2026-10-17: [Rebates on assembled parents](../03-Transaction-API.md#rebates-on-assembled-parents-production-orders-build-to-stock-and-kits) · [GL flow](../03-Transaction-API.md#the-gl-flow-of-a-contract-rebate).
 
 ## Steps 4 and 5, in code
 

@@ -38,7 +38,7 @@ Choose the surface by the prompts the order will raise — the Transaction API a
 - **Salesrep not allowed at a location** (a site DynaChange rule): pick a sales/source location pair the customer's rep is valid at.
 - **Profit-percentage rules** are prompts too. On the verification tenant a line priced far above cost failed the Transaction with *"The order line (…) profit percentage of 99.59% is greater than the acceptable limit of 85.00%. Continue? [Response: No]"* — the Transaction API answered No for you.
 
-`source_loc_id` is the ship-from location. It decides `oe_line.supplier_id` (the item's primary supplier **there**), which in turn decides any supplier rebate at invoice — see [Rebate prerequisites](../03-Transaction-API.md#rebate-prerequisites-other-cost-below-actual-a-rebate-tracking-vendor).
+`source_loc_id` is the location the stock is sourced from. It equals the ship location (`ship_loc_id`) except on a transfer line. It decides `oe_line.supplier_id` (usually the item's primary supplier **there**), which in turn decides any supplier rebate at invoice — see [Rebate prerequisites](../03-Transaction-API.md#rebate-prerequisites-other-cost-below-actual-a-rebate-tracking-vendor).
 
 **Contract pricing binds here, once.** If the customer, ship-to and item are on an approved contract in date, the line gets the contract price, `job_price_hdr_uid`, and a snapshot of the contract cost. That binding is permanent for the line — [details](../03-Transaction-API.md#binding-happens-once-at-line-entry).
 

@@ -3479,12 +3479,15 @@ successfully. Do you want to continue to retrieve? [Response: No]
 <p>For a contract-priced line to write a supplier rebate at invoice, both of these must hold:</p>
 <ol>
 <li>The bound contract line carries an <strong>other cost below the line's actual cost</strong>. Two settings do this: other cost type <code>Value</code> (<code>other_cost_type_cd</code> = <code>Value</code>, <code>other_cost_value</code> = the rebated cost), or type <code>Source</code> with source <code>Average Cost</code> and method <code>Difference</code>, which gives a fixed rebate per unit (<a href="#a-fixed-per-unit-rebate-source-average-cost-difference">below</a>).</li>
-<li>The <strong>line's supplier</strong> belongs to a vendor with <strong>Track Rebates</strong> on. <code>vendor_rebate.vendor_id</code> is <code>oe_line.supplier_id</code>, and P21 stamps <code>oe_line.supplier_id</code> at entry from the item's primary supplier at the line's ship-from location (<code>source_loc_id</code>), not the sales location. The sales location's primary supplier is irrelevant. A line-level supplier override was not tested.</li>
+<li>The <strong>line's supplier</strong> belongs to a vendor with <strong>Track Rebates</strong> on. <code>vendor_rebate.vendor_id</code> is <code>oe_line.supplier_id</code>, which P21 usually stamps at entry from the item's primary supplier at the line's <strong>source location</strong> (<code>oe_line.source_loc_id</code>). On a transfer line, the source location differs from the ship location (<code>ship_loc_id</code>). The sales location's primary supplier does not normally decide it, and on a transfer line neither does the ship location's. Read <code>oe_line.supplier_id</code> back after entry rather than assuming it.</li>
 </ol>
+<blockquote>
+<p><strong>The source-location rule.</strong> On a play transfer line (<code>disposition</code> <code>T</code>, set by P21; sales and ship location <code>10</code>, source <code>20</code>), <code>supplier_id</code> was location <code>20</code>'s primary supplier and <code>sales_cost</code> was location <code>20</code>'s moving average. In a read-only review of production lines whose ship and source locations have different primary suppliers, most lines, not all, carried the source location's primary. That review compared today's primaries, not the primaries at entry. Not tested: a line-level supplier override, and a transfer line carried through to an invoice (the transfer has to ship and be received first).</p>
+</blockquote>
 <p>Then at invoice, <code>invoice_line.cogs_amount</code> = the contract's other cost, a <code>vendor_rebate</code> row is written for the difference, and GL posts the sale at moving average plus a Rebate Journal entry that moves the difference to the vendor's rebate receivable (<a href="#the-gl-flow-of-a-contract-rebate">GL flow</a>). Setting only the other cost, with a supplier that does not track rebates, lowers COGS but writes no rebate. Creating the vendor: <a href="#vendor-service-creating-a-vendor-and-its-supplier">Vendor Service</a>. The end-to-end setup: <a href="recipes/rebate-assembly-program.html">recipe: rebate-assembly-program</a>.</p>
 <p><code>vendor_rebate</code> amounts are <strong>extended for the line</strong>, not per unit. On a two-unit line, <code>base_cost</code>, <code>after_rebate_cost</code> and <code>rebate_due</code> were each twice the one-unit values, and <code>rebate_due</code> = <code>base_cost</code> − <code>after_rebate_cost</code>.</p>
 <blockquote>
-<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — rebate trigger proven end to end on play, September 2026. <strong>Re-run here</strong> with the Python and C# <a href="recipes/rebate-assembly-program.html">rebate runbook</a> (play 26.1.5950.0, 2026-10-10), and again on 2026-10-17 with the ship-from location different from the sales location (<a href="https://github.com/mrwuss/p21-api-documentation/issues/201">#201</a>): across nine invoices for three different suppliers, every <code>vendor_rebate.vendor_id</code> equalled its <code>oe_line.supplier_id</code>. Not re-run: the other-cost-only case with a non-tracking supplier.</p>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — rebate trigger proven end to end on play, September 2026. <strong>Re-run here</strong> with the Python and C# <a href="recipes/rebate-assembly-program.html">rebate runbook</a> (play 26.1.5950.0, 2026-10-10). Checked again on 2026-10-17 with separate Interactive order entries whose source location differed from the sales location, not the runbooks (<a href="https://github.com/mrwuss/p21-api-documentation/issues/201">#201</a>): across nine invoices for three different suppliers, every <code>vendor_rebate.vendor_id</code> equalled its <code>oe_line.supplier_id</code>. Not re-run: the other-cost-only case with a non-tracking supplier.</p>
 </blockquote>
 <h5 id="rebates-on-assembled-parents-production-orders-build-to-stock-and-kits">Rebates on assembled parents: production orders, build-to-stock and kits</h5>
 <p>The contract line goes on the <strong>parent</strong> item, and the accrual follows the parent line, whether the unit was built for the order, built to stock, or is a kit:</p>
@@ -3532,7 +3535,7 @@ successfully. Do you want to continue to retrieve? [Response: No]
 <p><strong>Verified</strong> on play 26.1.5950.0, 2026-10-17 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/201">#201</a>), by reading the invoices back over OData: three build-to-stock production orders with no <code>prod_order_line_link</code> row, whose units were later sold on contract-bound lines (<code>assembly = 'P'</code> and <code>'N'</code>), and one linked production order. Each invoice wrote a parent <code>vendor_rebate</code> row. The kit case was a fresh order and invoice with the parent added to the contract — <em>@mrwuss</em></p>
 </blockquote>
 <h5 id="a-fixed-per-unit-rebate-source-average-cost-difference">A fixed per-unit rebate: Source + Average Cost + Difference</h5>
-<p>When the supplier pays a fixed amount per unit rather than bringing cost down to a fixed price, set the contract line's other cost to <strong><code>Source</code></strong>, source <strong><code>Average Cost</code></strong>, method <strong><code>Difference</code></strong>, with the rebate as the calculation value. The other cost is then the ship-from location's moving average minus the rebate, and the accrual stays exactly the rebate as moving average drifts.</p>
+<p>When the supplier pays a fixed amount per unit rather than bringing cost down to a fixed price, set the contract line's other cost to <strong><code>Source</code></strong>, source <strong><code>Average Cost</code></strong>, method <strong><code>Difference</code></strong>, with the rebate as the calculation value. The other cost is then the moving average at the line's source location (<code>source_loc_id</code>) minus the rebate, and the accrual stays exactly the rebate as moving average drifts.</p>
 <p><strong>Send the rebate as a positive number.</strong> <code>Difference</code> <em>subtracts</em> the calculation value: <code>20.00</code> gives moving average − 20.00; <code>-20.00</code> gives moving average <strong>+</strong> 20.00, a cost above actual.</p>
 <blockquote>
 <p>Payload shape only — drop this DataElement into a full program. Full runnable version: <a href="#updating-an-existing-contract">Updating an Existing Contract</a>. <code>item_id</code> is disabled on this element, so send <code>IgnoreDisabled: true</code> and read the line back.</p>
@@ -3580,7 +3583,7 @@ successfully. Do you want to continue to retrieve? [Response: No]
 </tr>
 </tbody>
 </table></div>
-<p>Effect, for one unit at a ship-from moving average of 50.00:</p>
+<p>Effect, for one unit at a source-location moving average of 50.00:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -3608,7 +3611,7 @@ successfully. Do you want to continue to retrieve? [Response: No]
 <p><strong>Verified</strong> on play 26.1.5950.0, 2026-10-17 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/201">#201</a>): a fresh order and invoice on a contract line set this way. The moving average had risen by nearly half since earlier invoices on the same contract line, and the accrual was still exactly the calculation value. The negative-value case is from the first run the same day (entry <code>other_cost</code> = moving average + the value) — <em>@mrwuss</em></p>
 </blockquote>
 <h5 id="the-gl-flow-of-a-contract-rebate">The GL flow of a contract rebate</h5>
-<p>One invoice line, one unit, sold at 15.00 from ship-from location <code>20</code> on a sale booked at location <code>10</code>; moving average 50.00, contract other cost 30.00, rebate 20.00. The invoice's GL entry (one <code>transaction_number</code>, <code>source</code> = the invoice number) held:</p>
+<p>One invoice line, one unit, sold at 15.00 on a sale booked at location <code>10</code> (<code>oe_hdr.location_id</code>), with location <code>20</code> as both the source and the ship location; moving average 50.00, contract other cost 30.00, rebate 20.00. The invoice's GL entry (one <code>transaction_number</code>, <code>source</code> = the invoice number) held:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -3641,13 +3644,13 @@ successfully. Do you want to continue to retrieve? [Response: No]
 <td>SJ</td>
 <td>Inventory (location 20)</td>
 <td>−50.00</td>
-<td>Stock relieved at the ship-from location</td>
+<td>Stock relieved at location 20</td>
 </tr>
 <tr>
 <td>SJ</td>
 <td>Inter-location clearing (location 20)</td>
 <td>+50.00</td>
-<td>Only when ship-from ≠ sales location</td>
+<td>Present because location 20 is not the sales location</td>
 </tr>
 <tr>
 <td>SJ</td>
@@ -3669,7 +3672,7 @@ successfully. Do you want to continue to retrieve? [Response: No]
 </tr>
 </tbody>
 </table></div>
-<p>Net COGS = 30.00 = <code>invoice_line.cogs_amount</code> = <code>vendor_rebate.after_rebate_cost</code>. The Sales Journal books COGS at the full moving average; the Rebate Journal (<code>journal_id</code> <code>RJ</code>) brings it down, and it posts only with a <code>vendor_rebate</code> row. Without a rebate-tracking supplier there is no RJ pair and no receivable. Read the whole entry with <a href="15-Other-REST-Families.html#accountinggl"><code>GET /api/accounting/gl/{transactionNumber}</code></a>, or over OData with <code>gl?$filter=source eq '{invoice_no}'</code>.</p>
+<p>Net COGS = 30.00 = <code>invoice_line.cogs_amount</code> = <code>vendor_rebate.after_rebate_cost</code>. The Sales Journal books COGS at the full moving average; the Rebate Journal (<code>journal_id</code> <code>RJ</code>) brings it down, and it posts only with a <code>vendor_rebate</code> row. Without a rebate-tracking supplier there is no RJ pair and no receivable. The receivable posts at the order's sales location (<code>oe_hdr.location_id</code>), not the source location. <code>customer.default_rebate_location_id</code>, empty for this customer, is reported to override that location; the override was not tested. Read the whole entry with <a href="15-Other-REST-Families.html#accountinggl"><code>GET /api/accounting/gl/{transactionNumber}</code></a>, or over OData with <code>gl?$filter=source eq '{invoice_no}'</code>.</p>
 <blockquote>
 <p><strong>Verified</strong> on play 26.1.5950.0, 2026-10-17: the GL rows for the fixed-rebate invoice above, read over OData and through <code>accounting/gl</code>, matched line for line, and the RJ pair equalled <code>rebate_due</code> — <em>@mrwuss</em></p>
 </blockquote>

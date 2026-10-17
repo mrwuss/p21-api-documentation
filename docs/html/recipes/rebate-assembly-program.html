@@ -666,7 +666,7 @@
 <li><a href="#step-1-catalog-what-the-customer-actually-buys-inferred-method-run-on-play-26159500-2026-10-10">Step 1 — Catalog what the customer actually buys (Inferred method; run on play 26.1.5950.0, 2026-10-10)</a></li>
 <li><a href="#step-2-fix-the-boms-transaction-assembly-verified-run-on-play-26159500-2026-10-10">Step 2 — Fix the BOMs (Transaction Assembly) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
 <li><a href="#step-3-create-the-rebate-vendor-transaction-vendor-verified-run-on-play-26159500-2026-10-10">Step 3 — Create the rebate vendor (Transaction Vendor) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
-<li><a href="#step-4-make-it-the-primary-supplier-at-the-ship-from-location-transaction-item-verified-run-on-play-26159500-2026-10-10">Step 4 — Make it the primary supplier at the ship-from location (Transaction Item) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-4-make-it-the-primary-supplier-at-the-source-location-transaction-item-verified-run-on-play-26159500-2026-10-10">Step 4 — Make it the primary supplier at the source location (Transaction Item) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
 <li><a href="#step-5-price-and-cost-the-contract-lines-transaction-jobcontractpricing-verified-run-on-play-26159500-2026-10-10">Step 5 — Price and cost the contract lines (Transaction JobContractPricing) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
 <li><a href="#step-6-order-entry-and-invoicing-verified-run-on-play-26159500-2026-10-10">Step 6 — Order entry and invoicing (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
 </ul>
@@ -708,9 +708,9 @@
 <td>Approved, in date</td>
 </tr>
 <tr>
-<td>Ship-from (source) location</td>
+<td>Source location</td>
 <td><code>30</code></td>
-<td>Decides which primary supplier — and so which vendor — the rebate goes to</td>
+<td>The line's <code>source_loc_id</code>. Its primary supplier usually becomes <code>oe_line.supplier_id</code>, and so the rebate vendor. On a transfer line it differs from the ship location (the runbooks' <code>--ship-from</code> is used as the order's sales location and the line's source location; a stock line then ships from it too, so the runbooks never exercise a source location that differs from the sales location)</td>
 </tr>
 <tr>
 <td>Rebate vendor</td>
@@ -738,7 +738,7 @@ python<span class="w"> </span>examples/python/recipes/rebate_assembly_program.py
 <span class="w">    </span>--price<span class="w"> </span><span class="m">45</span>.00<span class="w"> </span>--true-cost<span class="w"> </span><span class="m">30</span>.60<span class="w"> </span>--rebated-cost<span class="w"> </span><span class="m">24</span>.00<span class="w"> </span>--execute
 </code></pre></div>
 
-<p>Step 6 sells one unit, so the assembled part must be <strong>in stock at the ship-from location</strong> first (built on a production order, or received).</p>
+<p>Step 6 sells one unit, so the assembled part must be <strong>in stock at the source location</strong> first (built on a production order, or received).</p>
 <h2 id="runbook">Runbook</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -770,7 +770,7 @@ python<span class="w"> </span>examples/python/recipes/rebate_assembly_program.py
 </tr>
 <tr>
 <td>4</td>
-<td>Primary supplier at the ship-from location</td>
+<td>Primary supplier at the source location</td>
 <td>Transaction <code>Item</code></td>
 <td>Run on play 26.1.5950.0, 2026-10-10</td>
 </tr>
@@ -807,13 +807,13 @@ python<span class="w"> </span>examples/python/recipes/rebate_assembly_program.py
 <h3 id="step-3-create-the-rebate-vendor-transaction-vendor-verified-run-on-play-26159500-2026-10-10">Step 3 — Create the rebate vendor (Transaction <code>Vendor</code>) (Verified; run on play 26.1.5950.0, 2026-10-10)</h3>
 <p>Create the vendor with <code>vendor</code> = <code>ON</code>, <code>track_rebates</code> = <code>ON</code>, terms by description, no currency, and its rebate receivable and allowance accounts on <code>REBATE_ACCOUNTS.d_vendor_rebate_accounts</code>. The runbooks leave <code>id</code> out: P21 numbered the vendor from the address sequence and returned it in the header's result row, and the save created the same-ID supplier with <code>vendor_supplier.primary_vendor = 'Y'</code>. <a href="../03-Transaction-API.html#vendor-service-creating-a-vendor-and-its-supplier">Payload and traps</a>.</p>
 <p>Some programs book the receivable against a dedicated internal vendor (one per location) rather than the real supplier, and file the claim to the supplier separately; P21 does not care which, as long as Track Rebates is on.</p>
-<h3 id="step-4-make-it-the-primary-supplier-at-the-ship-from-location-transaction-item-verified-run-on-play-26159500-2026-10-10">Step 4 — Make it the primary supplier at the ship-from location (Transaction <code>Item</code>) (Verified; run on play 26.1.5950.0, 2026-10-10)</h3>
-<p>Per assembly item, at the <strong>ship-from</strong> location — not the sales location:</p>
+<h3 id="step-4-make-it-the-primary-supplier-at-the-source-location-transaction-item-verified-run-on-play-26159500-2026-10-10">Step 4 — Make it the primary supplier at the source location (Transaction <code>Item</code>) (Verified; run on play 26.1.5950.0, 2026-10-10)</h3>
+<p>Per assembly item, at the <strong>source</strong> location (<code>source_loc_id</code>; the ship location, except on a transfer line). When the sales location differs from it, the sales location's primary supplier does not count; the runbooks use one location for both:</p>
 <ol>
 <li>Insert the vendor's supplier row on the location's supplier list: Transaction <code>Item</code>, <code>SUPPLIER_X_LOCATION</code> keyed on both <code>location_id</code> and <code>supplier_id</code>, <code>IgnoreDisabled: true</code> (<a href="../03-Transaction-API.html#adding-a-location-supplier-row-the-prerequisite-insert">details</a>).</li>
 <li>Flip it to primary. Items with a zero supplier cost or list price trip the <em>Item Issues Detected</em> rule, which the Transaction API cannot answer — use the <a href="../04-Interactive-API.html#worked-example-item-issues-detected-rule-callback">Interactive fallback</a> and answer <code>cb_1</code>, or <a href="../03-Transaction-API.html#item-issues-detected-popup-root-cause-and-data-fix">fix the data</a>. (The verification item did not trip it.)</li>
 </ol>
-<p>Read back <code>inv_loc.primary_supplier_id</code> at the ship-from location — the flag write can succeed and flip nothing.</p>
+<p>Read back <code>inv_loc.primary_supplier_id</code> at the source location — the flag write can succeed and flip nothing — and, after order entry, read <code>oe_line.supplier_id</code>: it is usually, not always, that primary supplier.</p>
 <h3 id="step-5-price-and-cost-the-contract-lines-transaction-jobcontractpricing-verified-run-on-play-26159500-2026-10-10">Step 5 — Price and cost the contract lines (Transaction <code>JobContractPricing</code>) (Verified; run on play 26.1.5950.0, 2026-10-10)</h3>
 <p>One line per POST. For each assembly: <code>pricing_method</code> = <code>Price</code> <strong>before</strong> <code>price</code>; <code>commission_cost_type_cd</code> = <code>Value</code> with the true cost; <strong><code>other_cost_type_cd</code> = <code>Value</code> with the rebated component cost</strong>. <a href="../03-Transaction-API.html#commission-costs">Payload</a>. If the supplier pays a fixed amount per unit instead, set the other cost to <code>Source</code> / <code>Average Cost</code> / <code>Difference</code> with the rebate as a <strong>positive</strong> value; the accrual then stays exactly that amount as moving average moves (<a href="../03-Transaction-API.html#a-fixed-per-unit-rebate-source-average-cost-difference">details</a>).</p>
 <p>Attach every ship-to that orders to the contract (<a href="../03-Transaction-API.html#attaching-a-ship-to-to-an-existing-contract">details</a>) — pricing follows the ship-to grid, not the contract header. The runbooks send the ship-to as a keyed <code>CUSTOMER_SHIP_TO.customer_ship_to</code> row in the same POST and read <code>job_price_customer_shipto</code> back; in the verification runs the ship-to was already on the contract, so attaching a <em>new</em> one was not exercised.</p>
@@ -831,7 +831,7 @@ python<span class="w"> </span>examples/python/recipes/rebate_assembly_program.py
 <li>GL for the invoice: the Sales Journal books COGS at the full moving average, then a Rebate Journal entry debits the rebate receivable (re-suffixed to the sales location) and credits COGS — net COGS = the contract value. The full entry, line by line: <a href="../03-Transaction-API.html#the-gl-flow-of-a-contract-rebate">The GL flow of a contract rebate</a>.</li>
 <li>No charge lines on the exploded order.</li>
 </ul>
-<p>If COGS dropped but <strong>no</strong> <code>vendor_rebate</code> row appeared, the line's supplier is not the Track Rebates vendor: <code>vendor_rebate.vendor_id</code> is <code>oe_line.supplier_id</code>, stamped at entry from the primary supplier at the ship-from location (step 4). The parent line accrues the same way whether the assembly was built on a production order linked to the sale, built to stock, or sold as a plain stock line; a kit parent on a contract whose own supplier does not track rebates instead lets its components accrue from their own rebate pages, with no parent row (a parent supplier that tracks rebates is untested). Verified on play 26.1.5950.0, 2026-10-17: <a href="../03-Transaction-API.html#rebates-on-assembled-parents-production-orders-build-to-stock-and-kits">Rebates on assembled parents</a> · <a href="../03-Transaction-API.html#the-gl-flow-of-a-contract-rebate">GL flow</a>.</p>
+<p>If COGS dropped but <strong>no</strong> <code>vendor_rebate</code> row appeared, the line's supplier is not the Track Rebates vendor: <code>vendor_rebate.vendor_id</code> is <code>oe_line.supplier_id</code>, usually stamped at entry from the primary supplier at the line's source location (step 4); read it back to confirm. The parent line accrues the same way whether the assembly was built on a production order linked to the sale, built to stock, or sold as a plain stock line; a kit parent on a contract whose own supplier does not track rebates instead lets its components accrue from their own rebate pages, with no parent row (a parent supplier that tracks rebates is untested). Verified on play 26.1.5950.0, 2026-10-17: <a href="../03-Transaction-API.html#rebates-on-assembled-parents-production-orders-build-to-stock-and-kits">Rebates on assembled parents</a> · <a href="../03-Transaction-API.html#the-gl-flow-of-a-contract-rebate">GL flow</a>.</p>
 <h2 id="steps-4-and-5-in-code">Steps 4 and 5, in code</h2>
 <p>The two payload builders where the rebate is won or lost; the step sequencing and read-backs are in the files.</p>
 <div class="code-tabs">
@@ -973,7 +973,7 @@ python<span class="w"> </span>examples/python/recipes/rebate_assembly_program.py
 <li><a href="#step-1-catalog-what-the-customer-actually-buys-inferred-method-run-on-play-26159500-2026-10-10">Step 1 — Catalog what the customer actually buys (Inferred method; run on play 26.1.5950.0, 2026-10-10)</a></li>
 <li><a href="#step-2-fix-the-boms-transaction-assembly-verified-run-on-play-26159500-2026-10-10">Step 2 — Fix the BOMs (Transaction Assembly) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
 <li><a href="#step-3-create-the-rebate-vendor-transaction-vendor-verified-run-on-play-26159500-2026-10-10">Step 3 — Create the rebate vendor (Transaction Vendor) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
-<li><a href="#step-4-make-it-the-primary-supplier-at-the-ship-from-location-transaction-item-verified-run-on-play-26159500-2026-10-10">Step 4 — Make it the primary supplier at the ship-from location (Transaction Item) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-4-make-it-the-primary-supplier-at-the-source-location-transaction-item-verified-run-on-play-26159500-2026-10-10">Step 4 — Make it the primary supplier at the source location (Transaction Item) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
 <li><a href="#step-5-price-and-cost-the-contract-lines-transaction-jobcontractpricing-verified-run-on-play-26159500-2026-10-10">Step 5 — Price and cost the contract lines (Transaction JobContractPricing) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
 <li><a href="#step-6-order-entry-and-invoicing-verified-run-on-play-26159500-2026-10-10">Step 6 — Order entry and invoicing (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
 </ul>
