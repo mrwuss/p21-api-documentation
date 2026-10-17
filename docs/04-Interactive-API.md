@@ -3257,33 +3257,62 @@ The Transaction API [cannot create an item](03-Transaction-API.md#item-service-g
 7. Save.
 
 - **One location per session.** Add the remaining locations afterwards through the Transaction `Item` service — one POST per location, `IgnoreDisabled: true`, with `TABPAGE_17.invloclist`, `TABPAGE_18.inv_loc_detail` and a keyed [location supplier row](03-Transaction-API.md#adding-a-location-supplier-row-the-prerequisite-insert).
-- **The Units of Measure grid can be locked, cause unknown.** On one tenant these steps worked in production and failed on the test copy: every field of `TABPAGE_2.tp_2_dw_2` was disabled. A screen version, a role difference and the build were each ruled out — see [The locked Units of Measure grid](#the-locked-units-of-measure-grid-open-limitation) below. Before you start, open the grid and check that its fields are `Enabled`; step 2 cannot work otherwise.
+- **The Units of Measure grid can be locked for your role by a web-client screen version.** A DynaChange screen version built in the web client's Version Manager can disable every field of `TABPAGE_2.tp_2_dw_2`, and it applies to the API session too. Before you start, run [the check query](#check-for-a-web-screen-version-on-the-grid) and compare its roles with the API user's role; step 2 cannot work if a locking version is assigned to it.
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified on production, September 2026 (two items created end to end).
 
-**Not reproduced on play 26.1.5950.0 (October 2026), so there is no runnable example.** Step 1 behaved as described (`Status: 2` with `tabpageenabled` events, then `item_desc` and both discount groups, `sales_discount_group_id` / `purchase_discount_group_id`, accepted). Step 2 failed: every change on `TABPAGE_2.tp_2_dw_2` (`unit_id`, `unit_size`, the four unit flags) returned **HTTP 400 `Column is disabled: unit_id`**, for a password user and for a consumer-key user alike, and the save then failed *"A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified."* Locations, product group (with the GL prompt answered Yes), supplier and location-supplier steps were accepted, so steps 3–6 are unverified only because the save never got past step 2. No item was created.
+**Not reproduced on play 26.1.5950.0 (October 2026), so there is no runnable example.** Step 1 behaved as described (`Status: 2` with `tabpageenabled` events, then `item_desc` and both discount groups, `sales_discount_group_id` / `purchase_discount_group_id`, accepted). Step 2 failed: every change on `TABPAGE_2.tp_2_dw_2` (`unit_id`, `unit_size`, the four unit flags) returned **HTTP 400 `Column is disabled: unit_id`**, for a password user and for a consumer-key user alike, and the save then failed *"A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified."* Both users run in a role that is assigned a locking web screen version (see [below](#the-locked-units-of-measure-grid-a-web-screen-version)). Locations, product group (with the GL prompt answered Yes), supplier and location-supplier steps were accepted, so steps 3–6 are unverified only because the save never got past step 2. No item was created.
 
-### The locked Units of Measure grid (open limitation)
+### The locked Units of Measure grid: a web screen version
 
-On the test tenant the Interactive `Item` window's Units of Measure grid is read-only, and **the cause is unknown**. Until it is found, create items with the [Inventory REST create](11-Inventory-REST-API.md#minimum-create-payload).
+On the test tenant the Interactive `Item` window's Units of Measure grid is read-only because of a **web-client DynaChange screen version** on the grid's datawindow, `w_inventory_sheet.tab_1.TABPAGE_2.tp_2_dw_2.d_inventory_item_unit`. The version sets `IsDisabled` on the grid's fields and is assigned to several roles, including `ALL`. `ALL` is an ordinary role that a user holds through `users.role_uid`, like any other, not a wildcard for every user. The Interactive API applies it to the session exactly as the web client does.
+
+**This is not a classic screen version.** Web-client screen versions are built in the web client's **Version Manager** (**Application > DynaChange Organizer > Version Manager**) and stored in three tables that the classic versions don't use:
+
+| Table | What it holds |
+|---|---|
+| `design` | One row per version: `design_uid`, `name`, `description`, `location` (the full datawindow path), `design_type` `S` |
+| `modification` | The version's property changes, one row per `object_name` (column) and `property_name`, for example `IsDisabled` = `true` |
+| `assignment` | Who gets the version: one row per role (`assignment_type` `1`, `role_uid`) or user (`assignee`) |
+
+Each web version also has a `custom_objects` row of type `W` that points at its `design_uid`. The classic screen versions (`custom_objects` type `R`) and the DynaChange field-security tables `dc_security` / `dc_security_detail` never show it, so a check of those tables finds nothing.
 
 What the window reports:
 
-- **All 11 fields** of `TABPAGE_2.tp_2_dw_2` come back `Enabled: false` in `GET /v2/window`: `unit_id`, `unit_description`, `unit_size`, the four unit flags, `base_unit_flag`, `base_unit_is_item_uom`, `delete_flag` and `unit_of_measure`. `PUT /v2/change` on `unit_id` or `unit_size` returns HTTP 400 `Column is disabled`.
-- **The lock is the same for a new item and an existing one.** It is not new-item sequencing: an existing item with its units already set shows the same 11 disabled fields.
-- **There is no tool to add a unit.** `GET /v2/tools` with `dwName=tp_2_dw_2` lists only the standard menu.
-- [SQL Information](recipes/window-sql-information.md) on `unit_id` reports an ordinary editable column: `char(8)`, update table `item_uom`, window `w_inventory_sheet`.
+- **All 11 fields** of `TABPAGE_2.tp_2_dw_2` come back `Enabled: false` in `GET /v2/window`: `unit_id`, `unit_description`, `unit_size`, the four unit flags, `base_unit_flag`, `base_unit_is_item_uom`, `delete_flag` and `unit_of_measure`. `PUT /v2/change` on `unit_id` or `unit_size` returns HTTP 400 `Column is disabled`. The locking version carries `IsDisabled` for nine of them, every field except `unit_description` and `unit_of_measure`; why those two are disabled is not established.
+- **The lock is the same for a new item and an existing one**, because the version applies to the datawindow, not to the record.
+- **There is no tool to add a unit.** `GET /v2/tools` with `dwName=tp_2_dw_2` lists only the standard menu. In the web client the same grid shows no add-row button: the window design it loads (`POST {ui}/ui/full/v2/window/page/design`) has `"AddRow": false` on `tp_2_dw_2` and `IsDisabled: true` on the unit fields.
+- [SQL Information](recipes/window-sql-information.md) on `unit_id` reports an ordinary editable column (`char(8)`, update table `item_uom`, window `w_inventory_sheet`), because the base datawindow is not what disables it.
 
-What it is **not**:
+#### Fix
 
-- **Not a screen version.** The test tenant has 134 `w_inventory_sheet` screen versions in `custom_objects`, the same set as production, and none of them touches `tp_2_dw_2` or the units of measure. The DynaChange field-security tables `dc_security` and `dc_security_detail` are empty.
-- **Not a role difference.** The API users on both tenants run as the same role.
-- **Not a setting.** No units-of-measure system setting differs between the two tenants.
-- **Not the build.** The session-create response reports `fullversion` `26.1.5950.0` on the test tenant and on production.
+Use either route:
 
-Still open: a lock in the base datawindow that the web client lifts with its own call sequence. To test that, capture the web client adding a unit to a new item ([Browser DevTools](#6-browser-devtools)) and replay its requests.
+1. **Create the item as a user whose role is not assigned a locking version.** On the test tenant a second version on the same datawindow changes only tab order and leaves the grid editable; a user in one of its roles, or in a role with no version on the grid, can enter units. Note that a version can also be assigned to a user directly, so check both the user's role and the user ID. This route follows from the version assignments and was not run through the API on the test tenant.
+2. **Use the [Inventory REST create](11-Inventory-REST-API.md#minimum-create-payload).** It doesn't open the `Item` window, so no screen version applies.
 
-> **Verified** on play 26.1.5950.0, 2026-10-17 ([#216](https://github.com/mrwuss/p21-api-documentation/issues/216)): the grid's `Enabled` flags, the `Column is disabled` responses and the tools listing for an unsaved new item and for an existing item (never saved); the screen versions, `dc_security*` and the build on play. The production comparisons (screen-version set, settings, build) are read-only reads from the same day. — *@mrwuss*
+Don't remove or reassign a version that other users depend on to make an API call work; the version is a deliberate restriction for those roles.
+
+#### Check for a web screen version on the grid
+
+Run this read-only query against the P21 database. It lists every web screen version on the datawindow, each property it changes and each role or user it is assigned to. Change the `LIKE` pattern to check another window's datawindow.
+
+```sql
+SELECT d.design_uid, d.name, d.description,
+       m.object_name, m.property_name, m.property_value,
+       a.assignment_type, a.assignee, r.role
+FROM design d WITH (NOLOCK)
+JOIN modification m WITH (NOLOCK) ON m.design_uid = d.design_uid
+LEFT JOIN assignment a WITH (NOLOCK) ON a.design_uid = d.design_uid
+LEFT JOIN roles r WITH (NOLOCK) ON r.role_uid = a.role_uid
+WHERE d.location LIKE '%tp_2_dw_2.d_inventory_item_unit'
+  AND m.property_name = 'IsDisabled'
+ORDER BY d.design_uid, a.assignee, m.object_name;
+```
+
+A version that returns `IsDisabled` = `true` rows and is assigned to the API user's role is the lock. To find that role, read `users.role_uid` for the API user and join it to `roles`. To see every property a version changes, drop the `property_name` filter. To check one column across all windows, filter on `m.object_name` instead of `d.location`.
+
+> **Verified** on play 26.1.5950.0, 2026-10-17 ([#216](https://github.com/mrwuss/p21-api-documentation/issues/216), [#218](https://github.com/mrwuss/p21-api-documentation/issues/218)): the grid's `Enabled` flags, the `Column is disabled` responses and the tools listing for an unsaved new item and for an existing item (never saved); a read-only capture of the web client opening the same item, which shows the same lock; and the `design`, `modification` and `assignment` rows above, read with the check query. Production has the same version with the same assignments (read-only read, same day), which suggests the September 2026 production run in the credit above used a user whose role is not assigned the locking version; that run's user role was not recorded, so this is not confirmed. — *@mrwuss*
 
 ## Adding a Document Link in the Item Window
 

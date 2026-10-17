@@ -739,7 +739,7 @@
 <li><a href="#production-order-notes-header">Production Order Notes (Header)</a></li>
 <li><a href="#standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows (Item/Customer/Supplier)</a></li>
 <li><a href="#creating-an-item-in-the-item-window">Creating an Item in the Item Window</a><ul>
-<li><a href="#the-locked-units-of-measure-grid-open-limitation">The locked Units of Measure grid (open limitation)</a></li>
+<li><a href="#the-locked-units-of-measure-grid-a-web-screen-version">The locked Units of Measure grid: a web screen version</a></li>
 </ul>
 </li>
 <li><a href="#adding-a-document-link-in-the-item-window">Adding a Document Link in the Item Window</a></li>
@@ -4524,31 +4524,69 @@ GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1001237'</cod
 <li>
 <p><strong>One location per session.</strong> Add the remaining locations afterwards through the Transaction <code>Item</code> service — one POST per location, <code>IgnoreDisabled: true</code>, with <code>TABPAGE_17.invloclist</code>, <code>TABPAGE_18.inv_loc_detail</code> and a keyed <a href="03-Transaction-API.html#adding-a-location-supplier-row-the-prerequisite-insert">location supplier row</a>.</p>
 </li>
-<li><strong>The Units of Measure grid can be locked, cause unknown.</strong> On one tenant these steps worked in production and failed on the test copy: every field of <code>TABPAGE_2.tp_2_dw_2</code> was disabled. A screen version, a role difference and the build were each ruled out — see <a href="#the-locked-units-of-measure-grid-open-limitation">The locked Units of Measure grid</a> below. Before you start, open the grid and check that its fields are <code>Enabled</code>; step 2 cannot work otherwise.</li>
+<li><strong>The Units of Measure grid can be locked for your role by a web-client screen version.</strong> A DynaChange screen version built in the web client's Version Manager can disable every field of <code>TABPAGE_2.tp_2_dw_2</code>, and it applies to the API session too. Before you start, run <a href="#check-for-a-web-screen-version-on-the-grid">the check query</a> and compare its roles with the API user's role; step 2 cannot work if a locking version is assigned to it.</li>
 </ol>
 <blockquote>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — verified on production, September 2026 (two items created end to end).</p>
 </blockquote>
-<p><strong>Not reproduced on play 26.1.5950.0 (October 2026), so there is no runnable example.</strong> Step 1 behaved as described (<code>Status: 2</code> with <code>tabpageenabled</code> events, then <code>item_desc</code> and both discount groups, <code>sales_discount_group_id</code> / <code>purchase_discount_group_id</code>, accepted). Step 2 failed: every change on <code>TABPAGE_2.tp_2_dw_2</code> (<code>unit_id</code>, <code>unit_size</code>, the four unit flags) returned <strong>HTTP 400 <code>Column is disabled: unit_id</code></strong>, for a password user and for a consumer-key user alike, and the save then failed <em>"A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified."</em> Locations, product group (with the GL prompt answered Yes), supplier and location-supplier steps were accepted, so steps 3–6 are unverified only because the save never got past step 2. No item was created.</p>
-<h3 id="the-locked-units-of-measure-grid-open-limitation">The locked Units of Measure grid (open limitation)</h3>
-<p>On the test tenant the Interactive <code>Item</code> window's Units of Measure grid is read-only, and <strong>the cause is unknown</strong>. Until it is found, create items with the <a href="11-Inventory-REST-API.html#minimum-create-payload">Inventory REST create</a>.</p>
+<p><strong>Not reproduced on play 26.1.5950.0 (October 2026), so there is no runnable example.</strong> Step 1 behaved as described (<code>Status: 2</code> with <code>tabpageenabled</code> events, then <code>item_desc</code> and both discount groups, <code>sales_discount_group_id</code> / <code>purchase_discount_group_id</code>, accepted). Step 2 failed: every change on <code>TABPAGE_2.tp_2_dw_2</code> (<code>unit_id</code>, <code>unit_size</code>, the four unit flags) returned <strong>HTTP 400 <code>Column is disabled: unit_id</code></strong>, for a password user and for a consumer-key user alike, and the save then failed <em>"A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified."</em> Both users run in a role that is assigned a locking web screen version (see <a href="#the-locked-units-of-measure-grid-a-web-screen-version">below</a>). Locations, product group (with the GL prompt answered Yes), supplier and location-supplier steps were accepted, so steps 3–6 are unverified only because the save never got past step 2. No item was created.</p>
+<h3 id="the-locked-units-of-measure-grid-a-web-screen-version">The locked Units of Measure grid: a web screen version</h3>
+<p>On the test tenant the Interactive <code>Item</code> window's Units of Measure grid is read-only because of a <strong>web-client DynaChange screen version</strong> on the grid's datawindow, <code>w_inventory_sheet.tab_1.TABPAGE_2.tp_2_dw_2.d_inventory_item_unit</code>. The version sets <code>IsDisabled</code> on the grid's fields and is assigned to several roles, including <code>ALL</code>. <code>ALL</code> is an ordinary role that a user holds through <code>users.role_uid</code>, like any other, not a wildcard for every user. The Interactive API applies it to the session exactly as the web client does.</p>
+<p><strong>This is not a classic screen version.</strong> Web-client screen versions are built in the web client's <strong>Version Manager</strong> (<strong>Application &gt; DynaChange Organizer &gt; Version Manager</strong>) and stored in three tables that the classic versions don't use:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Table</th>
+<th>What it holds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>design</code></td>
+<td>One row per version: <code>design_uid</code>, <code>name</code>, <code>description</code>, <code>location</code> (the full datawindow path), <code>design_type</code> <code>S</code></td>
+</tr>
+<tr>
+<td><code>modification</code></td>
+<td>The version's property changes, one row per <code>object_name</code> (column) and <code>property_name</code>, for example <code>IsDisabled</code> = <code>true</code></td>
+</tr>
+<tr>
+<td><code>assignment</code></td>
+<td>Who gets the version: one row per role (<code>assignment_type</code> <code>1</code>, <code>role_uid</code>) or user (<code>assignee</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Each web version also has a <code>custom_objects</code> row of type <code>W</code> that points at its <code>design_uid</code>. The classic screen versions (<code>custom_objects</code> type <code>R</code>) and the DynaChange field-security tables <code>dc_security</code> / <code>dc_security_detail</code> never show it, so a check of those tables finds nothing.</p>
 <p>What the window reports:</p>
 <ul>
-<li><strong>All 11 fields</strong> of <code>TABPAGE_2.tp_2_dw_2</code> come back <code>Enabled: false</code> in <code>GET /v2/window</code>: <code>unit_id</code>, <code>unit_description</code>, <code>unit_size</code>, the four unit flags, <code>base_unit_flag</code>, <code>base_unit_is_item_uom</code>, <code>delete_flag</code> and <code>unit_of_measure</code>. <code>PUT /v2/change</code> on <code>unit_id</code> or <code>unit_size</code> returns HTTP 400 <code>Column is disabled</code>.</li>
-<li><strong>The lock is the same for a new item and an existing one.</strong> It is not new-item sequencing: an existing item with its units already set shows the same 11 disabled fields.</li>
-<li><strong>There is no tool to add a unit.</strong> <code>GET /v2/tools</code> with <code>dwName=tp_2_dw_2</code> lists only the standard menu.</li>
-<li><a href="recipes/window-sql-information.html">SQL Information</a> on <code>unit_id</code> reports an ordinary editable column: <code>char(8)</code>, update table <code>item_uom</code>, window <code>w_inventory_sheet</code>.</li>
+<li><strong>All 11 fields</strong> of <code>TABPAGE_2.tp_2_dw_2</code> come back <code>Enabled: false</code> in <code>GET /v2/window</code>: <code>unit_id</code>, <code>unit_description</code>, <code>unit_size</code>, the four unit flags, <code>base_unit_flag</code>, <code>base_unit_is_item_uom</code>, <code>delete_flag</code> and <code>unit_of_measure</code>. <code>PUT /v2/change</code> on <code>unit_id</code> or <code>unit_size</code> returns HTTP 400 <code>Column is disabled</code>. The locking version carries <code>IsDisabled</code> for nine of them, every field except <code>unit_description</code> and <code>unit_of_measure</code>; why those two are disabled is not established.</li>
+<li><strong>The lock is the same for a new item and an existing one</strong>, because the version applies to the datawindow, not to the record.</li>
+<li><strong>There is no tool to add a unit.</strong> <code>GET /v2/tools</code> with <code>dwName=tp_2_dw_2</code> lists only the standard menu. In the web client the same grid shows no add-row button: the window design it loads (<code>POST {ui}/ui/full/v2/window/page/design</code>) has <code>"AddRow": false</code> on <code>tp_2_dw_2</code> and <code>IsDisabled: true</code> on the unit fields.</li>
+<li><a href="recipes/window-sql-information.html">SQL Information</a> on <code>unit_id</code> reports an ordinary editable column (<code>char(8)</code>, update table <code>item_uom</code>, window <code>w_inventory_sheet</code>), because the base datawindow is not what disables it.</li>
 </ul>
-<p>What it is <strong>not</strong>:</p>
-<ul>
-<li><strong>Not a screen version.</strong> The test tenant has 134 <code>w_inventory_sheet</code> screen versions in <code>custom_objects</code>, the same set as production, and none of them touches <code>tp_2_dw_2</code> or the units of measure. The DynaChange field-security tables <code>dc_security</code> and <code>dc_security_detail</code> are empty.</li>
-<li><strong>Not a role difference.</strong> The API users on both tenants run as the same role.</li>
-<li><strong>Not a setting.</strong> No units-of-measure system setting differs between the two tenants.</li>
-<li><strong>Not the build.</strong> The session-create response reports <code>fullversion</code> <code>26.1.5950.0</code> on the test tenant and on production.</li>
-</ul>
-<p>Still open: a lock in the base datawindow that the web client lifts with its own call sequence. To test that, capture the web client adding a unit to a new item (<a href="#6-browser-devtools">Browser DevTools</a>) and replay its requests.</p>
+<h4 id="fix">Fix</h4>
+<p>Use either route:</p>
+<ol>
+<li><strong>Create the item as a user whose role is not assigned a locking version.</strong> On the test tenant a second version on the same datawindow changes only tab order and leaves the grid editable; a user in one of its roles, or in a role with no version on the grid, can enter units. Note that a version can also be assigned to a user directly, so check both the user's role and the user ID. This route follows from the version assignments and was not run through the API on the test tenant.</li>
+<li><strong>Use the <a href="11-Inventory-REST-API.html#minimum-create-payload">Inventory REST create</a>.</strong> It doesn't open the <code>Item</code> window, so no screen version applies.</li>
+</ol>
+<p>Don't remove or reassign a version that other users depend on to make an API call work; the version is a deliberate restriction for those roles.</p>
+<h4 id="check-for-a-web-screen-version-on-the-grid">Check for a web screen version on the grid</h4>
+<p>Run this read-only query against the P21 database. It lists every web screen version on the datawindow, each property it changes and each role or user it is assigned to. Change the <code>LIKE</code> pattern to check another window's datawindow.</p>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">d</span><span class="p">.</span><span class="n">design_uid</span><span class="p">,</span><span class="w"> </span><span class="n">d</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">d</span><span class="p">.</span><span class="n">description</span><span class="p">,</span>
+<span class="w">       </span><span class="n">m</span><span class="p">.</span><span class="n">object_name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">property_name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">property_value</span><span class="p">,</span>
+<span class="w">       </span><span class="n">a</span><span class="p">.</span><span class="n">assignment_type</span><span class="p">,</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="n">assignee</span><span class="p">,</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="k">role</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">design</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="p">(</span><span class="n">NOLOCK</span><span class="p">)</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">modification</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="p">(</span><span class="n">NOLOCK</span><span class="p">)</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">design_uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">d</span><span class="p">.</span><span class="n">design_uid</span>
+<span class="k">LEFT</span><span class="w"> </span><span class="k">JOIN</span><span class="w"> </span><span class="k">assignment</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="p">(</span><span class="n">NOLOCK</span><span class="p">)</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="n">design_uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">d</span><span class="p">.</span><span class="n">design_uid</span>
+<span class="k">LEFT</span><span class="w"> </span><span class="k">JOIN</span><span class="w"> </span><span class="n">roles</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="p">(</span><span class="n">NOLOCK</span><span class="p">)</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">role_uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="n">role_uid</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">d</span><span class="p">.</span><span class="k">location</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;%tp_2_dw_2.d_inventory_item_unit&#39;</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">property_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;IsDisabled&#39;</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">d</span><span class="p">.</span><span class="n">design_uid</span><span class="p">,</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="n">assignee</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">object_name</span><span class="p">;</span>
+</code></pre></div>
+
+<p>A version that returns <code>IsDisabled</code> = <code>true</code> rows and is assigned to the API user's role is the lock. To find that role, read <code>users.role_uid</code> for the API user and join it to <code>roles</code>. To see every property a version changes, drop the <code>property_name</code> filter. To check one column across all windows, filter on <code>m.object_name</code> instead of <code>d.location</code>.</p>
 <blockquote>
-<p><strong>Verified</strong> on play 26.1.5950.0, 2026-10-17 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/216">#216</a>): the grid's <code>Enabled</code> flags, the <code>Column is disabled</code> responses and the tools listing for an unsaved new item and for an existing item (never saved); the screen versions, <code>dc_security*</code> and the build on play. The production comparisons (screen-version set, settings, build) are read-only reads from the same day. — <em>@mrwuss</em></p>
+<p><strong>Verified</strong> on play 26.1.5950.0, 2026-10-17 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/216">#216</a>, <a href="https://github.com/mrwuss/p21-api-documentation/issues/218">#218</a>): the grid's <code>Enabled</code> flags, the <code>Column is disabled</code> responses and the tools listing for an unsaved new item and for an existing item (never saved); a read-only capture of the web client opening the same item, which shows the same lock; and the <code>design</code>, <code>modification</code> and <code>assignment</code> rows above, read with the check query. Production has the same version with the same assignments (read-only read, same day), which suggests the September 2026 production run in the credit above used a user whose role is not assigned the locking version; that run's user role was not recorded, so this is not confirmed. — <em>@mrwuss</em></p>
 </blockquote>
 <h2 id="adding-a-document-link-in-the-item-window">Adding a Document Link in the Item Window</h2>
 <p>Item links — the <strong>Document Links</strong> tab — cannot be added through the Transaction API: the <code>Item</code> and <code>Assembly</code> services both expose <code>DOCUMENT_LINK.document_link</code>, and both refuse <code>link_name</code> with <code>Column is disabled</code>. The Interactive <code>Item</code> window adds them the way the client does:</p>
@@ -6335,7 +6373,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <li><a href="#production-order-notes-header">Production Order Notes (Header)</a></li>
 <li><a href="#standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows (Item/Customer/Supplier)</a></li>
 <li><a href="#creating-an-item-in-the-item-window">Creating an Item in the Item Window</a><ul>
-<li><a href="#the-locked-units-of-measure-grid-open-limitation">The locked Units of Measure grid (open limitation)</a></li>
+<li><a href="#the-locked-units-of-measure-grid-a-web-screen-version">The locked Units of Measure grid: a web screen version</a></li>
 </ul>
 </li>
 <li><a href="#adding-a-document-link-in-the-item-window">Adding a Document Link in the Item Window</a></li>
