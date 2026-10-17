@@ -11,7 +11,7 @@ Steps 0–5 are one runnable program, in Python and C#, that runs each step and 
 ## Inputs
 
 - The new part number (here `ASSY-002`) and a **template part** in the same family (here `ASSY-001`) with a known-good BOM, contract line and locations.
-- The customer's job contract (`job_no` `JOB-001`, `contract_no` `CONTRACT-001`), and its pricing rule (price from cost and target margin — a business input, not something P21 derives). The contract's customer must have **Job/Contract Pricing** enabled; on the test tenant `customer.job_pricing` could not be turned on through either API — the Transaction API refused it (`Column is disabled: job_pricing`; with `IgnoreDisabled: true` it reported `Succeeded: 1` and wrote nothing) and so did the Interactive `Customer` window.
+- The customer's job contract (`job_no` `JOB-001`, `contract_no` `CONTRACT-001`), and its pricing rule (price from cost and target margin — a business input, not something P21 derives). The contract's customer must have **Job/Contract Pricing** enabled. A customer created through the API usually has `use_vendor_contracts_flag = Y`, which disables `customer.job_pricing`; set `use_vendor_contracts_flag = N` first, then `job_pricing = Y`, in the same `Customer` transaction ([03 § Customer Service — Turning On Job/Contract Pricing](../03-Transaction-API.md#customer-service-turning-on-jobcontract-pricing)).
 - The locations the part needs: here sales location `10`, a parts location `20` and a make (WIP) location `30`.
 - Any **header fields your production orders require.** On the test tenant two user-defined header columns were required, and the save named them one at a time (*"'…' is a required column."*). Pass them with `--header-field name=value`.
 
