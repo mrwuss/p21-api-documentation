@@ -2940,9 +2940,9 @@ On a 26.1 play tenant the `Order` window opened through the Interactive API defa
 - **The wizard did not open for an internal supplier.** When the item's primary supplier at the location was the company's own intercompany supplier, the save succeeded with **no** wizard and **no** PO, whether `c_create_po` was set on the new order or on the re-opened one. Changing the primary supplier to an outside supplier, with everything else the same, made the wizard open.
 - `c_create_po` needs a user with a Buyer ID. The password user without one got `Status: 2`, *"To create a PO, you must have a valid Buyer ID."*; the examples take a consumer-key option (`P21_CONSUMER_KEY` + `P21_CONSUMER_USERNAME`) to run as a user who has one.
 
-### Why this cannot start in the Transaction API
+### Where a direct-ship line can start
 
-The line's `disposition` field is the trigger for a direct-ship line, and it is a **disabled column** — `Column is disabled: disposition`, verified both through `/transaction` and through an interactive change on an existing line. Its valid values are `B`, `C`, `D`, `H`, `M`, `P`, `S`; `D` is direct ship. Set it **as the line is entered**, in the Interactive window — there is no stateless path.
+The line's `disposition` field is the trigger for a direct-ship line. Its valid values are `B`, `C`, `D`, `H`, `M`, `P`, `S`; `D` is direct ship. You can set it at line entry or on a saved line, through the Interactive window or `/transaction`. The column is disabled only while the line holds allocated stock; see [Changing a saved line to direct ship](#changing-a-saved-line-to-direct-ship). Creating the PO is the step that needs the Interactive API, because it runs through the wizard.
 
 ### The flow
 
@@ -3040,23 +3040,86 @@ Driving the window instead of posting a transaction confirmed a direct ship on p
 
 > **Credit:** *@mrwuss* — verified on play 26.1, October 2026 ([#169](https://github.com/mrwuss/p21-api-documentation/issues/169)). The Transaction API path [above](#the-transaction-api-path-works-on-26159500) is the one [Alex Westemeier](https://github.com/AWestemeier) reported working on his play tenant in August 2026 (`receive_all = 'Y'`, `print_invoice = 'N'`, `fax_invoice = 'N'`, and **never** `c_email_invoice`). It returned an empty result on 26.1.5940.0 and confirmed in full on 26.1.5950.0, 2026-10-10 (scratch test, read back as above).
 
-### Setting `disposition` — only at line entry
+### Changing a saved line to direct ship
 
-`disposition` behaves as a **disabled column everywhere except a line being entered**. Verified three ways on 26.1:
+`disposition` on a **saved** order line is editable through both APIs. What disables it is **allocated stock on the line**, not the line being saved: a line that holds an allocation returns `Column is disabled: disposition` from every surface, and a line with no allocation accepts `D`. Release the allocation first and the column opens. Verified on play 26.1.5950.0, 2026-10-17, on fresh orders, for both a password login and a consumer-key service account:
 
-| Attempt | Result |
-|---|---|
-| `POST /transaction` with `disposition` on `TP_ITEMS.items` | `Column is disabled: disposition` |
-| Interactive change on an **existing** saved line | `Column is disabled: disposition` |
-| Interactive change on the line **as it is entered** | **`Status: 1`** — accepted *(for a user permitted to set it)* |
+| Line state | Surface | Result |
+|---|---|---|
+| Saved, nothing allocated (`disposition = 'B'`) | Interactive change | **`Status: 1`**, saved as `D` |
+| Saved, nothing allocated | `POST /transaction` | **`Succeeded: 1`** once `po_cost` is in the row (see below) |
+| Saved, allocated (`qty_allocated > 0`, `disposition` blank) | Interactive change or `/transaction` | `Column is disabled: disposition` |
+| Saved, allocated, `TP_EXTDINFO.extd_info.allocated_qty = 0` first | Interactive change or `/transaction` | **accepted**, saved as `D` with `qty_allocated = 0` |
+| Line already on a pick ticket | — | not tested; reverse the pick ticket first |
 
-So there is no way to convert an existing order line to direct ship through either API, and no stateless path at all. The line must be created in the window with `disposition = 'D'` set during entry.
+Two rules hold on every surface:
 
-> **Correction for quote mode (October 2026).** A later run on play 26.1 found that the window had been opening in [quote mode](#set-quote-to-off-first-the-window-can-open-in-quote-mode). With `quote = OFF` set first, the **service account** set `disposition = D` at line entry with `Status: 1`, and the wizard then built a `po_type = 'D'` PO. Whether the A/B result below was also a quote-mode artifact has not been re-tested; check `quote` before you conclude a user is gated. *(@mrwuss, [#169](https://github.com/mrwuss/p21-api-documentation/issues/169).)*
+- **Send the code value `D`.** The display text `Direct Ship` is refused with `Invalid disposition value: Direct Ship`.
+- **Releasing the allocation resets `disposition` to `B`** and enables the column in the same response. Order the edits allocation first, then `disposition`, then `po_cost`.
 
-> **And it is user-gated on top of that.** In a controlled A/B on the same tenant — identical request sequence, two tokens differing only in the user — a CSR login set `disposition` successfully while a **service account was refused with `Column is disabled: disposition`**, even after that account was given a Buyer ID. The Buyer ID clears the `c_create_po` gate; it does not clear this one. See [`Column is disabled` Can Mean "Disabled For You"](03-Transaction-API.md#column-is-disabled-can-mean-disabled-for-you).
->
-> **Consequence for automation:** a service account may be able to *trigger* the wizard and still be unable to *create the line that feeds it*. Verify both gates against the account that will actually run the integration before designing around this flow.
+Complete Python and C# programs for the Interactive path: [order-line-to-direct-ship](recipes/order-line-to-direct-ship.md).
+
+#### Interactive API
+
+| Step | Call | Body |
+|---|---|---|
+| 1 | `POST {ui}/api/ui/interactive/sessions` | `{"ResponseWindowHandlingEnabled": true}` |
+| 2 | `POST {ui}/api/ui/interactive/v2/window` | `{"ServiceName": "Order"}` |
+| 3 | `PUT {ui}/api/ui/interactive/v2/change` | `quote` = `OFF`, then `order_no` = `1001234` on `TABPAGE_1` / `order` |
+| 4 | `PUT {ui}/api/ui/interactive/v2/tab` | `{"WindowId": "{windowId}", "PageName": "TP_ITEMS"}` |
+| 5 | `GET {ui}/api/ui/interactive/v2/data?id={windowId}` | find the row in `items` by `user_line_no` (`"001"`); the grid has no `line_no` column |
+| 6 | `PUT {ui}/api/ui/interactive/v2/row` | `{"WindowId": "{windowId}", "DatawindowName": "items", "Row": n}` (1-based) |
+| 7 | *only if allocated:* `PUT .../v2/tab` `TP_EXTDINFO`, then `PUT .../v2/change` | `allocated_qty` = `0` on `TP_EXTDINFO` / `extd_info`; then back to `TP_ITEMS` |
+| 8 | `PUT {ui}/api/ui/interactive/v2/change` | `disposition` = `D` on `TP_ITEMS` / `items` |
+| 9 | `PUT {ui}/api/ui/interactive/v2/change` | `po_cost` = `8` on `TP_ITEMS` / `items` (optional; flows to the PO line price) |
+| 10 | *to create the PO in the same save:* `PUT .../v2/tab` `TABPAGE_1`, `PUT .../v2/change` | `c_create_po` = `ON` on `TABPAGE_1` / `order` (needs a Buyer ID) |
+| 11 | `PUT {ui}/api/ui/interactive/v2/data` | `"{windowId}"` (save) |
+| 12 | `DELETE` the window and the session | — |
+
+With `c_create_po = ON`, the save in step 11 returns `Status: 3` and opens the "Create RFQ/Purchase Orders" wizard (`w_create_po_from_oe_wzd`) on the re-opened order, with `quote_item = N`. Drive it as in [The flow](#the-flow): identify it by `cb_finish`, press `cb_next` (**the PO is committed here**), read `po_no` from `po_print`, then press `cb_finish`. Answer `w_message` prompts such as *"The order line does not have a PO Cost specified. Proceed?"* with `cb_1`. One save is enough: the advice in [The flow](#the-flow) to save the `D` line and re-open before setting `c_create_po` is not needed on 26.1.5950.0. Two saves also work.
+
+Result, read back from the tables:
+
+- `oe_line.disposition = 'D'`, `qty_allocated = 0`, `po_cost = 8`.
+- `oe_line_po`: `po_no = 500100`, `po_line_number = 1`, `connection_type = 'P'`, `quantity_on_po = 1`.
+- `po_hdr`: `po_type = 'D'`, `approved = 'Y'`, the item's primary supplier at the location.
+- `po_line.unit_price = 8` (from `po_cost`).
+- `inv_loc.qty_allocated` for the item no longer counts the line.
+
+#### Transaction API
+
+The Transaction API changes the disposition but **cannot create the PO**: `c_create_po` opens a wizard, which the Transaction API [cannot drive](03-Transaction-API.md#limitations). Use it to convert lines in bulk, then run the PO wizard in the Interactive API, or let a buyer generate the POs.
+
+```http
+POST {ui}/api/v2/transaction
+{
+  "Name": "Order",
+  "UseCodeValues": false,
+  "Transactions": [{
+    "Status": "New",
+    "DataElements": [
+      {"Name": "TABPAGE_1.order", "Type": "Form", "Keys": ["order_no"],
+       "Rows": [{"Edits": [{"Name": "order_no", "Value": "1001234"}], "RelativeDateEdits": []}]},
+      {"Name": "TP_ITEMS.items", "Type": "List", "Keys": ["user_line_no"],
+       "Rows": [{"Edits": [{"Name": "user_line_no", "Value": "001"}], "RelativeDateEdits": []}]},
+      {"Name": "TP_EXTDINFO.extd_info", "Type": "Form", "Keys": [],
+       "Rows": [{"Edits": [{"Name": "allocated_qty", "Value": "0"}], "RelativeDateEdits": []}]},
+      {"Name": "TP_ITEMS.items", "Type": "List", "Keys": ["user_line_no"],
+       "Rows": [{"Edits": [{"Name": "user_line_no", "Value": "001"},
+                           {"Name": "disposition", "Value": "D"},
+                           {"Name": "po_cost", "Value": "8"}], "RelativeDateEdits": []}]}
+    ]
+  }]
+}
+```
+
+- The first `TP_ITEMS.items` element makes the line the active row, so the `TP_EXTDINFO.extd_info` form edits that line. Leave out both of these elements when the line holds no allocation.
+- **Include `po_cost`.** Without it the save raises *"The order line does not have a PO Cost specified. Proceed with accepting the order line item?"*, the Transaction API answers it `No`, and the result is `Failed: 1` with nothing written.
+- Without the allocation release, an allocated line fails with `General Exception: Column is disabled: disposition`.
+
+> **Credit:** *@mrwuss* — verified on play 26.1.5950.0, 2026-10-17.
+
+> **The service-account A/B, re-read.** An earlier A/B found a CSR login could set `disposition` and a service account could not. On 2026-10-17 the same kind of consumer-key service account set `D` on saved, unallocated lines through both surfaces, and on an allocated line once the allocation was released; the password login was refused on an allocated line until it released the allocation. On this tenant, allocation was the gate in every run, not the user. If you see `Column is disabled: disposition`, read `oe_line.qty_allocated` before you suspect roles.
 
 ### Verified run
 

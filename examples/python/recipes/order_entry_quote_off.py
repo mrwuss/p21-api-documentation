@@ -168,7 +168,7 @@ def main() -> None:
         oe_line_uid = event_value(result, "keygenerated", "value")
         s.change(window, "TP_ITEMS", "items", "unit_quantity", args.quantity)
         if args.direct_ship:
-            s.change(window, "TP_ITEMS", "items", "disposition", "D")  # only at line entry
+            s.change(window, "TP_ITEMS", "items", "disposition", "D")  # at entry, or later once the line holds no allocation
             s.change(window, "TP_ITEMS", "items", "po_cost", args.po_cost)
             s.select_tab(window, "TABPAGE_1")
             s.change(window, "TABPAGE_1", "order", "c_create_po", "ON")

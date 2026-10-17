@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">27</span></summary>
+            <summary>Recipes <span class="nav-count">28</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -633,6 +633,7 @@
             <li><a href="recipes/item-document-links.html">Attach a Document to an Item, Assembly or Kit (Document Links)</a></li>
             <li><a href="recipes/link-production-order.html">Link an Existing Production Order to a Sales-Order Line</a></li>
             <li><a href="recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
+            <li><a href="recipes/order-line-to-direct-ship.html">Change a Saved Order Line to Direct Ship</a></li>
             <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
             <li><a href="recipes/purchase-receive-vouch.html">Purchasing: Stock PO → Receipt → Voucher, and Drop Ship</a></li>
@@ -1856,6 +1857,9 @@ HTTP 400
 </tbody>
 </table></div>
 <p>Both users could open the window, load the order, and set every other field on the line. Only this column differed, and nothing in the response says <em>why</em>.</p>
+<blockquote>
+<p><strong>Check allocation first.</strong> A re-test on play 26.1.5950.0 (2026-10-17) found a stronger cause for this particular refusal: <code>disposition</code> is disabled on any line that holds allocated stock, for every user. The same service account set <code>D</code> on unallocated lines, and on allocated lines after <code>TP_EXTDINFO.extd_info.allocated_qty = 0</code>. The general rule in this section still stands: <code>Column is disabled</code> can come from roles and DynaChange rules. Rule out the record's own state before you change a role. See <a href="04-Interactive-API.html#changing-a-saved-line-to-direct-ship">Changing a saved line to direct ship</a>.</p>
+</blockquote>
 <p><strong>What makes a column disabled for a user:</strong> DynaChange data-change rules scoped to a role, Application Security settings, and window-level permissions — the same machinery documented under <a href="#dynachange-and-popup-handling">DynaChange and Popup Handling</a> and <a href="00-Authentication.html#application-security-settings-that-affect-api-access">Application Security settings</a>. The API surfaces all of it as one undifferentiated message.</p>
 <p><strong>What this means in practice:</strong></p>
 <ul>

@@ -165,7 +165,7 @@ def enter_direct_ship_order(rb: P21Runbook, args: argparse.Namespace) -> str:
               "requested_date": (TODAY + timedelta(days=2)).isoformat(),
               "po_no": f"{args.tag}-B", "taker": args.taker}
     line = [("oe_order_item_id", args.ds_item), ("unit_quantity", args.ds_qty),
-            ("disposition", "D"),             # only accepted while the line is entered
+            ("disposition", "D"),             # at entry, or later once the line holds no allocation
             ("unit_price", args.ds_price),
             ("po_cost", args.ds_po_cost)]     # flows to the PO line's price
     order_no = enter_order(rb, header, [line])

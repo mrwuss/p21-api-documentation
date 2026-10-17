@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">27</span></summary>
+            <summary>Recipes <span class="nav-count">28</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -633,6 +633,7 @@
             <li><a href="recipes/item-document-links.html">Attach a Document to an Item, Assembly or Kit (Document Links)</a></li>
             <li><a href="recipes/link-production-order.html">Link an Existing Production Order to a Sales-Order Line</a></li>
             <li><a href="recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
+            <li><a href="recipes/order-line-to-direct-ship.html">Change a Saved Order Line to Direct Ship</a></li>
             <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
             <li><a href="recipes/purchase-receive-vouch.html">Purchasing: Stock PO → Receipt → Voucher, and Drop Ship</a></li>
@@ -942,6 +943,10 @@
 <tr>
 <td><strong>Peg a PO line to the sales order it was bought for</strong> (<code>oe_line_po</code>)</td>
 <td><a href="02-OData-API.html#oe_line_po-holds-stale-links-join-on-both-keys-and-filter-delete_flag">02 § <code>oe_line_po</code> holds stale links</a> — join on both key pairs and filter <code>delete_flag</code>; a deleted PO leaves its sales lines open with nothing on order</td>
+</tr>
+<tr>
+<td><strong>Convert an existing order line to direct ship</strong> — docs said it was refused</td>
+<td><a href="recipes/order-line-to-direct-ship.html">recipe: order-line-to-direct-ship</a> · <a href="04-Interactive-API.html#changing-a-saved-line-to-direct-ship">04 § Changing a saved line to direct ship</a> — the gate is <strong>allocated stock</strong>, not the saved state: set <code>TP_EXTDINFO.extd_info.allocated_qty = 0</code>, then <code>disposition = D</code>; <code>/transaction</code> also needs <code>po_cost</code></td>
 </tr>
 <tr>
 <td>Confirm a <strong>direct ship</strong> (<code>DirectShipConfirmation</code>)</td>

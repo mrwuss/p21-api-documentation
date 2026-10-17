@@ -123,7 +123,7 @@ Path B call plan (Interactive API, ResponseWindowHandlingEnabled):
                     new[]
                     {
                         ("oe_order_item_id", dsItem), ("unit_quantity", dsQty),
-                        ("disposition", "D"),          // only accepted while the line is entered
+                        ("disposition", "D"),          // at entry, or later once the line holds no allocation
                         ("unit_price", dsPrice),
                         ("po_cost", dsPoCost),         // flows to the PO line's price
                     },
