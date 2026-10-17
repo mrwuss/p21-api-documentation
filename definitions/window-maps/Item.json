@@ -732,6 +732,7 @@
      "update_table": "inv_mast",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_mast",
       "discount_group",
@@ -1151,12 +1152,12 @@
        "basis": "probed"
       },
       "sales_discount_group_desc": {
-       "column": "inv_mast.discount_group_description",
+       "column": "discount_group.discount_group_description",
        "expression": null,
        "basis": "probed"
       },
       "purchase_discount_group_desc": {
-       "column": "inv_mast.discount_group_description",
+       "column": "discount_group.discount_group_description",
        "expression": null,
        "basis": "probed"
       },
@@ -1190,6 +1191,7 @@
      "update_table": "item_uom",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "item_uom",
       "unit_of_measure",
@@ -1329,6 +1331,7 @@
      "update_table": "alternate_code",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "alternate_code",
       "inv_mast"
@@ -1379,6 +1382,7 @@
      "update_table": "item_conversion",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "item_conversion",
       "inv_mast"
@@ -1545,6 +1549,7 @@
      "update_table": "inv_mast",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_mast",
       "discount_group",
@@ -1712,6 +1717,7 @@
      "update_table": "inventory_supplier",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inventory_supplier",
       "inv_mast",
@@ -1776,8 +1782,8 @@
        "basis": "probed"
       },
       "division_name": {
-       "column": "inventory_supplier.division_name",
-       "expression": null,
+       "column": null,
+       "expression": "division_name",
        "basis": "probed"
       },
       "cf_chgd_certificate_of_origin_exp_date": {
@@ -1815,6 +1821,7 @@
      "update_table": "inventory_supplier",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inventory_supplier",
       "inv_mast",
@@ -2058,13 +2065,13 @@
        "basis": "probed"
       },
       "auto_update_prices_flag": {
-       "column": "inventory_supplier.auto_update_prices_flag",
-       "expression": null,
+       "column": null,
+       "expression": "(the tool names inventory_supplier.auto_update_prices_flag; the SELECT does not read it)",
        "basis": "probed"
       },
       "auto_update_prices_source_flag": {
-       "column": "inventory_supplier.auto_update_prices_source_flag",
-       "expression": null,
+       "column": null,
+       "expression": "(the tool names inventory_supplier.auto_update_prices_source_flag; the SELECT does not read it)",
        "basis": "probed"
       },
       "certificate_of_origin_file_path": {
@@ -2103,8 +2110,8 @@
        "basis": "probed"
       },
       "c_unit_size": {
-       "column": "inventory_supplier.c_unit_size",
-       "expression": null,
+       "column": null,
+       "expression": "0.000000000",
        "basis": "probed"
       },
       "cf_rowinfo": {
@@ -2152,6 +2159,7 @@
      "update_table": "inv_sub",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_sub",
       "inv_mast"
@@ -2219,6 +2227,7 @@
      "update_table": "inv_accessory",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_accessory",
       "inv_mast"
@@ -2343,7 +2352,7 @@
   {
    "tab": "TABPAGE_LOT",
    "text": "Lot",
-   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "select_status": "selected",
    "datawindows": [
     {
      "name": "tabpage_lot",
@@ -2351,6 +2360,7 @@
      "update_table": "inv_mast_lot",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_mast_lot",
       "inv_mast",
@@ -2503,6 +2513,7 @@
      "update_table": "inv_mast",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_mast",
       "discount_group",
@@ -2649,7 +2660,7 @@
   {
    "tab": "ITEM_NOTES",
    "text": "Item Notes",
-   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "select_status": "selected",
    "datawindows": [
     {
      "name": "item_notes",
@@ -2657,6 +2668,7 @@
      "update_table": "note_area",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "note_area",
       "note",
@@ -2726,6 +2738,7 @@
      "update_table": "inv_mast",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_mast",
       "discount_group",
@@ -2919,6 +2932,7 @@
      "update_table": "inv_mast_links",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_mast_links"
      ],
@@ -3007,6 +3021,7 @@
      "update_table": "inv_mast",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_mast",
       "discount_group",
@@ -3048,6 +3063,7 @@
      "update_table": "inv_mast_assem_info",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_mast_assem_info"
      ],
@@ -3103,6 +3119,7 @@
      "update_table": "item_package_type",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "item_package_type",
       "inv_mast",
@@ -3255,6 +3272,7 @@
      "update_table": "problem_code_x_inv_mast",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "problem_code_x_inv_mast",
       "problem_code",
@@ -3298,9 +3316,9 @@
        "basis": "column"
       },
       "compute_1": {
-       "column": "problem_code_x_inv_mast.problem_code_uid",
-       "expression": null,
-       "basis": "position"
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
       }
      }
     }
@@ -3329,6 +3347,7 @@
      "update_table": "inventory_supplier_x_uom",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "item_uom",
       "inv_mast",
@@ -3427,6 +3446,7 @@
      "update_table": "inv_mast_trade",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_mast_trade",
       "company",
@@ -3759,6 +3779,7 @@
      "update_table": "document_link",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "document_link",
       "document_link_area",
@@ -3928,6 +3949,7 @@
      "update_table": "item_category_x_inv_mast",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "item_category_x_inv_mast",
       "item_category"
@@ -4011,6 +4033,7 @@
      "update_table": "inv_mast_strategic_pricing",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_mast_strategic_pricing",
       "company"
@@ -4071,6 +4094,7 @@
      "update_table": "core_status_family_detail",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "core_status_family_detail",
       "inv_mast",
@@ -4123,6 +4147,7 @@
      "update_table": "inv_mast_x_integration",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_mast_x_integration",
       "p21_integration_x_company",
@@ -4185,6 +4210,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": "the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active",
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -4253,6 +4279,7 @@
      "update_table": "p21_view_audit_trail_inv_mast_<id>",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": "the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active",
      "main_tables": [
       "p21_view_audit_trail_inv_mast_<id>"
      ],
@@ -4362,6 +4389,7 @@
      "update_table": "inv_loc",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_loc",
       "company",
@@ -4532,6 +4560,7 @@
      "update_table": "inv_loc",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_loc",
       "company",
@@ -4885,6 +4914,7 @@
      "update_table": "tax_jurisdiction",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "tax_jurisdiction",
       "tax_group_line",
@@ -5009,6 +5039,7 @@
      "update_table": "inv_loc",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_loc",
       "company",
@@ -5284,6 +5315,7 @@
      "update_table": "inv_loc",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_loc",
       "company",
@@ -5476,6 +5508,7 @@
      "update_table": "inv_loc",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_loc",
       "company",
@@ -5652,6 +5685,7 @@
      "update_table": "inv_loc",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_loc",
       "company",
@@ -6158,6 +6192,7 @@
      "update_table": "inv_loc",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_loc",
       "company",
@@ -6188,9 +6223,9 @@
       },
       {
        "n": 6,
-       "label": "'1if(requisition",
-       "expr": "\"Y\", \"Requisition Expense Acct:\", \"Asset Account:\")' = inv_loc.gl_account_no",
-       "kind": "computed expression (dw)"
+       "label": "'1if(requisition = \"Y\", \"Requisition Expense Acct:\", \"Asset Account:\")'",
+       "expr": "inv_loc.gl_account_no",
+       "kind": "table.column"
       },
       {
        "n": 10,
@@ -6306,6 +6341,7 @@
      "update_table": "inventory_supplier_x_loc",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inventory_supplier_x_loc",
       "inventory_supplier",
@@ -6475,9 +6511,9 @@
        "basis": "column"
       },
       "compute_1": {
-       "column": "inventory_supplier_x_loc.inventory_supplier_x_loc_uid",
-       "expression": null,
-       "basis": "position"
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
       },
       "cf_dfflag": {
        "column": null,
@@ -6499,6 +6535,7 @@
      "update_table": "item_lead_time",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "item_lead_time",
       "inv_mast",
@@ -6659,9 +6696,9 @@
        "basis": "column"
       },
       "compute_1": {
-       "column": "item_lead_time.item_lead_time_key",
-       "expression": null,
-       "basis": "position"
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
       }
      }
     }
@@ -6678,6 +6715,7 @@
      "update_table": "inv_loc_msp",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_loc",
       "location",
@@ -6767,9 +6805,9 @@
        "basis": "probed"
       },
       "compute_1": {
-       "column": "inv_loc_msp.inv_loc_msp_uid",
-       "expression": null,
-       "basis": "position"
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
       }
      }
     }
@@ -6786,6 +6824,7 @@
      "update_table": "inventory_supplier_x_loc",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inventory_supplier_x_loc",
       "inventory_supplier",
@@ -6931,6 +6970,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [

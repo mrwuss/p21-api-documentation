@@ -832,7 +832,7 @@
 </tbody>
 </table></div>
 <h3 id="basis">Basis</h3>
-<p><code>basis</code> says how a field was resolved. Of the 2,927 fields: 853 <code>probed</code>, 1,264 <code>column</code>, 312 <code>alias</code>, 267 <code>dw_name</code>, 211 <code>no_sql</code>, 20 <code>position</code>.</p>
+<p><code>basis</code> says how a field was resolved. Of the 2,927 fields: 853 <code>probed</code>, 1,264 <code>column</code>, 312 <code>alias</code>, 287 <code>dw_name</code>, 211 <code>no_sql</code>.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -852,10 +852,6 @@
 <tr>
 <td><code>column</code></td>
 <td>The field is the name of exactly one column in the <code>SELECT</code> (a name match).</td>
-</tr>
-<tr>
-<td><code>position</code></td>
-<td>The field is <code>compute_&lt;n&gt;</code>, the <code>SELECT</code>'s item <code>n</code>.</td>
 </tr>
 <tr>
 <td><code>dw_name</code></td>
@@ -883,9 +879,10 @@
 <p>These are what the SQL Information tool reported plus name matching, read from play. They were not write-tested field by field.</p>
 <ul>
 <li><strong>Check a mapping before you build a write on it.</strong> Re-ask the tool for that one field (<code>FieldName</code> set, see <a href="recipes/window-sql-information.html">Read a Window's SQL</a>), then save and read the record back.</li>
-<li><strong>Display and computed fields can be misreported</strong>, <code>probed</code> ones included. Customer <code>pending_payment_account_no_desc</code> is reported as <code>customer.po_no_required</code>, though its <code>SELECT</code> carries a blank literal; Item <code>sales_discount_group_desc</code> and <code>purchase_discount_group_desc</code> are reported as <code>inv_mast.discount_group_description</code>, though the descriptions come from the aliased <code>discount_group</code> joins. Read <code>select_sql</code> and <code>expression</code> next to <code>column</code> for any description or label field.</li>
-<li><strong>Column-report labels for computed columns are sometimes split in the wrong place.</strong> PowerBuilder <code>if(...)</code> labels were cut at a comma, quote or <code>=</code>, so a few <code>columns[]</code> entries and rows of the <code>&lt;Service&gt;.md</code> pages read as fragments (the audit-trail <code>Item ID</code> row is one). Use <code>select_sql</code> and <code>fields</code> for those.</li>
-<li><strong>A tab that was not selectable is less certain.</strong> Each tab carries <code>select_status</code>; for Order, 46 of 84 tabs read <code>selected</code> and the rest answered an HTTP 400 such as <em>Tab page is disabled and cannot be selected</em>. Do not rely on the datawindows listed under such a tab without re-reading them.</li>
+<li><strong>Only <code>probed</code> is the tool's own answer.</strong> <code>column</code>, <code>alias</code>, <code>dw_name</code> and <code>no_sql</code> are matches against the <code>SELECT</code> (2,074 of 2,927 fields), so read <code>select_sql</code> next to the column for any description or label field.</li>
+<li><strong>A window can blank a field the map still lists.</strong> Assembly <code>price_return_to_stock_components</code> is blanked in the window, yet the map matches both the column report and the <code>SELECT</code>; the map describes the datawindow, not what the window shows for your record.</li>
+<li><strong><code>expression</code> is not always SQL.</strong> For a field the <code>SELECT</code> does not read, it can hold a bare identifier (Customer <code>label_definition_id</code>) or a short sentence naming what the tool reported (Assembly <code>revision_level</code>). Treat <code>column: null</code> as "no stored column found", not as a computed value.</li>
+<li><strong><code>TIMESTAMP</code> datawindows are marked <code>off_tab</code>.</strong> The API cannot select a tab whose name is shared by several tabs, but SQL Information reads an instantiated datawindow whichever tab is active, so their <code>SELECT</code>s are present. In all, 12 datawindows carry this marker; check <code>select_status</code> on every other tab (for Order, 51 of 84 tabs read <code>selected</code>).</li>
 </ul>
 <h2 id="how-the-maps-were-made">How the maps were made</h2>
 <p>Each datawindow was read with the client's <strong>SQL Information</strong> tool through the API: <code>m_sqlinformation</code> on the Interactive API, the <code>SELECT</code> from the web client's <code>ui/full</code> surface, the column report from its <code>showreport</code> grid, and a per-field call (<code>FieldName</code> set) for every field the name matching left uncertain. The full method, with complete Python and C# programs, is <a href="recipes/window-sql-information.html">Read a Window's SQL</a>. The fields of each window come from its live definition, <code>GET /api/v2/definition/{Service}</code>.</p>

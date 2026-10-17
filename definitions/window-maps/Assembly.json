@@ -245,6 +245,7 @@
      "update_table": "assembly_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "assembly_hdr",
       "inv_mast",
@@ -440,8 +441,8 @@
        "basis": "probed"
       },
       "revision_level": {
-       "column": "item_revision.revision_level",
-       "expression": null,
+       "column": null,
+       "expression": "(the tool names item_revision.revision_level; the SELECT does not read it)",
        "basis": "probed"
       },
       "pricing_option": {
@@ -596,7 +597,7 @@
       },
       "copy_item_id": {
        "column": null,
-       "expression": "cc_copy_item_id",
+       "expression": "''",
        "basis": "probed"
       },
       "cf_dfflag": {
@@ -661,6 +662,7 @@
      "update_table": "document_link",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "document_link",
       "document_link_area",
@@ -848,6 +850,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": "the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active",
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -911,6 +914,7 @@
      "update_table": "p21_view_audit_trail_assembly_hdr_<id>",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": "the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active",
      "main_tables": [
       "p21_view_audit_trail_assembly_hdr_<id>"
      ],
@@ -948,9 +952,9 @@
       },
       {
        "n": 21,
-       "label": "'Item IDIF (source_area_cd",
-       "expr": "950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))' = item_id",
-       "kind": "computed expression (dw)"
+       "label": "'Item IDIF (source_area_cd = 950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))'",
+       "expr": "item_id",
+       "kind": "unqualified (alias, external or computed in SQL)"
       },
       {
        "n": null,
@@ -1031,6 +1035,7 @@
      "update_table": "assembly_line",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "assembly_line",
       "assembly_hdr",
@@ -1139,8 +1144,8 @@
        "basis": "probed"
       },
       "component_type": {
-       "column": "inv_mast_assem_info.component_type",
-       "expression": null,
+       "column": null,
+       "expression": "CASE assembly_hdr.hose_assembly_flag WHEN 'Y' THEN inv_mast_assem_info.component_type ELSE 300 END",
        "basis": "probed"
       },
       "operation_cd": {
@@ -1204,8 +1209,8 @@
        "basis": "probed"
       },
       "item_desc": {
-       "column": "inv_mast.item_desc",
-       "expression": null,
+       "column": null,
+       "expression": "COALESCE(service_labor.service_labor_desc, inv_mast_comp.item_desc)",
        "basis": "probed"
       },
       "cf_expandableindicator": {
@@ -1285,6 +1290,7 @@
      "update_table": "document_link",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "document_link",
       "document_link_area",
@@ -1442,6 +1448,7 @@
      "update_table": "note",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "note",
       "note_area",
@@ -1511,6 +1518,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [

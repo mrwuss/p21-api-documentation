@@ -102,8 +102,8 @@
 | `rental_item_flag` | `inv_mast.rental_item_flag` | probed |
 | `rental_item_uid` | `inv_mast.rental_item_uid` | probed |
 | `parent_item_desc` | `inv_mast.item_desc` | probed |
-| `sales_discount_group_desc` | `inv_mast.discount_group_description` | probed |
-| `purchase_discount_group_desc` | `inv_mast.discount_group_description` | probed |
+| `sales_discount_group_desc` | `discount_group.discount_group_description` | probed |
+| `purchase_discount_group_desc` | `discount_group.discount_group_description` | probed |
 | `rationalized` | computed: `CASE WHEN inv_mast.tpcx_status IS NOT NULL AND inv_mast.tpcx_status > 0 THEN 'Y' ELSE 'N' END` | probed |
 | `price_family_desc` | `price_family.price_family_desc` | probed |
 | `default_selling_unit` | computed: `(computed in the datawindow)` | probed |
@@ -271,7 +271,7 @@
 | `division_id` | `inventory_supplier.division_id` | probed |
 | `delete_flag` | `inventory_supplier.delete_flag` | probed |
 | `supplier_name` | `supplier.supplier_name` | probed |
-| `division_name` | `inventory_supplier.division_name` | probed |
+| `division_name` | computed: `division_name` | probed |
 | `cf_chgd_certificate_of_origin_exp_date` | computed: `(computed in the datawindow)` | probed |
 | `cf_edited_trade_cols` | computed: `(computed in the datawindow)` | probed |
 | `cf_chgd_certificate_of_origin_file_path` | computed: `(computed in the datawindow)` | probed |
@@ -309,8 +309,8 @@
 | `supplier_msds` | `inventory_supplier.msds` | probed |
 | `parker_part_length` | `inventory_supplier.parker_part_length` | probed |
 | `contract_number` | `inventory_supplier.contract_number` | probed |
-| `auto_update_prices_flag` | `inventory_supplier.auto_update_prices_flag` | probed |
-| `auto_update_prices_source_flag` | `inventory_supplier.auto_update_prices_source_flag` | probed |
+| `auto_update_prices_flag` | computed: `(the tool names inventory_supplier.auto_update_prices_flag; the SELECT does not read it)` | probed |
+| `auto_update_prices_source_flag` | computed: `(the tool names inventory_supplier.auto_update_prices_source_flag; the SELECT does not read it)` | probed |
 | `certificate_of_origin_file_path` | `inventory_supplier_trade.certificate_of_origin_file_path` | probed |
 | `certificate_of_origin_exp_date` | `inventory_supplier_trade.certificate_of_origin_exp_date` | probed |
 | `country_of_origin` | `inventory_supplier_trade.country_of_origin` | probed |
@@ -318,7 +318,7 @@
 | `manufacturing_class_desc` | `manufacturing_class.manufacturing_class_desc` | probed |
 | `supplier_name` | `supplier.supplier_name` | probed |
 | `c_unit_of_measure` | computed: `' '` | probed |
-| `c_unit_size` | `inventory_supplier.c_unit_size` | probed |
+| `c_unit_size` | computed: `0.000000000` | probed |
 | `cf_rowinfo` | computed: `(computed in the datawindow)` | probed |
 | `cf_edited_trade_cols` | computed: `(computed in the datawindow)` | probed |
 | `cf_chgd_certificate_of_origin_file_path` | computed: `(computed in the datawindow)` | probed |
@@ -625,7 +625,7 @@
 | `problem_code_id` | `problem_code.problem_code_id` | column |
 | `row_status_flag` | `problem_code_x_inv_mast.row_status_flag` | column |
 | `problem_code_desc` | `problem_code.problem_code_desc` | column |
-| `compute_1` | `problem_code_x_inv_mast.problem_code_uid` | position |
+| `compute_1` | computed: `(computed in the datawindow)` | dw_name |
 
 | # | Label | table.column / expression |
 |---|---|---|
@@ -838,6 +838,7 @@
 ### `TIMESTAMP.timestamp` (Audit Trail)
 
 - Update table: `none (external source)`
+- Mapped off-tab: the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active
 
 | Field | Stored in | Basis |
 |---|---|---|
@@ -859,6 +860,7 @@
 
 - Update table: `p21_view_audit_trail_inv_mast_<id>`
 - Tables in the SELECT: `p21_view_audit_trail_inv_mast_<id>`
+- Mapped off-tab: the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active
 
 | Field | Stored in | Basis |
 |---|---|---|
@@ -1270,7 +1272,7 @@
 |---|---|---|
 | 1 | Location ID: | `inv_loc.location_id` |
 | 2 | Company ID: | `inv_loc.company_id` |
-| 6 | '1if(requisition | `"Y", "Requisition Expense Acct:", "Asset Account:")' = inv_loc.gl_account_no` |
+| 6 | '1if(requisition = "Y", "Requisition Expense Acct:", "Asset Account:")' | `inv_loc.gl_account_no` |
 | 10 | Revenue Account: | `inv_loc.revenue_account_no` |
 | 11 | COS Account: | `inv_loc.cos_account_no` |
 | 13 | Company Name | `company.company_name` |
@@ -1300,7 +1302,7 @@
 | `manual_lead_time` | `inventory_supplier_x_loc.manual_lead_time` | column |
 | `supplier_name` | `supplier.supplier_name` | probed |
 | `division_name` | `division.division_name` | column |
-| `compute_1` | `inventory_supplier_x_loc.inventory_supplier_x_loc_uid` | position |
+| `compute_1` | computed: `(computed in the datawindow)` | dw_name |
 | `cf_dfflag` | computed: `(computed in the datawindow)` | dw_name |
 
 | # | Label | table.column / expression |
@@ -1340,7 +1342,7 @@
 | `receipt_date` | `item_lead_time.receipt_date` | column |
 | `estimated_lead_days` | `item_lead_time.estimated_lead_days` | column |
 | `edited` | `item_lead_time.edited` | column |
-| `compute_1` | `item_lead_time.item_lead_time_key` | position |
+| `compute_1` | computed: `(computed in the datawindow)` | dw_name |
 
 | # | Label | table.column / expression |
 |---|---|---|
@@ -1373,7 +1375,7 @@
 | `receipt_process_flag` | `inv_loc_msp.receipt_process_flag` | column |
 | `receipt_process_code` | `process.process_code` | probed |
 | `receipt_process_name` | `process.process_name` | probed |
-| `compute_1` | `inv_loc_msp.inv_loc_msp_uid` | position |
+| `compute_1` | computed: `(computed in the datawindow)` | dw_name |
 
 | # | Label | table.column / expression |
 |---|---|---|

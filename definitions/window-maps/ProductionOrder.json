@@ -867,6 +867,7 @@
      "update_table": "prod_order_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "prod_pick_ticket_hdr",
       "prod_order_hdr",
@@ -1298,6 +1299,7 @@
      "update_table": "prod_order_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "prod_order_hdr",
       "prod_pick_ticket_hdr",
@@ -1371,13 +1373,13 @@
        "basis": "column"
       },
       "item_id": {
-       "column": "inv_mast.item_id",
-       "expression": null,
+       "column": null,
+       "expression": "COALESCE(service_labor.service_labor_id, inv_mast.item_id)",
        "basis": "probed"
       },
       "item_desc": {
-       "column": "inv_mast.item_desc",
-       "expression": null,
+       "column": null,
+       "expression": "COALESCE(service_labor.service_labor_desc, inv_mast.item_desc)",
        "basis": "probed"
       },
       "unit_of_measure": {
@@ -1430,6 +1432,7 @@
      "update_table": "document_link",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "document_link",
       "document_link_area",
@@ -1629,6 +1632,7 @@
      "update_table": "note",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "note",
       "note_area",
@@ -1698,6 +1702,7 @@
      "update_table": "prod_order_line_process",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "prod_order_line_process",
       "prod_order_line",
@@ -2001,6 +2006,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": "the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active",
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -2064,6 +2070,7 @@
      "update_table": "p21_view_audit_trail_prod_order_hdr_<id>",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": "the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active",
      "main_tables": [
       "p21_view_audit_trail_prod_order_hdr_<id>"
      ],
@@ -2107,9 +2114,9 @@
       },
       {
        "n": 21,
-       "label": "'Item IDIF (source_area_cd",
-       "expr": "950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))' = item_id",
-       "kind": "computed expression (dw)"
+       "label": "'Item IDIF (source_area_cd = 950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))'",
+       "expr": "item_id",
+       "kind": "unqualified (alias, external or computed in SQL)"
       },
       {
        "n": null,
@@ -2195,6 +2202,7 @@
      "update_table": "prod_order_line",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "prod_order_line",
       "inv_mast",
@@ -2380,9 +2388,9 @@
        "basis": "alias"
       },
       "compute_1": {
-       "column": "inv_mast.item_id",
-       "expression": null,
-       "basis": "position"
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
       },
       "item_id": {
        "column": "inv_mast.item_id",
@@ -2414,6 +2422,7 @@
      "update_table": "prod_order_line_component",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "prod_order_line_component",
       "inv_mast",
@@ -2656,8 +2665,8 @@
        "basis": "column"
       },
       "item_desc": {
-       "column": "inv_mast.item_desc",
-       "expression": null,
+       "column": null,
+       "expression": "COALESCE(service_labor.service_labor_desc, inv_mast.item_desc)",
        "basis": "probed"
       },
       "cut_length_edited_flag": {
@@ -2760,6 +2769,7 @@
      "update_table": "prod_order_line_component",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "prod_order_line_component",
       "inv_mast",
@@ -3089,8 +3099,8 @@
        "basis": "alias"
       },
       "item_desc": {
-       "column": "inv_mast.item_desc",
-       "expression": null,
+       "column": null,
+       "expression": "COALESCE(service_labor.service_labor_desc, inv_mast.item_desc)",
        "basis": "probed"
       },
       "item_id_service_labor_id": {
@@ -3193,6 +3203,7 @@
      "update_table": "prod_order_line",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "prod_order_line",
       "assembly_hdr",
@@ -3471,6 +3482,7 @@
      "update_table": "prod_order_line_link",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "prod_order_line",
       "revision_transaction",
@@ -3588,13 +3600,13 @@
        "basis": "alias"
       },
       "trans_number": {
-       "column": "prod_order_line_link.trans_number",
-       "expression": null,
+       "column": null,
+       "expression": "0.",
        "basis": "probed"
       },
       "line_number": {
-       "column": "prod_order_line_link.line_number",
-       "expression": null,
+       "column": null,
+       "expression": "0.",
        "basis": "probed"
       },
       "release_number": {
@@ -3608,8 +3620,8 @@
        "basis": "probed"
       },
       "customer_id": {
-       "column": "prod_order_line_link.customer_id",
-       "expression": null,
+       "column": null,
+       "expression": "0.",
        "basis": "probed"
       },
       "customer_name": {
@@ -3618,8 +3630,8 @@
        "basis": "alias"
       },
       "qty_allocated": {
-       "column": "prod_order_line_link.qty_allocated",
-       "expression": null,
+       "column": null,
+       "expression": "0.0000",
        "basis": "probed"
       },
       "qty_remaining": {
@@ -3643,9 +3655,9 @@
        "basis": "probed"
       },
       "compute_1": {
-       "column": "prod_order_line_link.prod_order_number",
-       "expression": null,
-       "basis": "position"
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
       },
       "qty_remain_sum": {
        "column": null,
@@ -3677,6 +3689,7 @@
      "update_table": "note_area",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "note_area",
       "note",
@@ -3812,6 +3825,7 @@
      "update_table": "document_link",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "document_link",
       "document_link_area",
@@ -4029,6 +4043,7 @@
      "update_table": "prod_order_line",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "prod_order_line",
       "inv_mast",
@@ -4159,6 +4174,7 @@
      "update_table": "prod_order_line",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "prod_order_line",
       "inv_mast",
@@ -4333,6 +4349,7 @@
      "update_table": "prod_order_line_comp_frght",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "prod_order_line_comp_frght",
       "prod_order_line_component",
@@ -4420,9 +4437,9 @@
        "basis": "probed"
       },
       "compute_1": {
-       "column": "prod_order_line_comp_frght.po_no",
-       "expression": null,
-       "basis": "position"
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
       },
       "cf_adjustment": {
        "column": null,
@@ -4501,6 +4518,7 @@
      "update_table": "note",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "note",
       "note_area",
@@ -4570,6 +4588,7 @@
      "update_table": "oe_line_notepad",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_line_notepad",
       "oe_line",
@@ -4641,6 +4660,7 @@
      "update_table": "oe_line_notepad",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_line_notepad",
       "oe_line",
@@ -4712,6 +4732,7 @@
      "update_table": null,
      "update_table_note": "tool reported 'clause*/' (misparse of SQL comments; treat as unknown)",
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_loc",
       "address",
@@ -4878,9 +4899,9 @@
        "basis": "dw_name"
       },
       "compute_1": {
-       "column": "inv_loc.location_id",
-       "expression": null,
-       "basis": "position"
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
       },
       "cf_dfflag": {
        "column": null,
@@ -4895,6 +4916,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -4932,6 +4954,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [

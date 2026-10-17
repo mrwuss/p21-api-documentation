@@ -197,7 +197,7 @@
 |---|---|---|
 | `customer_id` | `customer.customer_id` | column |
 | `customer_type_cd` | `customer.customer_type_cd` | column |
-| `ship_to` | computed: `ship_to` | probed |
+| `ship_to` | computed: `'N'` | probed |
 | `customer_name` | `address.name` | probed |
 | `mail_address1` | `address.mail_address1` | column |
 | `mail_address2` | `address.mail_address2` | probed |
@@ -676,7 +676,7 @@
 | `taxable` | `oe_hdr_tax.taxable` | column |
 | `jurisdiction_desc` | `tax_jurisdiction.jurisdiction_desc` | column |
 | `flat_fee_amount` | `tax_jurisdiction.flat_fee_amount` | probed |
-| `compute_1` | `oe_hdr_tax.jurisdiction_id` | position |
+| `compute_1` | computed: `(computed in the datawindow)` | dw_name |
 | `tax_in_hundred` | computed: `(computed in the datawindow)` | probed |
 | `cf_dfflag` | computed: `(computed in the datawindow)` | dw_name |
 
@@ -733,8 +733,8 @@
 | `picking_status` | computed: `CASE WHEN COALESCE(oe_pick_ticket.invoice_no, 0)=0 THEN '' ELSE 'Shipped' END` | alias |
 | `percent_picked` | computed: `CASE WHEN COALESCE(oe_pick_ticket.invoice_no, 0)=0 THEN 0 ELSE 100 END` | alias |
 | `bin` | computed: `''` | alias |
-| `group_pick_ticket_hdr_uid` | `group_pick_ticket_hdr.group_pick_ticket_hdr_uid` | probed |
-| `gpt_picking_status` | computed: `gpt_picking_status` | probed |
+| `group_pick_ticket_hdr_uid` | computed: `CASE WHEN group_pick_ticket_hdr.transaction_type_cd = 1881 THEN group_pick_ticket_hdr.group_pick_ticket_hdr_uid ELSE NULL END` | probed |
+| `gpt_picking_status` | computed: `NULL` | probed |
 
 | # | Label | table.column / expression |
 |---|---|---|
@@ -1264,7 +1264,7 @@
 | `target_complete_date` | `activity_trans.target_complete_date` | column |
 | `completed_flag` | `activity_trans.completed_flag` | column |
 | `subject` | `activity_trans.subject` | column |
-| `compute_1` | `activity_trans.activity_id` | position |
+| `compute_1` | computed: `(computed in the datawindow)` | dw_name |
 
 | # | Label | table.column / expression |
 |---|---|---|
@@ -1335,6 +1335,7 @@
 ### `TIMESTAMP.timestamp` (Audit Trail)
 
 - Update table: `none (external source)`
+- Mapped off-tab: the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active
 
 | Field | Stored in | Basis |
 |---|---|---|
@@ -1355,6 +1356,7 @@
 
 - Update table: `p21_view_audit_trail_oe_hdr_<id>`
 - Tables in the SELECT: `p21_view_audit_trail_oe_hdr_<id>`
+- Mapped off-tab: the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active
 
 | Field | Stored in | Basis |
 |---|---|---|
@@ -1378,7 +1380,7 @@
 | 15 | New Value | `new_value` |
 | 18 | Date Created | `date_created` |
 | 19 | Created By | `created_by` |
-| 21 | 'Item IDIF (source_area_cd | `950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))' = item_id` |
+| 21 | 'Item IDIF (source_area_cd = 950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))' | `item_id` |
 | calc | Order No | `"IF ((source_area_cd = 1763 and key1_cd = 'service_labor_uid'), item_id,  IF (source_area_cd = 950, key1_value,  IF (key2_cd = 'item_service_uid',  Item_id + ' / ALL / ALL',  IF ( key2_cd = 'lot_cd', key2_value,   IF ( Len(auxiliary_value) > 0 AND source_area_cd IN (1544, 1250, 2531), auxiliary_value,  IF (source_area_cd = 1314 and table_changed = 'inv_mast_strategic_pricing', item_id + '/' + key3_value + IF (IsNull(key2_value), '', '/' + auxiliary_value),  IF ( key1_cd = 'inv_mast_uid', item_id, key1_value ) + IF ( IsNull ( key2_value) AND source_area_cd <> 1314, '', ' / ' + IF ( key2_cd = 'inv_mast_uid', item_id, IF ( IsNull ( key2_value ), 'ALL', key2_value ) )  + IF ( IsNull (key3_value) AND source_area_cd <> 1314, '', ' / ' + IF ( key3_cd = 'inv_mast_uid', item_id, IF ( IsNull ( key3_value ), 'ALL', key3_value ) ) ) )  ) ) ) ) ) )"` |
 | calc | 'Sub Line No | `` |
 
@@ -1416,7 +1418,7 @@
 | `customer_part_number` | `oe_line.customer_part_number` | column |
 | `estimated_labor_cost` | `oe_line_labor.estimated_labor_cost` | column |
 | `qty_available_to_make` | computed: `0.0000` | alias |
-| `list_price` | `inventory_supplier.list_price` | probed |
+| `list_price` | computed: `CASE WHEN COALESCE(inventory_supplier_x_loc.loc_list_price, 0) <> 0 THEN inventory_supplier_x_loc.loc_list_price ELSE inventory_supplier.list_price END` | probed |
 | `c_sum_comp_cost` | computed: `null` | alias |
 | `prev_profit_percent` | `oe_line_last_margin_price.prev_profit_percent` | column |
 | `cf_expandableindicator` | computed: `(computed in the datawindow)` | dw_name |
@@ -1425,7 +1427,7 @@
 | `cf_prev_unit_price` | computed: `(computed in the datawindow)` | dw_name |
 | `cf_prev_unit_qty_ordered` | computed: `(computed in the datawindow)` | dw_name |
 | `open_value` | computed: `(computed in the datawindow)` | probed |
-| `compute_1` | `inv_mast.item_id` | position |
+| `compute_1` | computed: `(computed in the datawindow)` | dw_name |
 | `bo_amount` | computed: `(computed in the datawindow)` | probed |
 | `bo_tax_amount` | computed: `(computed in the datawindow)` | probed |
 | `amt_cancelled` | computed: `(computed in the datawindow)` | probed |
@@ -1708,7 +1710,7 @@
 | `flat_fee_amount` | `tax_jurisdiction.flat_fee_amount` | column |
 | `item_id` | `inv_mast.item_id` | column |
 | `item_desc` | `inv_mast.item_desc` | column |
-| `compute_1` | `oe_line_tax.jurisdiction_id` | position |
+| `compute_1` | computed: `(computed in the datawindow)` | dw_name |
 | `tax_in_hundred` | computed: `(computed in the datawindow)` | probed |
 | `cf_dfflag` | computed: `(computed in the datawindow)` | dw_name |
 
@@ -1740,7 +1742,7 @@
 | `po_cost_profit` | computed: `100.00` | alias |
 | `unit_price` | `oe_line.unit_price` | column |
 | `oe_order_item_id` | `inv_mast.item_id` | probed |
-| `cost_price_page_desc` | `price_page.description` | probed |
+| `cost_price_page_desc` | computed: `NULL` | probed |
 | `unit_quantity` | `oe_line.unit_quantity` | column |
 | `unit_of_measure` | `oe_line.unit_of_measure` | column |
 | `pricing_unit` | `oe_line.pricing_unit` | column |
@@ -1941,7 +1943,7 @@
 | `location_name` | `location.location_name` | column |
 | `item_desc` | `inv_mast.item_desc` | column |
 | `lead_time_source` | `p21_view_supplier_purchasing_info.lead_time_source` | probed |
-| `lead_time` | `p21_view_supplier_purchasing_info.lead_time` | probed |
+| `lead_time` | computed: `COALESCE(CAST(p21_view_supplier_purchasing_info.average_lead_time AS char), 'N/A')` | probed |
 | `qty_available` | computed: `(computed in the datawindow)` | probed |
 | `c_net_stock_total` | computed: `(computed in the datawindow)` | dw_name |
 | `cf_dfflag` | computed: `(computed in the datawindow)` | dw_name |
@@ -2054,10 +2056,10 @@
 | `order_no` | `oe_line.order_no` | column |
 | `po_no` | `oe_hdr.po_no` | probed |
 | `date_created` | `oe_line.date_created` | column |
-| `qty_ordered` | `oe_line.qty_ordered` | probed |
-| `unit_of_measure` | `oe_line.unit_of_measure` | probed |
+| `qty_ordered` | computed: `CASE :UOM WHEN '' THEN CASE unit_size WHEN 0 THEN 0 ELSE CAST(oe_line.qty_ordered / unit_size AS Decimal(19,9)) END WHEN oe_line.unit_of_measure THEN CASE unit_size WHEN 0 THEN 0 ELSE CAST(oe_line.qty_ordered / unit_size AS Decimal(19,9)) END ELSE CASE :UomSize WHEN 0 THEN 0 ELSE CAST(oe_line.qty_ordered / :UomSize AS Decimal(19,9)) END END` | probed |
+| `unit_of_measure` | computed: `CASE :UOM WHEN '' THEN oe_line.unit_of_measure ELSE :UOM END` | probed |
 | `projected_order` | `oe_hdr.projected_order` | column |
-| `unit_price` | `oe_line.unit_price` | probed |
+| `unit_price` | computed: `CASE :UOM WHEN '' THEN CASE pricing_unit_size WHEN 0 THEN 0 ELSE CAST((oe_line.unit_price / pricing_unit_size) * unit_size AS Decimal(19,9)) END WHEN oe_line.unit_of_measure THEN CASE pricing_unit_size WHEN 0 THEN 0 ELSE CAST((oe_line.unit_price / pricing_unit_size) * unit_size AS Decimal(19,9)) END ELSE CASE pricing_unit_size WHEN 0 THEN 0 ELSE CAST((unit_price / pricing_unit_size) * :UomSize AS Decimal(19,9)) END END` | probed |
 | `c_gross_profit` | computed: `CASE WHEN unit_price = 0 THEN 0 WHEN pricing_unit_size = 0 THEN 0 ELSE CAST(((((unit_price / pricing_unit_size) - :CurrentCostInEaches) / (unit_price / pricing_unit_size) ) * 100) AS Decimal(19,9)) END` | alias |
 | `rowfocusindicatorcol` | computed: `(computed in the datawindow)` | probed |
 | `cf_dfflag` | computed: `(computed in the datawindow)` | dw_name |
@@ -2136,9 +2138,9 @@
 | `unit_of_measure` | `po_line.unit_of_measure` | column |
 | `unit_price_display` | `po_line.unit_price_display` | column |
 | `extended_cost` | computed: `CAST(IsNull(po_line_schedule.release_qty, po_line.unit_quantity * po_line.unit_size) * po_line.unit_price_display/po_line.pricing_unit_size AS decimal(19,9))` | alias |
-| `converted_from_rfq_number` | computed: `converted_from_rfq_number` | probed |
+| `converted_from_rfq_number` | `po_hdr.po_no` | probed |
 | `delivery_info` | `vendor_rfq_line.delivery_info` | column |
-| `compute_1` | `inv_mast.item_id` | position |
+| `compute_1` | computed: `(computed in the datawindow)` | dw_name |
 | `qty_open` | computed: `(computed in the datawindow)` | probed |
 | `cf_open_gallons` | computed: `(computed in the datawindow)` | dw_name |
 | `cf_dfflag` | computed: `(computed in the datawindow)` | dw_name |
@@ -2243,7 +2245,7 @@
 | `oe_pick_ticket_print_date` | `oe_pick_ticket.print_date` | probed |
 | `c_carrier` | computed: `CASE WHEN (oe_pick_ticket_detail.ship_quantity = 0 AND oe_pick_ticket.invoice_id_when_shipped > 0) THEN NULL ELSE COALESCE(clippership_return_<id>.carrier_name, address.name) END` | alias |
 | `unit_of_measure` | computed: `COALESCE(oe_pick_ticket_detail.unit_of_measure, oe_line.unit_of_measure)` | alias |
-| `oe_pick_ticket_ship_date` | `oe_pick_ticket.ship_date` | probed |
+| `oe_pick_ticket_ship_date` | computed: `CASE WHEN(oe_pick_ticket_detail.ship_quantity = 0 AND oe_pick_ticket.invoice_id_when_shipped > 0) THEN NULL ELSE oe_pick_ticket.ship_date END` | probed |
 | `invoice_no` | computed: `CASE WHEN(oe_pick_ticket_detail.ship_quantity = 0 AND oe_pick_ticket.invoice_id_when_shipped > 0) THEN 0 ELSE COALESCE(oe_pick_ticket.invoice_no, oe_hdr.invoice_no) END` | alias |
 | `shipment_type_display` | computed: `CASE WHEN oe_pick_ticket_type_cd = 1921 THEN 'Parts Pick Ticket' WHEN oe_pick_ticket_type_cd = 1922 THEN 'Service Pick Ticket' WHEN oe_pick_ticket.direct_shipment = 'Y' THEN 'Direct Shipment' WHEN oe_pick_ticket.auxiliary = 'Y' THEN 'Auxiliary Pick Ticket' WHEN oe_pick_ticket.pick_and_hold = 'Y' THEN CASE WHEN oe_hdr.packing_basis = 'Tag and Hold' THEN 'Tag And Hold' ELSE 'Pick And Hold' END ELSE CASE ptshipment.transaction_type_cd WHEN 222 THEN 'Shipped via Order Entry' ELSE 'Regular Pick Ticket' END END + CASE WHEN COALESCE(clippership_return_<id>.clippership_return_uid, 0) < > 0 THEN ' (Clippership)' WHEN COALESCE(ptshipment.shipment_uid, 0) < > 0 THEN ' (' + carriertype.code_description + ')' ELSE '' END` | alias |
 | `rowfocusindicatorcol` | computed: `(computed in the datawindow)` | probed |
@@ -2283,7 +2285,7 @@
 | `purchased` | computed: `(computed in the datawindow)` | probed |
 | `in_transit` | computed: `(computed in the datawindow)` | probed |
 | `cf_qty_on_vessel` | computed: `(computed in the datawindow)` | dw_name |
-| `compute_1` | `inv_loc.location_id` | position |
+| `compute_1` | computed: `(computed in the datawindow)` | dw_name |
 | `cf_dfflag` | computed: `(computed in the datawindow)` | dw_name |
 
 | # | Label | table.column / expression |
@@ -2339,16 +2341,16 @@
 |---|---|---|
 | `cc_isrfq` | computed: `CASE po_hdr.po_type WHEN 'Q' THEN 'Y' ELSE 'N' END` | alias |
 | `oe_line_po_po_no` | `oe_line_po.po_no` | probed |
-| `control_no` | `vendor_rfq_hdr.control_no` | probed |
+| `control_no` | computed: `COALESCE(vendor_rfq_hdr.control_no, vendor_rfq_hdr_rfq_unconverted.control_no)` | probed |
 | `po_line_number` | `oe_line_po.po_line_number` | column |
 | `supplier_name` | `address.name` | probed |
 | `oe_transfer_reserve_flag` | computed: `'N'` | alias |
 | `unit_of_measure` | `po_line.unit_of_measure` | column |
 | `c_container_unit_qty_received` | computed: `(computed in the datawindow)` | dw_name |
 | `cc_lead_time` | computed: `CASE supplier.lead_time_source WHEN 'ITEM' THEN inventory_supplier_x_loc.average_lead_time WHEN 'SUPPLIER' THEN supplier.average_lead_time END` | alias |
-| `po_line_date_due` | `po_line.date_due` | probed |
+| `po_line_date_due` | computed: `COALESCE(drv_po_line_schedule.release_date, po_line.date_due)` | probed |
 | `completed` | `oe_line_po.completed` | column |
-| `converted_from_rfq_number` | computed: `converted_from_rfq_number` | probed |
+| `converted_from_rfq_number` | `po_hdr.po_no` | probed |
 | `delivery_info` | `vendor_rfq_line.delivery_info` | column |
 | `cf_spaces` | computed: `(computed in the datawindow)` | dw_name |
 | `type` | computed: `(computed in the datawindow)` | probed |
@@ -2552,10 +2554,10 @@
 | `user_fax_flag` | computed: `COALESCE (dler_ship_to.fax_flag, dler_customer.fax_flag, 'N')` | alias |
 | `user_email_flag` | computed: `COALESCE (dler_ship_to.email_flag, dler_customer.email_flag, 'N')` | alias |
 | `outside_use_flag` | `document_link.outside_use_flag` | column |
-| `send_outside_use_print_flag` | `document_link_entity_req.send_outside_use_print_flag` | probed |
+| `send_outside_use_print_flag` | computed: `COALESCE (dler_ship_to.send_outside_use_print_flag, dler_customer.send_outside_use_print_flag, 'N')` | probed |
 | `document_link_uid` | `document_link.document_link_uid` | column |
-| `send_outside_use_email_flag` | `document_link_entity_req.send_outside_use_email_flag` | probed |
-| `send_outside_use_fax_flag` | `document_link_entity_req.send_outside_use_fax_flag` | probed |
+| `send_outside_use_email_flag` | computed: `COALESCE (dler_ship_to.send_outside_use_email_flag, dler_customer.send_outside_use_email_flag, 'N')` | probed |
+| `send_outside_use_fax_flag` | computed: `COALESCE (dler_ship_to.send_outside_use_fax_flag, dler_customer.send_outside_use_fax_flag, 'N')` | probed |
 | `source_area_cd` | `document_link.source_area_cd` | column |
 | `cf_rowind` | computed: `(computed in the datawindow)` | dw_name |
 | `cf_keylist` | computed: `(computed in the datawindow)` | dw_name |

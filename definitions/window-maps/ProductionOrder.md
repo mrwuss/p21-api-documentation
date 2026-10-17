@@ -116,8 +116,8 @@
 | Field | Stored in | Basis |
 |---|---|---|
 | `prod_pick_ticket_number` | `prod_pick_ticket_hdr.prod_pick_ticket_number` | column |
-| `item_id` | `inv_mast.item_id` | probed |
-| `item_desc` | `inv_mast.item_desc` | probed |
+| `item_id` | computed: `COALESCE(service_labor.service_labor_id, inv_mast.item_id)` | probed |
+| `item_desc` | computed: `COALESCE(service_labor.service_labor_desc, inv_mast.item_desc)` | probed |
 | `unit_of_measure` | `prod_pick_ticket_detail.unit_of_measure` | column |
 | `status` | computed: `CASE WHEN prod_pick_ticket_detail.sku_qty_picked =0 AND prod_pick_ticket_detail.sku_qty_confirmed =0 AND prod_pick_ticket_detail.sku_qty_completed = 0 THEN 'Cancelled' WHEN prod_pick_ticket_hdr.row_status_flag = 1268 THEN 'Picked' WHEN prod_pick_ticket_detail.sku_qty_picked >0 AND prod_pick_ticket_detail.sku_qty_confirmed =0 AND prod_pick_ticket_detail.sku_qty_completed = 0 THEN 'Printed' WHEN prod_pick_ticket_detail.sku_qty_picked >0 AND prod_pick_ticket_detail.sku_qty_confirmed >0 AND prod_pick_ticket_detail.sku_qty_completed = 0 THEN 'Staged' WHEN prod_pick_ticket_detail.sku_qty_picked >0 AND prod_pick_ticket_detail.sku_qty_confirmed >0 AND prod_pick_ticket_detail.sku_qty_completed > 0 THEN 'Picking' WHEN prod_pick_ticket_detail.sku_qty_picked >0 AND prod_pick_ticket_detail.sku_qty_confirmed =0 AND prod_pick_ticket_detail.sku_qty_completed > 0 THEN 'Picked' ELSE 'Picking' END` | alias |
 | `unit_ordered` | computed: `(computed in the datawindow)` | probed |
@@ -266,6 +266,7 @@
 ### `TIMESTAMP.timestamp` (Audit Trail)
 
 - Update table: `none (external source)`
+- Mapped off-tab: the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active
 
 | Field | Stored in | Basis |
 |---|---|---|
@@ -286,6 +287,7 @@
 
 - Update table: `p21_view_audit_trail_prod_order_hdr_<id>`
 - Tables in the SELECT: `p21_view_audit_trail_prod_order_hdr_<id>`
+- Mapped off-tab: the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active
 
 | Field | Stored in | Basis |
 |---|---|---|
@@ -309,7 +311,7 @@
 | 15 | New Value | `new_value` |
 | 18 | Date Created | `date_created` |
 | 19 | Created By | `created_by` |
-| 21 | 'Item IDIF (source_area_cd | `950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))' = item_id` |
+| 21 | 'Item IDIF (source_area_cd = 950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))' | `item_id` |
 | calc | Production Order Number | `"IF ((source_area_cd = 1763 and key1_cd = 'service_labor_uid'), item_id,  IF (source_area_cd = 950, key1_value,  IF (key2_cd = 'item_service_uid',  Item_id + ' / ALL / ALL',  IF ( key2_cd = 'lot_cd', key2_value,   IF ( Len(auxiliary_value) > 0 AND source_area_cd IN (1544, 1250, 2531), auxiliary_value,  IF (source_area_cd = 1314 and table_changed = 'inv_mast_strategic_pricing', item_id + '/' + key3_value + IF (IsNull(key2_value), '', '/' + auxiliary_value),  IF ( key1_cd = 'inv_mast_uid', item_id, key1_value ) + IF ( IsNull ( key2_value) AND source_area_cd <> 1314, '', ' / ' + IF ( key2_cd = 'inv_mast_uid', item_id, IF ( IsNull ( key2_value ), 'ALL', key2_value ) )  + IF ( IsNull (key3_value) AND source_area_cd <> 1314, '', ' / ' + IF ( key3_cd = 'inv_mast_uid', item_id, IF ( IsNull ( key3_value ), 'ALL', key3_value ) ) ) )  ) ) ) ) ) )"` |
 | calc | 'Sub Line No | `` |
 
@@ -336,7 +338,7 @@
 | `qty_completed` | `prod_order_line.qty_completed` | column |
 | `completed` | `prod_order_line.completed` | column |
 | `c_expected_completion_date` | computed: `cast(NULL AS datetime)` | alias |
-| `compute_1` | `inv_mast.item_id` | position |
+| `compute_1` | computed: `(computed in the datawindow)` | dw_name |
 | `item_id` | `inv_mast.item_id` | column |
 | `qty_allocated` | computed: `(computed in the datawindow)` | probed |
 | `cf_dfflag` | computed: `(computed in the datawindow)` | dw_name |
@@ -387,7 +389,7 @@
 | `next_operation` | `prod_order_line_component.next_operation` | column |
 | `c_placeholder` | computed: `' '` | alias |
 | `item_id` | `inv_mast.item_id` | column |
-| `item_desc` | `inv_mast.item_desc` | probed |
+| `item_desc` | computed: `COALESCE(service_labor.service_labor_desc, inv_mast.item_desc)` | probed |
 | `cut_length_edited_flag` | `prod_order_line_component.cut_length_edited_flag` | column |
 | `units_requested` | `prod_order_line_component.units_requested` | column |
 | `complete` | `prod_order_line_component.complete` | column |
@@ -452,7 +454,7 @@
 | `required_date` | `prod_order_line_component.required_date` | column |
 | `expedite_date` | `prod_order_line_component.expedite_date` | column |
 | `component_type` | computed: `CASE COALESCE(prod_order_line.hose_assembly_flag, 'N') WHEN 'Y' THEN COALESCE(inv_mast_assem_info.component_type, 300) ELSE 300 END` | alias |
-| `item_desc` | `inv_mast.item_desc` | probed |
+| `item_desc` | computed: `COALESCE(service_labor.service_labor_desc, inv_mast.item_desc)` | probed |
 | `item_id_service_labor_id` | computed: `COALESCE(service_labor.service_labor_id, inv_mast.item_id)` | probed |
 | `division_name` | `address.name` | probed |
 | `supplier_name` | `address.name` | probed |
@@ -571,18 +573,18 @@
 | `assigned` | computed: `'Y'` | alias |
 | `required_date` | computed: `current_timestamp` | alias |
 | `promise_date` | computed: `cast(NULL AS datetime)` | alias |
-| `trans_number` | `prod_order_line_link.trans_number` | probed |
-| `line_number` | `prod_order_line_link.line_number` | probed |
+| `trans_number` | computed: `0.` | probed |
+| `line_number` | computed: `0.` | probed |
 | `release_number` | computed: `NULL` | probed |
 | `component_number` | computed: `NULL` | probed |
-| `customer_id` | `prod_order_line_link.customer_id` | probed |
+| `customer_id` | computed: `0.` | probed |
 | `customer_name` | computed: `' '` | alias |
-| `qty_allocated` | `prod_order_line_link.qty_allocated` | probed |
+| `qty_allocated` | computed: `0.0000` | probed |
 | `qty_remaining` | computed: `0.0000` | alias |
 | `cf_spaces` | computed: `(computed in the datawindow)` | dw_name |
 | `cf_transaction_type` | computed: `(computed in the datawindow)` | dw_name |
 | `qty_to_assign` | computed: `(computed in the datawindow)` | probed |
-| `compute_1` | `prod_order_line_link.prod_order_number` | position |
+| `compute_1` | computed: `(computed in the datawindow)` | dw_name |
 | `qty_remain_sum` | computed: `(computed in the datawindow)` | probed |
 | `qty_asso_sum` | computed: `(computed in the datawindow)` | probed |
 | `cf_dfflag` | computed: `(computed in the datawindow)` | dw_name |
@@ -743,7 +745,7 @@
 | `freight_cost` | `prod_order_line_comp_frght.freight_cost` | column |
 | `assembly_item_desc` | `inv_mast.item_desc` | probed |
 | `component_item_desc` | `inv_mast.item_desc` | probed |
-| `compute_1` | `prod_order_line_comp_frght.po_no` | position |
+| `compute_1` | computed: `(computed in the datawindow)` | dw_name |
 | `cf_adjustment` | computed: `(computed in the datawindow)` | dw_name |
 | `cf_total_freight` | computed: `(computed in the datawindow)` | dw_name |
 | `cf_total_adjustment` | computed: `(computed in the datawindow)` | dw_name |
@@ -837,7 +839,7 @@
 | `purchased` | computed: `(computed in the datawindow)` | probed |
 | `in_transit` | computed: `(computed in the datawindow)` | probed |
 | `cf_qty_on_vessel` | computed: `(computed in the datawindow)` | dw_name |
-| `compute_1` | `inv_loc.location_id` | position |
+| `compute_1` | computed: `(computed in the datawindow)` | dw_name |
 | `cf_dfflag` | computed: `(computed in the datawindow)` | dw_name |
 
 | # | Label | table.column / expression |

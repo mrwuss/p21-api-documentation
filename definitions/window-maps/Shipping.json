@@ -532,6 +532,7 @@
      "update_table": "oe_pick_ticket",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_hdr",
       "oe_pick_ticket",
@@ -1000,6 +1001,7 @@
      "update_table": "customer_notepad",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "customer_notepad",
       "note_area",
@@ -1074,6 +1076,7 @@
      "update_table": "ar_payment_details",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "ar_payment_details",
       "payment_types",
@@ -1385,6 +1388,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -1526,6 +1530,7 @@
      "update_table": "oe_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_hdr",
       "address",
@@ -1563,6 +1568,7 @@
      "update_table": "oe_hdr_notepad",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_hdr_notepad",
       "note_area",
@@ -1643,6 +1649,7 @@
      "update_table": "invoice_hdr_notepad",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "invoice_hdr_notepad",
       "note_area",
@@ -1711,6 +1718,7 @@
      "update_table": "oe_pick_ticket",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_hdr",
       "oe_pick_ticket",
@@ -1869,6 +1877,7 @@
      "update_table": "oe_pick_ticket",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_hdr",
       "oe_pick_ticket",
@@ -1967,6 +1976,7 @@
      "update_table": "oe_hdr_tax",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_hdr_tax",
       "tax_jurisdiction"
@@ -2026,9 +2036,9 @@
        "basis": "column"
       },
       "compute_1": {
-       "column": "oe_hdr_tax.jurisdiction_id",
-       "expression": null,
-       "basis": "position"
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
       },
       "tax_in_hundred": {
        "column": null,
@@ -2055,6 +2065,7 @@
      "update_table": "document_line_bin",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "document_line_bin",
       "bin",
@@ -2096,6 +2107,7 @@
      "update_table": "document_link",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "document_link",
       "document_link_area",
@@ -2294,6 +2306,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -2331,6 +2344,7 @@
      "update_table": "transport_shipping_info",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "transport_shipping_info"
      ],
@@ -2408,6 +2422,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": "the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active",
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -2471,6 +2486,7 @@
      "update_table": "p21_view_audit_trail_oe_pick_ticket_<id>",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": "the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active",
      "main_tables": [
       "p21_view_audit_trail_oe_pick_ticket_<id>"
      ],
@@ -2508,9 +2524,9 @@
       },
       {
        "n": 21,
-       "label": "'Item IDIF (source_area_cd",
-       "expr": "950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))' = item_id",
-       "kind": "computed expression (dw)"
+       "label": "'Item IDIF (source_area_cd = 950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))'",
+       "expr": "item_id",
+       "kind": "unqualified (alias, external or computed in SQL)"
       },
       {
        "n": null,
@@ -2591,6 +2607,7 @@
      "update_table": "oe_pick_ticket_detail",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_pick_ticket_detail",
       "oe_pick_ticket",
@@ -2734,9 +2751,9 @@
        "basis": "probed"
       },
       "compute_1": {
-       "column": "inv_mast.item_id",
-       "expression": null,
-       "basis": "position"
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
       },
       "undershipped_qty": {
        "column": null,
@@ -2821,6 +2838,7 @@
      "update_table": "oe_line_notepad",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_line_notepad",
       "note_area",
@@ -2907,6 +2925,7 @@
      "update_table": "oe_pick_ticket_detail",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_pick_ticket_detail",
       "oe_pick_ticket",
@@ -2999,6 +3018,7 @@
      "update_table": "oe_line_tax",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_line_tax",
       "oe_line",
@@ -3164,6 +3184,7 @@
      "update_table": "document_link",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "document_link",
       "document_link_area",
@@ -3306,8 +3327,8 @@
        "basis": "column"
       },
       "send_outside_use_print_flag": {
-       "column": "document_link_entity_req.send_outside_use_print_flag",
-       "expression": null,
+       "column": null,
+       "expression": "COALESCE (dler_ship_to.send_outside_use_print_flag, dler_customer.send_outside_use_print_flag, 'N')",
        "basis": "probed"
       },
       "document_link_uid": {
@@ -3316,13 +3337,13 @@
        "basis": "column"
       },
       "send_outside_use_email_flag": {
-       "column": "document_link_entity_req.send_outside_use_email_flag",
-       "expression": null,
+       "column": null,
+       "expression": "COALESCE (dler_ship_to.send_outside_use_email_flag, dler_customer.send_outside_use_email_flag, 'N')",
        "basis": "probed"
       },
       "send_outside_use_fax_flag": {
-       "column": "document_link_entity_req.send_outside_use_fax_flag",
-       "expression": null,
+       "column": null,
+       "expression": "COALESCE (dler_ship_to.send_outside_use_fax_flag, dler_customer.send_outside_use_fax_flag, 'N')",
        "basis": "probed"
       },
       "source_area_cd": {
@@ -3388,6 +3409,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [

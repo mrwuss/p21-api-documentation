@@ -344,7 +344,7 @@
 | `taxable` | `oe_hdr_tax.taxable` | column |
 | `jurisdiction_desc` | `tax_jurisdiction.jurisdiction_desc` | column |
 | `flat_fee_amount` | `tax_jurisdiction.flat_fee_amount` | column |
-| `compute_1` | `oe_hdr_tax.jurisdiction_id` | position |
+| `compute_1` | computed: `(computed in the datawindow)` | dw_name |
 | `tax_in_hundred` | computed: `(computed in the datawindow)` | probed |
 | `cf_dfflag` | computed: `(computed in the datawindow)` | dw_name |
 
@@ -449,6 +449,7 @@
 ### `TIMESTAMP.timestamp` (Audit Trail)
 
 - Update table: `none (external source)`
+- Mapped off-tab: the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active
 
 | Field | Stored in | Basis |
 |---|---|---|
@@ -469,6 +470,7 @@
 
 - Update table: `p21_view_audit_trail_oe_pick_ticket_<id>`
 - Tables in the SELECT: `p21_view_audit_trail_oe_pick_ticket_<id>`
+- Mapped off-tab: the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active
 
 | Field | Stored in | Basis |
 |---|---|---|
@@ -490,7 +492,7 @@
 | 15 | New Value | `new_value` |
 | 18 | Date Created | `date_created` |
 | 19 | Created By | `created_by` |
-| 21 | 'Item IDIF (source_area_cd | `950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))' = item_id` |
+| 21 | 'Item IDIF (source_area_cd = 950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))' | `item_id` |
 | calc | Key Values | `"IF ((source_area_cd = 1763 and key1_cd = 'service_labor_uid'), item_id,  IF (source_area_cd = 950, key1_value,  IF (key2_cd = 'item_service_uid',  Item_id + ' / ALL / ALL',  IF ( key2_cd = 'lot_cd', key2_value,   IF ( Len(auxiliary_value) > 0 AND source_area_cd IN (1544, 1250, 2531), auxiliary_value,  IF (source_area_cd = 1314 and table_changed = 'inv_mast_strategic_pricing', item_id + '/' + key3_value + IF (IsNull(key2_value), '', '/' + auxiliary_value),  IF ( key1_cd = 'inv_mast_uid', item_id, key1_value ) + IF ( IsNull ( key2_value) AND source_area_cd <> 1314, '', ' / ' + IF ( key2_cd = 'inv_mast_uid', item_id, IF ( IsNull ( key2_value ), 'ALL', key2_value ) )  + IF ( IsNull (key3_value) AND source_area_cd <> 1314, '', ' / ' + IF ( key3_cd = 'inv_mast_uid', item_id, IF ( IsNull ( key3_value ), 'ALL', key3_value ) ) ) )  ) ) ) ) ) )"` |
 | calc | 'Sub Line No | `` |
 
@@ -513,7 +515,7 @@
 | `c_releaseline` | computed: `CASE WHEN oe_pick_ticket_detail.release_no > 0 THEN 'Y' ELSE 'N' END` | alias |
 | `cf_expandableindicator` | computed: `(computed in the datawindow)` | dw_name |
 | `qty_available_display` | computed: `(computed in the datawindow)` | probed |
-| `compute_1` | `inv_mast.item_id` | position |
+| `compute_1` | computed: `(computed in the datawindow)` | dw_name |
 | `undershipped_qty` | computed: `(computed in the datawindow)` | probed |
 | `line_item_price` | computed: `(computed in the datawindow)` | probed |
 | `new_pick_qty` | computed: `(computed in the datawindow)` | probed |
@@ -622,10 +624,10 @@
 | `user_fax_flag` | computed: `COALESCE (dler_ship_to.fax_flag, dler_customer.fax_flag, 'N')` | alias |
 | `user_email_flag` | computed: `COALESCE (dler_ship_to.email_flag, dler_customer.email_flag, 'N')` | alias |
 | `outside_use_flag` | `document_link.outside_use_flag` | column |
-| `send_outside_use_print_flag` | `document_link_entity_req.send_outside_use_print_flag` | probed |
+| `send_outside_use_print_flag` | computed: `COALESCE (dler_ship_to.send_outside_use_print_flag, dler_customer.send_outside_use_print_flag, 'N')` | probed |
 | `document_link_uid` | `document_link.document_link_uid` | column |
-| `send_outside_use_email_flag` | `document_link_entity_req.send_outside_use_email_flag` | probed |
-| `send_outside_use_fax_flag` | `document_link_entity_req.send_outside_use_fax_flag` | probed |
+| `send_outside_use_email_flag` | computed: `COALESCE (dler_ship_to.send_outside_use_email_flag, dler_customer.send_outside_use_email_flag, 'N')` | probed |
+| `send_outside_use_fax_flag` | computed: `COALESCE (dler_ship_to.send_outside_use_fax_flag, dler_customer.send_outside_use_fax_flag, 'N')` | probed |
 | `source_area_cd` | `document_link.source_area_cd` | column |
 | `cf_rowind` | computed: `(computed in the datawindow)` | dw_name |
 | `cf_keylist` | computed: `(computed in the datawindow)` | dw_name |

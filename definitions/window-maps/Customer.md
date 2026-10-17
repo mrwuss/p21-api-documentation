@@ -137,7 +137,7 @@
 | `terms_account_no_desc` | computed: `' '` | probed |
 | `cos_account_no_desc` | computed: `' '` | probed |
 | `revenue_account_no_desc` | computed: `' '` | probed |
-| `pending_payment_account_no_desc` | `customer.po_no_required` | probed |
+| `pending_payment_account_no_desc` | computed: `' '` | probed |
 | `freight_account_no_desc` | computed: `' '` | probed |
 
 | # | Label | table.column / expression |
@@ -649,9 +649,9 @@
 
 | Field | Stored in | Basis |
 |---|---|---|
-| `label_definition_id` | `label_definition_x_customer.label_definition_id` | probed |
+| `label_definition_id` | computed: `label_definition_id` | probed |
 | `code_description` | `code_p21.code_description` | probed |
-| `label_definition_desc` | `label_definition_x_customer.label_definition_desc` | probed |
+| `label_definition_desc` | computed: `label_definition_desc` | probed |
 
 | # | Label | table.column / expression |
 |---|---|---|

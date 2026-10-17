@@ -60,8 +60,8 @@
 | `print_canadian_b3_forms_flag` | `po_hdr.print_canadian_b3_forms_flag` | probed |
 | `canadian_b3_forms_date` | `po_hdr.canadian_b3_forms_date` | probed |
 | `print_po_form` | computed: `' '` | probed |
-| `fax_po_form` | `po_hdr.po_type` | probed |
-| `email` | `address.email` | probed |
+| `fax_po_form` | computed: `' '` | probed |
+| `email` | computed: `'N'` | probed |
 | `edi_form` | computed: `'N'` | probed |
 | `resend_edi_form` | computed: `'N'` | probed |
 | `process_doclinks` | computed: `'N'` | probed |
@@ -71,7 +71,7 @@
 | `net_billing_flag` | `po_hdr.net_billing_flag` | probed |
 | `do_not_export_carrier_po_flag` | `po_hdr.do_not_export_carrier_po_flag` | probed |
 | `auto_vouch_except_flag` | `po_hdr.auto_vouch_except_flag` | probed |
-| `excl_send_info_to_rfnav` | `po_hdr.excl_send_linked_info_to_rfnav_flag` | probed |
+| `excl_send_info_to_rfnav` | computed: `(the tool names po_hdr.excl_send_linked_info_to_rfnav_flag; the SELECT does not read it)` | probed |
 | `direct_through_stock_flag` | `po_hdr.direct_through_stock_flag` | probed |
 | `vendor_supplier_name` | `address.name` | probed |
 | `vendor_name` | `address.name` | probed |
@@ -116,7 +116,7 @@
 | 73 | Print Po Form | `compute_0073` |
 | 74 | Purchase Order Type: | `po_hdr.po_type` |
 | 76 | Fax Po Form | `compute_0074` |
-| 77 | 'External PO Number:if ( (c_vendor_rfq | `'N' OR IsNull(c_vendor_rfq)), 'External PO Number:', 'Supplier Quote Number:')' = po_hdr.external_po_no` |
+| 77 | 'External PO Number:if ( (c_vendor_rfq = 'N' OR IsNull(c_vendor_rfq)), 'External PO Number:', 'Supplier Quote Number:')' | `po_hdr.external_po_no` |
 | 78 | Exclude From Lead Time | `po_hdr.exclude_from_lead_time` |
 | 79 | Purchase Order Source: | `po_hdr.source_type` |
 | 83 | Edi Form | `edi_form` |
@@ -553,6 +553,7 @@
 ### `TIMESTAMP.timestamp` (Audit Trail)
 
 - Update table: `none (external source)`
+- Mapped off-tab: the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active
 
 | Field | Stored in | Basis |
 |---|---|---|
@@ -573,6 +574,7 @@
 
 - Update table: `p21_view_audit_trail_po_hdr_<id>`
 - Tables in the SELECT: `p21_view_audit_trail_po_hdr_<id>`
+- Mapped off-tab: the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active
 
 | Field | Stored in | Basis |
 |---|---|---|
@@ -596,7 +598,7 @@
 | 15 | New Value | `new_value` |
 | 18 | Date Created | `date_created` |
 | 19 | Created By | `created_by` |
-| 21 | 'Item IDIF (source_area_cd | `950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))' = item_id` |
+| 21 | 'Item IDIF (source_area_cd = 950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))' | `item_id` |
 | calc | Purchase Order No | `"IF ((source_area_cd = 1763 and key1_cd = 'service_labor_uid'), item_id,  IF (source_area_cd = 950, key1_value,  IF (key2_cd = 'item_service_uid',  Item_id + ' / ALL / ALL',  IF ( key2_cd = 'lot_cd', key2_value,   IF ( Len(auxiliary_value) > 0 AND source_area_cd IN (1544, 1250, 2531), auxiliary_value,  IF (source_area_cd = 1314 and table_changed = 'inv_mast_strategic_pricing', item_id + '/' + key3_value + IF (IsNull(key2_value), '', '/' + auxiliary_value),  IF ( key1_cd = 'inv_mast_uid', item_id, key1_value ) + IF ( IsNull ( key2_value) AND source_area_cd <> 1314, '', ' / ' + IF ( key2_cd = 'inv_mast_uid', item_id, IF ( IsNull ( key2_value ), 'ALL', key2_value ) )  + IF ( IsNull (key3_value) AND source_area_cd <> 1314, '', ' / ' + IF ( key3_cd = 'inv_mast_uid', item_id, IF ( IsNull ( key3_value ), 'ALL', key3_value ) ) ) )  ) ) ) ) ) )"` |
 | calc | 'Sub Line No | `` |
 
@@ -624,7 +626,7 @@
 | `unit_qty_ready` | `po_line.unit_qty_ready` | probed |
 | `qty_break_sequence_no` | computed: `COALESCE(po_line.parent_po_line_no, po_line.line_no)` | probed |
 | `parent_po_line_no` | `po_line.parent_po_line_no` | probed |
-| `item_desc` | `po_line.item_description` | probed |
+| `item_desc` | computed: `(CASE WHEN COALESCE(po_line.parent_po_line_no, po_line.line_no) = po_line.line_no THEN po_line.item_description ELSE 'Quantity Break' END)` | probed |
 | `c_shipped_flag` | computed: `CASE WHEN supplier_ship_date IS NULL THEN 'N' ELSE 'Y' END` | probed |
 | `supplier_ship_date` | `po_line.supplier_ship_date` | probed |
 | `supplier_part_no` | `inventory_supplier.supplier_part_no` | probed |
@@ -687,7 +689,7 @@
 | `acknowledged` | `po_line.acknowledged` | probed |
 | `item_id` | `inv_mast.item_id` | probed |
 | `date_due_edited` | computed: `CASE WHEN po_line.date_due_last_modified IS NOT NULL THEN 'Y' ELSE 'N' END` | probed |
-| `item_description` | `po_line.item_description` | probed |
+| `item_description` | computed: `(CASE WHEN COALESCE(po_line.parent_po_line_no, po_line.line_no) = po_line.line_no THEN po_line.item_description ELSE 'Quantity Break' END)` | probed |
 | `source_type` | `po_line.source_type` | probed |
 | `pricing_unit_size` | `po_line.pricing_unit_size` | probed |
 | `unit_size` | `po_line.unit_size` | probed |
@@ -745,7 +747,7 @@
 | `item_id` | `inv_mast.item_id` | column |
 | `pricing_book_supplier_id` | `po_line.pricing_book_supplier_id` | column |
 | `combinable` | `po_line.combinable` | probed |
-| `next_unit_price_display` | computed: `' '` | probed |
+| `next_unit_price_display` | computed: `0.0000` | probed |
 | `pricing_book_disc_grp_id` | `po_line.pricing_book_disc_grp_id` | column |
 | `pricing_book_effective_date` | `po_line.pricing_book_effective_date` | column |
 | `next_break` | `po_line.next_break` | column |
@@ -841,7 +843,7 @@
 | `location_name` | `location.location_name` | column |
 | `item_desc` | `inv_mast.item_desc` | column |
 | `lead_time_source` | `p21_view_supplier_purchasing_info.lead_time_source` | probed |
-| `lead_time` | `p21_view_supplier_purchasing_info.lead_time` | probed |
+| `lead_time` | computed: `COALESCE(CAST(p21_view_supplier_purchasing_info.average_lead_time AS char), 'N/A')` | probed |
 | `qty_available` | computed: `(computed in the datawindow)` | probed |
 | `c_net_stock_total` | computed: `(computed in the datawindow)` | dw_name |
 | `cf_dfflag` | computed: `(computed in the datawindow)` | dw_name |
@@ -892,10 +894,10 @@
 | `unit_received` | computed: `(computed in the datawindow)` | probed |
 | `unit_qty_due` | computed: `(computed in the datawindow)` | probed |
 | `cf_dfflag` | computed: `(computed in the datawindow)` | dw_name |
-| `compute_1` | `po_line_schedule.po_line_schedule_uid` | position |
-| `compute_4` | `po_line_schedule.release_date` | position |
-| `compute_2` | `po_line_schedule.po_line_uid` | position |
-| `compute_3` | `po_line_schedule.release_no` | position |
+| `compute_1` | computed: `(computed in the datawindow)` | dw_name |
+| `compute_4` | computed: `(computed in the datawindow)` | dw_name |
+| `compute_2` | computed: `(computed in the datawindow)` | dw_name |
+| `compute_3` | computed: `(computed in the datawindow)` | dw_name |
 
 | # | Label | table.column / expression |
 |---|---|---|
@@ -1015,7 +1017,7 @@
 | `cancel_flag` | `po_line.cancel_flag` | column |
 | `complete` | `po_line.complete` | column |
 | `location_id` | `po_hdr.location_id` | column |
-| `po_hdr_po_type` | `po_hdr.po_type` | probed |
+| `po_hdr_po_type` | computed: `COALESCE(po_line.line_type, po_hdr.po_type)` | probed |
 | `space` | computed: `(computed in the datawindow)` | probed |
 | `cf_dfflag` | computed: `(computed in the datawindow)` | dw_name |
 

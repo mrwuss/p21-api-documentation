@@ -25,7 +25,7 @@
 | Field | Stored in | Basis |
 |---|---|---|
 | `inv_mast_item_id` | `inv_mast.item_id` | probed |
-| `revision_level` | `item_revision.revision_level` | probed |
+| `revision_level` | computed: `(the tool names item_revision.revision_level; the SELECT does not read it)` | probed |
 | `pricing_option` | `assembly_hdr.pricing_option` | probed |
 | `default_disposition` | `assembly_hdr.default_disposition` | probed |
 | `assembly_usage_accumulation` | `assembly_hdr.assembly_usage_accumulation` | probed |
@@ -56,7 +56,7 @@
 | `exclude_prod_order_from_scp_flag` | `assembly_hdr.exclude_prod_order_from_scp_flag` | probed |
 | `scheduling_type_cd` | `assembly_hdr.scheduling_type_cd` | probed |
 | `item_desc` | `inv_mast.item_desc` | probed |
-| `copy_item_id` | computed: `cc_copy_item_id` | probed |
+| `copy_item_id` | computed: `''` | probed |
 | `cf_dfflag` | computed: `(computed in the datawindow)` | probed |
 
 | # | Label | table.column / expression |
@@ -131,6 +131,7 @@
 ### `TIMESTAMP.timestamp` (Audit Trail)
 
 - Update table: `none (external source)`
+- Mapped off-tab: the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active
 
 | Field | Stored in | Basis |
 |---|---|---|
@@ -151,6 +152,7 @@
 
 - Update table: `p21_view_audit_trail_assembly_hdr_<id>`
 - Tables in the SELECT: `p21_view_audit_trail_assembly_hdr_<id>`
+- Mapped off-tab: the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active
 
 | Field | Stored in | Basis |
 |---|---|---|
@@ -172,7 +174,7 @@
 | 15 | New Value | `new_value` |
 | 18 | Date Created | `date_created` |
 | 19 | Created By | `created_by` |
-| 21 | 'Item IDIF (source_area_cd | `950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))' = item_id` |
+| 21 | 'Item IDIF (source_area_cd = 950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))' | `item_id` |
 | calc | Assembly Item ID | `"IF ((source_area_cd = 1763 and key1_cd = 'service_labor_uid'), item_id,  IF (source_area_cd = 950, key1_value,  IF (key2_cd = 'item_service_uid',  Item_id + ' / ALL / ALL',  IF ( key2_cd = 'lot_cd', key2_value,   IF ( Len(auxiliary_value) > 0 AND source_area_cd IN (1544, 1250, 2531), auxiliary_value,  IF (source_area_cd = 1314 and table_changed = 'inv_mast_strategic_pricing', item_id + '/' + key3_value + IF (IsNull(key2_value), '', '/' + auxiliary_value),  IF ( key1_cd = 'inv_mast_uid', item_id, key1_value ) + IF ( IsNull ( key2_value) AND source_area_cd <> 1314, '', ' / ' + IF ( key2_cd = 'inv_mast_uid', item_id, IF ( IsNull ( key2_value ), 'ALL', key2_value ) )  + IF ( IsNull (key3_value) AND source_area_cd <> 1314, '', ' / ' + IF ( key3_cd = 'inv_mast_uid', item_id, IF ( IsNull ( key3_value ), 'ALL', key3_value ) ) ) )  ) ) ) ) ) )"` |
 | calc | 'Sub Line No | `` |
 
@@ -185,7 +187,7 @@
 |---|---|---|
 | `item_id_service_labor_id` | computed: `COALESCE(service_labor.service_labor_id, inv_mast_comp.item_id)` | probed |
 | `revision_level` | `item_revision.revision_level` | probed |
-| `component_type` | `inv_mast_assem_info.component_type` | probed |
+| `component_type` | computed: `CASE assembly_hdr.hose_assembly_flag WHEN 'Y' THEN inv_mast_assem_info.component_type ELSE 300 END` | probed |
 | `operation_cd` | `operation.operation_cd` | probed |
 | `qty_needed` | `assembly_line.qty_needed` | probed |
 | `component_cut_length` | `assembly_line.component_cut_length` | probed |
@@ -198,7 +200,7 @@
 | `previous_operation` | `assembly_line.previous_operation` | probed |
 | `delete_flag` | `assembly_line.delete_flag` | probed |
 | `next_operation` | `assembly_line.next_operation` | probed |
-| `item_desc` | `inv_mast.item_desc` | probed |
+| `item_desc` | computed: `COALESCE(service_labor.service_labor_desc, inv_mast_comp.item_desc)` | probed |
 | `cf_expandableindicator` | computed: `(computed in the datawindow)` | probed |
 | `cf_prodorderflag` | computed: `(computed in the datawindow)` | probed |
 | `cf_yesorno` | computed: `(computed in the datawindow)` | probed |

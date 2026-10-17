@@ -1482,6 +1482,7 @@
      "update_table": "oe_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_hdr",
       "company",
@@ -2142,6 +2143,7 @@
      "update_table": "customer",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "customer",
       "address",
@@ -2290,7 +2292,7 @@
       },
       "ship_to": {
        "column": null,
-       "expression": "ship_to",
+       "expression": "'N'",
        "basis": "probed"
       },
       "customer_name": {
@@ -2398,6 +2400,7 @@
      "update_table": "contacts",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "contacts",
       "address",
@@ -2703,6 +2706,7 @@
      "update_table": "oe_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_hdr",
       "company",
@@ -2938,6 +2942,7 @@
      "update_table": "oe_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_hdr",
       "company",
@@ -2986,6 +2991,7 @@
      "update_table": "ar_payment_details",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "ar_payment_details",
       "payment_types",
@@ -3285,6 +3291,7 @@
      "update_table": "oe_line",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_line"
      ],
@@ -3614,6 +3621,7 @@
      "update_table": "oe_line",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_line"
      ],
@@ -3879,6 +3887,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -4170,6 +4179,7 @@
      "update_table": "oe_hdr_notepad",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_hdr_notepad",
       "note_area",
@@ -4238,6 +4248,7 @@
      "update_table": "oe_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_hdr",
       "company",
@@ -4429,6 +4440,7 @@
      "update_table": "oe_hdr_tax",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_hdr_tax",
       "tax_jurisdiction"
@@ -4488,9 +4500,9 @@
        "basis": "probed"
       },
       "compute_1": {
-       "column": "oe_hdr_tax.jurisdiction_id",
-       "expression": null,
-       "basis": "position"
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
       },
       "tax_in_hundred": {
        "column": null,
@@ -4510,6 +4522,7 @@
      "update_table": "oe_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_hdr",
       "company",
@@ -4571,6 +4584,7 @@
      "update_table": "customer_notepad",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "customer_notepad",
       "note_area",
@@ -4645,6 +4659,7 @@
      "update_table": "oe_pick_ticket",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_pick_ticket",
       "oe_hdr",
@@ -4724,13 +4739,13 @@
        "basis": "alias"
       },
       "group_pick_ticket_hdr_uid": {
-       "column": "group_pick_ticket_hdr.group_pick_ticket_hdr_uid",
-       "expression": null,
+       "column": null,
+       "expression": "CASE WHEN group_pick_ticket_hdr.transaction_type_cd = 1881 THEN group_pick_ticket_hdr.group_pick_ticket_hdr_uid ELSE NULL END",
        "basis": "probed"
       },
       "gpt_picking_status": {
        "column": null,
-       "expression": "gpt_picking_status",
+       "expression": "NULL",
        "basis": "probed"
       }
      }
@@ -4748,6 +4763,7 @@
      "update_table": "oe_hdr_salesrep",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_hdr_salesrep",
       "contacts",
@@ -4855,6 +4871,7 @@
      "update_table": "customer",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "customer",
       "address",
@@ -4980,6 +4997,7 @@
      "update_table": "customer",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "customer",
       "address",
@@ -5058,6 +5076,7 @@
      "update_table": null,
      "update_table_note": "tool reported 'clause*/' (misparse of SQL comments; treat as unknown)",
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "customer",
       "price_library_x_cust_x_cmpy",
@@ -5115,6 +5134,7 @@
      "update_table": "oe_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_hdr",
       "company",
@@ -5163,6 +5183,7 @@
      "update_table": "terms",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "terms"
      ],
@@ -5315,6 +5336,7 @@
      "update_table": "oe_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_hdr",
       "company",
@@ -5403,6 +5425,7 @@
      "update_table": null,
      "update_table_note": "tool reported 'clause*/' (misparse of SQL comments; treat as unknown)",
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_pick_ticket",
       "oe_hdr",
@@ -5556,6 +5579,7 @@
      "update_table": "oe_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_hdr",
       "company",
@@ -5655,6 +5679,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -5785,6 +5810,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -5809,6 +5835,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -5833,6 +5860,7 @@
      "update_table": "system_setting",
      "update_table_note": "tool reported system_setting, the first FROM table of a read-only grid; treat as read-only",
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "system_setting",
       "invoice_line",
@@ -6145,6 +6173,7 @@
      "update_table": "oe_schedule",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_schedule"
      ],
@@ -6281,6 +6310,7 @@
      "update_table": "oe_schedule_detail",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_schedule_detail"
      ],
@@ -6368,7 +6398,7 @@
   {
    "tab": "TP_STRATEGICPRICING",
    "text": "Strategic Pricing",
-   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "select_status": "selected",
    "datawindows": [
     {
      "name": "tp_strategicpricing",
@@ -6376,6 +6406,7 @@
      "update_table": "price_library",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "price_library",
       "customer_category",
@@ -6445,6 +6476,7 @@
      "update_table": "opportunity_x_order",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "opportunity_x_order",
       "opportunity"
@@ -6534,6 +6566,7 @@
      "update_table": "document_link",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "document_link",
       "document_link_area",
@@ -6732,6 +6765,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -6763,6 +6797,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -6818,6 +6853,7 @@
      "update_table": "activity_trans",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "activity_trans",
       "activity",
@@ -6921,9 +6957,9 @@
        "basis": "column"
       },
       "compute_1": {
-       "column": "activity_trans.activity_id",
-       "expression": null,
-       "basis": "position"
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
       }
      }
     }
@@ -6940,6 +6976,7 @@
      "update_table": "trans_x_gl_dimension",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "trans_x_gl_dimension",
       "gl_dimen_type"
@@ -7028,6 +7065,7 @@
      "update_table": "ship_to",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "ship_to"
      ],
@@ -7065,6 +7103,7 @@
      "update_table": "price_library_x_ship_to",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "price_library_x_ship_to",
       "ship_to",
@@ -7122,6 +7161,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": "the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active",
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -7185,6 +7225,7 @@
      "update_table": "p21_view_audit_trail_oe_hdr_<id>",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": "the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active",
      "main_tables": [
       "p21_view_audit_trail_oe_hdr_<id>"
      ],
@@ -7228,9 +7269,9 @@
       },
       {
        "n": 21,
-       "label": "'Item IDIF (source_area_cd",
-       "expr": "950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))' = item_id",
-       "kind": "computed expression (dw)"
+       "label": "'Item IDIF (source_area_cd = 950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))'",
+       "expr": "item_id",
+       "kind": "unqualified (alias, external or computed in SQL)"
       },
       {
        "n": null,
@@ -7358,6 +7399,7 @@
      "update_table": "oe_line",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_line",
       "inv_loc",
@@ -7719,8 +7761,8 @@
        "basis": "alias"
       },
       "list_price": {
-       "column": "inventory_supplier.list_price",
-       "expression": null,
+       "column": null,
+       "expression": "CASE WHEN COALESCE(inventory_supplier_x_loc.loc_list_price, 0) <> 0 THEN inventory_supplier_x_loc.loc_list_price ELSE inventory_supplier.list_price END",
        "basis": "probed"
       },
       "c_sum_comp_cost": {
@@ -7764,9 +7806,9 @@
        "basis": "probed"
       },
       "compute_1": {
-       "column": "inv_mast.item_id",
-       "expression": null,
-       "basis": "position"
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
       },
       "bo_amount": {
        "column": null,
@@ -7893,6 +7935,7 @@
      "update_table": "oe_line",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_line",
       "inv_loc",
@@ -8401,6 +8444,7 @@
      "update_table": "oe_line",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_line",
       "inv_loc",
@@ -8694,6 +8738,7 @@
      "update_table": "price_page",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "price_page",
       "inv_mast",
@@ -8818,6 +8863,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -8865,6 +8911,7 @@
      "update_table": "oe_line_notepad",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_line_notepad",
       "note_area",
@@ -8933,6 +8980,7 @@
      "update_table": "oe_line_tax",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_line_tax",
       "oe_line",
@@ -9030,9 +9078,9 @@
        "basis": "column"
       },
       "compute_1": {
-       "column": "oe_line_tax.jurisdiction_id",
-       "expression": null,
-       "basis": "position"
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
       },
       "tax_in_hundred": {
        "column": null,
@@ -9059,6 +9107,7 @@
      "update_table": "oe_line",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_line",
       "inv_loc",
@@ -9317,8 +9366,8 @@
        "basis": "probed"
       },
       "cost_price_page_desc": {
-       "column": "price_page.description",
-       "expression": null,
+       "column": null,
+       "expression": "NULL",
        "basis": "probed"
       },
       "unit_quantity": {
@@ -9383,7 +9432,7 @@
   {
    "tab": "TABPAGE_RELEASE",
    "text": "Schedules",
-   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "select_status": "selected",
    "datawindows": [
     {
      "name": "tabpage_release",
@@ -9391,6 +9440,7 @@
      "update_table": "oe_line_schedule",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_line_schedule",
       "oe_line",
@@ -9657,7 +9707,7 @@
   {
    "tab": "TABPAGE_LOT",
    "text": "Lot",
-   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "select_status": "selected",
    "datawindows": [
     {
      "name": "tabpage_lot",
@@ -9665,6 +9715,7 @@
      "update_table": "document_line_lot",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "document_line_lot"
      ],
@@ -9849,7 +9900,7 @@
   {
    "tab": "TP_ITEMNOTES",
    "text": "Item Notes",
-   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "select_status": "selected",
    "datawindows": [
     {
      "name": "tp_itemnotes",
@@ -9857,6 +9908,7 @@
      "update_table": "note",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "note",
       "note_area",
@@ -9932,6 +9984,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -10048,6 +10101,7 @@
      "update_table": "inv_loc",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_loc",
       "inv_mast",
@@ -10138,8 +10192,8 @@
        "basis": "probed"
       },
       "lead_time": {
-       "column": "p21_view_supplier_purchasing_info.lead_time",
-       "expression": null,
+       "column": null,
+       "expression": "COALESCE(CAST(p21_view_supplier_purchasing_info.average_lead_time AS char), 'N/A')",
        "basis": "probed"
       },
       "qty_available": {
@@ -10172,6 +10226,7 @@
      "update_table": "assembly_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "assembly_hdr",
       "inv_mast"
@@ -10475,6 +10530,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -10570,6 +10626,7 @@
      "update_table": "oe_line",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_line",
       "oe_hdr",
@@ -10644,13 +10701,13 @@
        "basis": "column"
       },
       "qty_ordered": {
-       "column": "oe_line.qty_ordered",
-       "expression": null,
+       "column": null,
+       "expression": "CASE :UOM WHEN '' THEN CASE unit_size WHEN 0 THEN 0 ELSE CAST(oe_line.qty_ordered / unit_size AS Decimal(19,9)) END WHEN oe_line.unit_of_measure THEN CASE unit_size WHEN 0 THEN 0 ELSE CAST(oe_line.qty_ordered / unit_size AS Decimal(19,9)) END ELSE CASE :UomSize WHEN 0 THEN 0 ELSE CAST(oe_line.qty_ordered / :UomSize AS Decimal(19,9)) END END",
        "basis": "probed"
       },
       "unit_of_measure": {
-       "column": "oe_line.unit_of_measure",
-       "expression": null,
+       "column": null,
+       "expression": "CASE :UOM WHEN '' THEN oe_line.unit_of_measure ELSE :UOM END",
        "basis": "probed"
       },
       "projected_order": {
@@ -10659,8 +10716,8 @@
        "basis": "column"
       },
       "unit_price": {
-       "column": "oe_line.unit_price",
-       "expression": null,
+       "column": null,
+       "expression": "CASE :UOM WHEN '' THEN CASE pricing_unit_size WHEN 0 THEN 0 ELSE CAST((oe_line.unit_price / pricing_unit_size) * unit_size AS Decimal(19,9)) END WHEN oe_line.unit_of_measure THEN CASE pricing_unit_size WHEN 0 THEN 0 ELSE CAST((oe_line.unit_price / pricing_unit_size) * unit_size AS Decimal(19,9)) END ELSE CASE pricing_unit_size WHEN 0 THEN 0 ELSE CAST((unit_price / pricing_unit_size) * :UomSize AS Decimal(19,9)) END END",
        "basis": "probed"
       },
       "c_gross_profit": {
@@ -10686,6 +10743,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -10710,6 +10768,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -10850,6 +10909,7 @@
      "update_table": "system_setting",
      "update_table_note": "tool reported system_setting, the first FROM table of a read-only grid; treat as read-only",
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "system_setting",
       "po_hdr",
@@ -11024,8 +11084,8 @@
        "basis": "alias"
       },
       "converted_from_rfq_number": {
-       "column": null,
-       "expression": "converted_from_rfq_number",
+       "column": "po_hdr.po_no",
+       "expression": null,
        "basis": "probed"
       },
       "delivery_info": {
@@ -11034,9 +11094,9 @@
        "basis": "column"
       },
       "compute_1": {
-       "column": "inv_mast.item_id",
-       "expression": null,
-       "basis": "position"
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
       },
       "qty_open": {
        "column": null,
@@ -11061,6 +11121,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -11114,6 +11175,7 @@
      "update_table": "oe_line_promise_date",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_line_promise_date",
       "oe_line",
@@ -11215,6 +11277,7 @@
      "update_table": "transfer_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "transfer_hdr",
       "transfer_line",
@@ -11339,6 +11402,7 @@
      "update_table": "oe_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_hdr",
       "oe_line",
@@ -11435,8 +11499,8 @@
        "basis": "alias"
       },
       "oe_pick_ticket_ship_date": {
-       "column": "oe_pick_ticket.ship_date",
-       "expression": null,
+       "column": null,
+       "expression": "CASE WHEN(oe_pick_ticket_detail.ship_quantity = 0 AND oe_pick_ticket.invoice_id_when_shipped > 0) THEN NULL ELSE oe_pick_ticket.ship_date END",
        "basis": "probed"
       },
       "invoice_no": {
@@ -11479,6 +11543,7 @@
      "update_table": null,
      "update_table_note": "tool reported 'clause*/' (misparse of SQL comments; treat as unknown)",
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_loc",
       "address",
@@ -11645,9 +11710,9 @@
        "basis": "dw_name"
       },
       "compute_1": {
-       "column": "inv_loc.location_id",
-       "expression": null,
-       "basis": "position"
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
       },
       "cf_dfflag": {
        "column": null,
@@ -11662,6 +11727,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -11693,6 +11759,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -11739,6 +11806,7 @@
      "update_table": "oe_line_po",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "oe_line_po",
       "po_hdr",
@@ -11870,8 +11938,8 @@
        "basis": "probed"
       },
       "control_no": {
-       "column": "vendor_rfq_hdr.control_no",
-       "expression": null,
+       "column": null,
+       "expression": "COALESCE(vendor_rfq_hdr.control_no, vendor_rfq_hdr_rfq_unconverted.control_no)",
        "basis": "probed"
       },
       "po_line_number": {
@@ -11905,8 +11973,8 @@
        "basis": "alias"
       },
       "po_line_date_due": {
-       "column": "po_line.date_due",
-       "expression": null,
+       "column": null,
+       "expression": "COALESCE(drv_po_line_schedule.release_date, po_line.date_due)",
        "basis": "probed"
       },
       "completed": {
@@ -11915,8 +11983,8 @@
        "basis": "column"
       },
       "converted_from_rfq_number": {
-       "column": null,
-       "expression": "converted_from_rfq_number",
+       "column": "po_hdr.po_no",
+       "expression": null,
        "basis": "probed"
       },
       "delivery_info": {
@@ -11964,6 +12032,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -11999,6 +12068,7 @@
      "update_table": "system_setting",
      "update_table_note": "tool reported system_setting, the first FROM table of a read-only grid; treat as read-only",
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "system_setting",
       "oe_line",
@@ -12183,6 +12253,7 @@
      "update_table": "system_setting",
      "update_table_note": "tool reported system_setting, the first FROM table of a read-only grid; treat as read-only",
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "system_setting",
       "invoice_line",
@@ -12471,6 +12542,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -12511,7 +12583,7 @@
   {
    "tab": "TABPAGE_PRODUCTIONORDER",
    "text": "Production Order",
-   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "select_status": "selected",
    "datawindows": [
     {
      "name": "tabpage_productionorder",
@@ -12519,6 +12591,7 @@
      "update_table": "prod_order_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "prod_order_hdr",
       "prod_order_line",
@@ -12706,6 +12779,7 @@
      "update_table": "document_link",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "document_link",
       "document_link_area",
@@ -12848,8 +12922,8 @@
        "basis": "column"
       },
       "send_outside_use_print_flag": {
-       "column": "document_link_entity_req.send_outside_use_print_flag",
-       "expression": null,
+       "column": null,
+       "expression": "COALESCE (dler_ship_to.send_outside_use_print_flag, dler_customer.send_outside_use_print_flag, 'N')",
        "basis": "probed"
       },
       "document_link_uid": {
@@ -12858,13 +12932,13 @@
        "basis": "column"
       },
       "send_outside_use_email_flag": {
-       "column": "document_link_entity_req.send_outside_use_email_flag",
-       "expression": null,
+       "column": null,
+       "expression": "COALESCE (dler_ship_to.send_outside_use_email_flag, dler_customer.send_outside_use_email_flag, 'N')",
        "basis": "probed"
       },
       "send_outside_use_fax_flag": {
-       "column": "document_link_entity_req.send_outside_use_fax_flag",
-       "expression": null,
+       "column": null,
+       "expression": "COALESCE (dler_ship_to.send_outside_use_fax_flag, dler_customer.send_outside_use_fax_flag, 'N')",
        "basis": "probed"
       },
       "source_area_cd": {
@@ -12912,6 +12986,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [

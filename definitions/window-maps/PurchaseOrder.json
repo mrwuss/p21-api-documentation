@@ -595,6 +595,7 @@
      "update_table": "po_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "po_hdr",
       "address",
@@ -760,9 +761,9 @@
       },
       {
        "n": 77,
-       "label": "'External PO Number:if ( (c_vendor_rfq",
-       "expr": "'N' OR IsNull(c_vendor_rfq)), 'External PO Number:', 'Supplier Quote Number:')' = po_hdr.external_po_no",
-       "kind": "computed expression (dw)"
+       "label": "'External PO Number:if ( (c_vendor_rfq = 'N' OR IsNull(c_vendor_rfq)), 'External PO Number:', 'Supplier Quote Number:')'",
+       "expr": "po_hdr.external_po_no",
+       "kind": "table.column"
       },
       {
        "n": 78,
@@ -940,13 +941,13 @@
        "basis": "probed"
       },
       "fax_po_form": {
-       "column": "po_hdr.po_type",
-       "expression": null,
+       "column": null,
+       "expression": "' '",
        "basis": "probed"
       },
       "email": {
-       "column": "address.email",
-       "expression": null,
+       "column": null,
+       "expression": "'N'",
        "basis": "probed"
       },
       "edi_form": {
@@ -995,8 +996,8 @@
        "basis": "probed"
       },
       "excl_send_info_to_rfnav": {
-       "column": "po_hdr.excl_send_linked_info_to_rfnav_flag",
-       "expression": null,
+       "column": null,
+       "expression": "(the tool names po_hdr.excl_send_linked_info_to_rfnav_flag; the SELECT does not read it)",
        "basis": "probed"
       },
       "direct_through_stock_flag": {
@@ -1094,6 +1095,7 @@
      "update_table": "po_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "po_hdr",
       "address",
@@ -1245,6 +1247,7 @@
      "update_table": "po_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "po_hdr",
       "address",
@@ -1412,6 +1415,7 @@
      "update_table": "supplier_pricing",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "supplier_pricing"
      ],
@@ -1516,6 +1520,7 @@
      "update_table": "po_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "po_hdr",
       "address",
@@ -1656,6 +1661,7 @@
      "update_table": "po_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "po_hdr",
       "address",
@@ -1741,6 +1747,7 @@
      "update_table": "po_hdr_notepad",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "po_hdr_notepad",
       "note_area",
@@ -1815,6 +1822,7 @@
      "update_table": "po_hdr",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "po_hdr",
       "address",
@@ -1922,6 +1930,7 @@
      "update_table": "supplier",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "supplier",
       "location_supplier"
@@ -2054,6 +2063,7 @@
      "update_table": "lc_driver_x_tran",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "lc_driver_x_tran",
       "po_hdr",
@@ -2237,6 +2247,7 @@
      "update_table": "po_schedule_rule",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "po_schedule_rule"
      ],
@@ -2329,6 +2340,7 @@
      "update_table": "po_schedule",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "po_schedule"
      ],
@@ -2373,6 +2385,7 @@
      "update_table": "document_link",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "document_link",
       "document_link_area",
@@ -2571,6 +2584,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -2602,6 +2616,7 @@
      "update_table": "contacts",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "contacts",
       "address",
@@ -2919,6 +2934,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": "the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active",
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -2982,6 +2998,7 @@
      "update_table": "p21_view_audit_trail_po_hdr_<id>",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": "the API could not select this tab (HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.); SQL Information reads an instantiated datawindow whichever tab is active",
      "main_tables": [
       "p21_view_audit_trail_po_hdr_<id>"
      ],
@@ -3025,9 +3042,9 @@
       },
       {
        "n": 21,
-       "label": "'Item IDIF (source_area_cd",
-       "expr": "950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))' = item_id",
-       "kind": "computed expression (dw)"
+       "label": "'Item IDIF (source_area_cd = 950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))'",
+       "expr": "item_id",
+       "kind": "unqualified (alias, external or computed in SQL)"
       },
       {
        "n": null,
@@ -3113,6 +3130,7 @@
      "update_table": "po_line",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "po_line",
       "po_hdr",
@@ -3321,8 +3339,8 @@
        "basis": "probed"
       },
       "item_desc": {
-       "column": "po_line.item_description",
-       "expression": null,
+       "column": null,
+       "expression": "(CASE WHEN COALESCE(po_line.parent_po_line_no, po_line.line_no) = po_line.line_no THEN po_line.item_description ELSE 'Quantity Break' END)",
        "basis": "probed"
       },
       "c_shipped_flag": {
@@ -3420,6 +3438,7 @@
      "update_table": "po_line",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "po_line",
       "po_hdr",
@@ -3681,8 +3700,8 @@
        "basis": "probed"
       },
       "item_description": {
-       "column": "po_line.item_description",
-       "expression": null,
+       "column": null,
+       "expression": "(CASE WHEN COALESCE(po_line.parent_po_line_no, po_line.line_no) = po_line.line_no THEN po_line.item_description ELSE 'Quantity Break' END)",
        "basis": "probed"
       },
       "source_type": {
@@ -3740,6 +3759,7 @@
      "update_table": "po_line",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "po_line",
       "po_hdr",
@@ -3953,7 +3973,7 @@
       },
       "next_unit_price_display": {
        "column": null,
-       "expression": "' '",
+       "expression": "0.0000",
        "basis": "probed"
       },
       "pricing_book_disc_grp_id": {
@@ -4022,6 +4042,7 @@
      "update_table": "po_line_notepad",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "po_line_notepad",
       "note_area",
@@ -4108,6 +4129,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [
@@ -4224,6 +4246,7 @@
      "update_table": "inv_loc",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "inv_loc",
       "inv_mast",
@@ -4314,8 +4337,8 @@
        "basis": "probed"
       },
       "lead_time": {
-       "column": "p21_view_supplier_purchasing_info.lead_time",
-       "expression": null,
+       "column": null,
+       "expression": "COALESCE(CAST(p21_view_supplier_purchasing_info.average_lead_time AS char), 'N/A')",
        "basis": "probed"
       },
       "qty_available": {
@@ -4348,6 +4371,7 @@
      "update_table": "po_line_schedule",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "po_line_schedule",
       "po_line",
@@ -4403,6 +4427,7 @@
      "update_table": "po_line_schedule",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "po_line_schedule",
       "po_line",
@@ -4505,24 +4530,24 @@
        "basis": "dw_name"
       },
       "compute_1": {
-       "column": "po_line_schedule.po_line_schedule_uid",
-       "expression": null,
-       "basis": "position"
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
       },
       "compute_4": {
-       "column": "po_line_schedule.release_date",
-       "expression": null,
-       "basis": "position"
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
       },
       "compute_2": {
-       "column": "po_line_schedule.po_line_uid",
-       "expression": null,
-       "basis": "position"
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
       },
       "compute_3": {
-       "column": "po_line_schedule.release_no",
-       "expression": null,
-       "basis": "position"
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
       }
      }
     }
@@ -4539,6 +4564,7 @@
      "update_table": "lc_driver_x_tran_detail",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "lc_driver_x_tran_detail",
       "lc_driver_x_tran",
@@ -4743,6 +4769,7 @@
      "update_table": "document_link",
      "update_table_note": null,
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "document_link",
       "document_link_area",
@@ -4954,6 +4981,7 @@
      "update_table": null,
      "update_table_note": "tool reported 'clause*/' (misparse of SQL comments; treat as unknown)",
      "external_source": false,
+     "off_tab": null,
      "main_tables": [
       "po_hdr",
       "po_line",
@@ -5117,8 +5145,8 @@
        "basis": "column"
       },
       "po_hdr_po_type": {
-       "column": "po_hdr.po_type",
-       "expression": null,
+       "column": null,
+       "expression": "COALESCE(po_line.line_type, po_hdr.po_type)",
        "basis": "probed"
       },
       "space": {
@@ -5170,6 +5198,7 @@
      "update_table": null,
      "update_table_note": null,
      "external_source": true,
+     "off_tab": null,
      "main_tables": [],
      "select_sql": "External source data; no SQL select associated with displayed data",
      "columns": [

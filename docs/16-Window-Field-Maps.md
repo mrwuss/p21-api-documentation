@@ -85,14 +85,13 @@ For each mapped datawindow:
 
 ### Basis
 
-`basis` says how a field was resolved. Of the 2,927 fields: 853 `probed`, 1,264 `column`, 312 `alias`, 267 `dw_name`, 211 `no_sql`, 20 `position`.
+`basis` says how a field was resolved. Of the 2,927 fields: 853 `probed`, 1,264 `column`, 312 `alias`, 287 `dw_name`, 211 `no_sql`.
 
 | Basis | Meaning |
 |---|---|
 | `probed` | Per-field SQL Information named the column. The tool's own answer — the strongest evidence here, not a guarantee (see [Limits](#limits-of-the-maps)). |
 | `alias` | The field is an alias in the `SELECT` (a name match). |
 | `column` | The field is the name of exactly one column in the `SELECT` (a name match). |
-| `position` | The field is `compute_<n>`, the `SELECT`'s item `n`. |
 | `dw_name` | A name P21 gives a field the datawindow computes (`cf_`, `c_`, `compute`). |
 | `no_sql` | The datawindow has no `SELECT` (external source data). |
 | `ambiguous`, `unresolved` | The name matches two columns, or none. None remain in the published files. |
@@ -110,9 +109,10 @@ For each mapped datawindow:
 These are what the SQL Information tool reported plus name matching, read from play. They were not write-tested field by field.
 
 - **Check a mapping before you build a write on it.** Re-ask the tool for that one field (`FieldName` set, see [Read a Window's SQL](recipes/window-sql-information.md)), then save and read the record back.
-- **Display and computed fields can be misreported**, `probed` ones included. Customer `pending_payment_account_no_desc` is reported as `customer.po_no_required`, though its `SELECT` carries a blank literal; Item `sales_discount_group_desc` and `purchase_discount_group_desc` are reported as `inv_mast.discount_group_description`, though the descriptions come from the aliased `discount_group` joins. Read `select_sql` and `expression` next to `column` for any description or label field.
-- **Column-report labels for computed columns are sometimes split in the wrong place.** PowerBuilder `if(...)` labels were cut at a comma, quote or `=`, so a few `columns[]` entries and rows of the `<Service>.md` pages read as fragments (the audit-trail `Item ID` row is one). Use `select_sql` and `fields` for those.
-- **A tab that was not selectable is less certain.** Each tab carries `select_status`; for Order, 46 of 84 tabs read `selected` and the rest answered an HTTP 400 such as *Tab page is disabled and cannot be selected*. Do not rely on the datawindows listed under such a tab without re-reading them.
+- **Only `probed` is the tool's own answer.** `column`, `alias`, `dw_name` and `no_sql` are matches against the `SELECT` (2,074 of 2,927 fields), so read `select_sql` next to the column for any description or label field.
+- **A window can blank a field the map still lists.** Assembly `price_return_to_stock_components` is blanked in the window, yet the map matches both the column report and the `SELECT`; the map describes the datawindow, not what the window shows for your record.
+- **`expression` is not always SQL.** For a field the `SELECT` does not read, it can hold a bare identifier (Customer `label_definition_id`) or a short sentence naming what the tool reported (Assembly `revision_level`). Treat `column: null` as "no stored column found", not as a computed value.
+- **`TIMESTAMP` datawindows are marked `off_tab`.** The API cannot select a tab whose name is shared by several tabs, but SQL Information reads an instantiated datawindow whichever tab is active, so their `SELECT`s are present. In all, 12 datawindows carry this marker; check `select_status` on every other tab (for Order, 51 of 84 tabs read `selected`).
 
 ## How the maps were made
 
