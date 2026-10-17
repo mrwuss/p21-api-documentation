@@ -732,10 +732,6 @@ Call `GetData()` (SDK) or `GET /api/ui/interactive/v2/data?id={windowId}` (REST)
 
 Every API response includes an `Events` collection. When a response window opens, look for `Name: "windowopened"` events. When tabs become enabled, look for `Name: "tabpageenabled"` events. When a new record is saved, look for `Name: "keygenerated"` events.
 
-### 5. P21 SQL Information` (keep the heading text so the `#5-p21-sql-information` anchor stays). Second block: a row for `docs/INDEX.md`, in the table that holds "Find field / tab / datawindow names".
-
----
-
 ### 5. P21 SQL Information
 
 In the P21 desktop or web client, right-click any field and select **Help > SQL Information**. This dialog shows:

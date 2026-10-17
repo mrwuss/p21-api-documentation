@@ -236,7 +236,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
 
 print(definition.get("Title"))
 print("\n-- SQL INFO")
-print(info[0]["text"] if info else "(none)")
+print((info[0].get("text") if info else None) or "(none)")
 print("\n-- Columns (label = table.column)")
 print("\n".join(columns) or "(none)")
 print("\n-- SELECT")
@@ -353,7 +353,7 @@ try
                 : new List<string?>();
 
             var info = await RowsAsync(dialog, "sqlinfo");
-            if (info.Count > 0) sqlInfo = info[0].GetProperty("text").GetString() ?? "(none)";
+            if (info.Count > 0 && info[0].TryGetProperty("text", out var text)) sqlInfo = text.GetString() ?? "(none)";
             if (pages.Contains("SQL INFORMATION REPORT"))
             {
                 await PageAsync(dialog, "SQL INFORMATION REPORT");
