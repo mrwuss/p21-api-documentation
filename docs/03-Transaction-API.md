@@ -660,6 +660,8 @@ Both users could open the window, load the order, and set every other field on t
 
 **What makes a column disabled for a user:** DynaChange data-change rules scoped to a role, Application Security settings, window-level permissions, and **screen versions**, including the web client's Version Manager versions, which are stored apart from the classic ones (see [04 § The locked Units of Measure grid](04-Interactive-API.md#the-locked-units-of-measure-grid-a-web-screen-version) for where they live and a query that finds them) — the same machinery documented under [DynaChange and Popup Handling](#dynachange-and-popup-handling) and [Application Security settings](00-Authentication.md#application-security-settings-that-affect-api-access). The API surfaces all of it as one undifferentiated message.
 
+> **Check the record's other flags.** Another field on the same record can disable a column for every user. `customer.job_pricing` is disabled while `customer.use_vendor_contracts_flag` is `Y`; see [Customer Service — Turning On Job/Contract Pricing](#customer-service-turning-on-jobcontract-pricing).
+
 **What this means in practice:**
 
 - **A payload that works in development can fail in production** purely because the service account there has a different role. The error will look like a schema problem and send you hunting through definitions.
@@ -1001,6 +1003,9 @@ The CC element carries the result of an authorization performed **elsewhere** �
 The Task window validates that start ≤ target, and **both default to today**. Setting `start_date` first validates it against a target that is still the default, and the transaction fails. Put `target_date` (and `target_minute`) **earlier in the `Edits` array** than `start_date`. Same class of bug as `pricing_method` before `price` — the API replays edits in order and each one validates as it lands.
 
 The Task service form is `Form.form`, keyed on `activity_trans_no`, carrying `subject`, `target_date`/`target_minute`, `start_date`/`start_minute`, `completed_flag`, `reminder_time_offset` + `reminder_time_offset_cd` (e.g. `"Minute(s)"`), `activity_id`, `assigned_to_id`, `contact_id`, `transaction_type_cd`. *(From the Epicor SDK Transaction API reference guide; the ordering rule is Epicor's own, not re-tested here.)*
+
+**Customer — `use_vendor_contracts_flag` before `job_pricing`:**
+On `TABPAGE_7.tp_7_dw_7`, `job_pricing` is disabled until `use_vendor_contracts_flag` is `N`. Put `use_vendor_contracts_flag = N` earlier in the `Edits` array than `job_pricing = Y`; see [Customer Service — Turning On Job/Contract Pricing](#customer-service-turning-on-jobcontract-pricing).
 
 **Multiple Lot Items:**
 When creating items with lot tracking, interleave item and lot DataElements:
@@ -1768,7 +1773,7 @@ Read back `job_price_customer_shipto` for the contract (the new row has `row_sta
 
 **`IgnoreDisabled` is not needed on 26.1.5950.0** — the grid row landed without it, and the header was not re-saved (`job_price_hdr.date_last_modified` unchanged). The run credited below sent `IgnoreDisabled: true`; if your build refuses the row as disabled, add it at the payload top level and then [never trust `Passed` alone](#ignoredisabled).
 
-**The customer must have Job/Contract Pricing enabled.** A ship-to whose customer has `customer.job_pricing = 'N'` fails *"Job/Contract Pricing is not enabled for Customer ID …"*. On the test tenant `job_pricing` (`Customer` service, `TABPAGE_7.tp_7_dw_7`) was `Column is disabled` for the API user on both create and update, and `IgnoreDisabled` turned that into a [false success](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing) — so a customer created through the API could not be put on a contract; set the flag in the Customer window first. The cause is still open: no web-client screen version disables `job_pricing`, `always_use_job_price` or `allow_non_job_item` on that tenant (checked with the [screen-version query](04-Interactive-API.md#check-for-a-web-screen-version-on-the-grid), filtered on `m.object_name`).
+**The customer must have Job/Contract Pricing enabled.** A ship-to whose customer has `customer.job_pricing = 'N'` fails *"Job/Contract Pricing is not enabled for Customer ID …"*. Turn it on through the `Customer` service, and send `use_vendor_contracts_flag = N` before `job_pricing = Y`: while the customer uses vendor contracts, `job_pricing` is `Column is disabled`. A customer created through the API usually has `use_vendor_contracts_flag = Y` from the defaults. See [Customer Service — Turning On Job/Contract Pricing](#customer-service-turning-on-jobcontract-pricing).
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified on play, September 2026 (a blank-price order to the newly added ship-to auto-priced from the contract). **Re-run here:** Python and C# examples run on play 26.1.5950.0, 2026-10-10 — a ship-to attached to each of two throwaway contracts, confirmed by the `job_price_customer_shipto` read-back. The order-pricing step was not re-run.
 
@@ -4390,6 +4395,71 @@ GET {base}/odataservice/odata/view/p21_view_oe_hdr?$filter=rma_flag eq 'Y'&$sele
 This matters most for **bulk header maintenance** — reassigning `taker` when a salesperson leaves, retagging orders, any sweep over open orders. RMAs are a normal part of such a set, and the failure message doesn't obviously mean *"use a different service"*, so a batch job hits it as an unexplained per-record error.
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — found while reassigning takers at scale, where the RMA rows in an open-order set failed as a group.
+
+### Customer Service — Turning On Job/Contract Pricing
+
+`customer.job_pricing` (`Customer` service, `TABPAGE_7.tp_7_dw_7`) is disabled while `customer.use_vendor_contracts_flag` is `Y`. The two settings exclude each other, so the Transaction and Interactive APIs both refuse the field:
+
+```text
+General Exception: Column is disabled: job_pricing
+```
+
+**Cause.** A customer created through the API takes `use_vendor_contracts_flag = Y` from the defaults template: on the test tenant, `GET /api/v2/defaults/Customer` returns `use_vendor_contracts_flag` `ON` and `job_pricing` `OFF`. A customer whose box was cleared in the client accepts the same edit, which is why it works on one customer and fails on another. A screen version and the user's role are not involved, and `IgnoreDisabled: true` does not help: it [reports success and writes nothing](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing).
+
+**Fix.** Set `use_vendor_contracts_flag = N` first, in the same create or edit, then `job_pricing = Y`. The order of the two edits matters: with `job_pricing` first, the transaction fails with the error above.
+
+How the tab's fields depend on each other (Interactive `Customer` window, `TABPAGE_7`):
+
+| State | Disabled |
+|---|---|
+| `use_vendor_contracts_flag = Y` | `job_pricing`, `always_use_job_price`, `allow_non_job_item`, `prompt_for_non_job_item`, `allow_exceed_job_qty`, `allow_item_level_contract_flag` |
+| `use_vendor_contracts_flag = N`, `job_pricing = N` | The five job settings after `job_pricing` |
+| `job_pricing = Y` | `use_vendor_contracts_flag`; `prompt_for_non_job_item` stays disabled |
+
+To switch a customer back to vendor contracts, set `job_pricing = N` first.
+
+Create a customer with Job/Contract Pricing on:
+
+```json
+{
+  "Name": "Customer",
+  "UseCodeValues": false,
+  "Transactions": [{
+    "Status": "New",
+    "DataElements": [
+      { "Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": [],
+        "Rows": [{ "Edits": [
+          {"Name": "customer_name",    "Value": "ACME Industrial Supply"},
+          {"Name": "salesrep_id",      "Value": "100"},
+          {"Name": "mail_address1",    "Value": "123 Main St"},
+          {"Name": "mail_city",        "Value": "Des Moines"},
+          {"Name": "mail_state",       "Value": "IA"},
+          {"Name": "mail_postal_code", "Value": "50309"},
+          {"Name": "mail_country",     "Value": "USA"}
+        ], "RelativeDateEdits": [] }] },
+      { "Name": "SHIP_TO_GENERAL.ship_to_general", "Type": "Form", "Keys": [],
+        "Rows": [{ "Edits": [
+          {"Name": "default_branch", "Value": "10"}
+        ], "RelativeDateEdits": [] }] },
+      { "Name": "TABPAGE_7.tp_7_dw_7", "Type": "Form", "Keys": [],
+        "Rows": [{ "Edits": [
+          {"Name": "use_vendor_contracts_flag", "Value": "N"},
+          {"Name": "job_pricing",               "Value": "Y"}
+        ], "RelativeDateEdits": [] }] }
+    ]
+  }]
+}
+```
+
+To change an existing customer, send `company_id` and `customer_id` on `TABPAGE_1.tp_1_dw_1` in place of the create fields, followed by the same `TABPAGE_7.tp_7_dw_7` element. In the Interactive `Customer` window, load the customer, select `TABPAGE_7`, change `use_vendor_contracts_flag` to `N`, then `job_pricing` to `Y`, and save.
+
+Read the result back over OData:
+
+```http
+GET {base}/odataservice/odata/table/customer?$filter=customer_id eq {customer_id}&$select=customer_id,use_vendor_contracts_flag,job_pricing
+```
+
+> Verified on play 26.1.5950.0, 2026-10-17, on new test customers: the one-transaction create above, the same two edits on a customer created with the defaults, and the Interactive `Customer` window. Each saved `job_pricing = Y` and read back `use_vendor_contracts_flag = N`. The edits in the reverse order failed with `Column is disabled: job_pricing`.
 
 ### Customer Service — Removing a Salesrep Grid Row
 

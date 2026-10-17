@@ -756,6 +756,7 @@
 <li><a href="#convertpotovoucher-service-vouching-a-receipt">ConvertPOToVoucher Service — Vouching a Receipt</a></li>
 <li><a href="#vendor-service-creating-a-vendor-and-its-supplier">Vendor Service — Creating a Vendor (and Its Supplier)</a></li>
 <li><a href="#rma-service-orders-the-order-service-refuses">RMA Service — Orders the Order Service Refuses</a></li>
+<li><a href="#customer-service-turning-on-jobcontract-pricing">Customer Service — Turning On Job/Contract Pricing</a></li>
 <li><a href="#customer-service-removing-a-salesrep-grid-row">Customer Service — Removing a Salesrep Grid Row</a></li>
 <li><a href="#shipto-service-creating-a-ship-to">ShipTo Service — Creating a Ship-To</a></li>
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
@@ -1862,6 +1863,9 @@ HTTP 400
 <p><strong>Check allocation first.</strong> A re-test on play 26.1.5950.0 (2026-10-17) found a stronger cause for this particular refusal: <code>disposition</code> is disabled on any line that holds allocated stock, for every user. The same service account set <code>D</code> on unallocated lines, and on allocated lines after <code>TP_EXTDINFO.extd_info.allocated_qty = 0</code>. The general rule in this section still stands: <code>Column is disabled</code> can come from roles and DynaChange rules. Rule out the record's own state before you change a role. See <a href="04-Interactive-API.html#changing-a-saved-line-to-direct-ship">Changing a saved line to direct ship</a>.</p>
 </blockquote>
 <p><strong>What makes a column disabled for a user:</strong> DynaChange data-change rules scoped to a role, Application Security settings, window-level permissions, and <strong>screen versions</strong>, including the web client's Version Manager versions, which are stored apart from the classic ones (see <a href="04-Interactive-API.html#the-locked-units-of-measure-grid-a-web-screen-version">04 § The locked Units of Measure grid</a> for where they live and a query that finds them) — the same machinery documented under <a href="#dynachange-and-popup-handling">DynaChange and Popup Handling</a> and <a href="00-Authentication.html#application-security-settings-that-affect-api-access">Application Security settings</a>. The API surfaces all of it as one undifferentiated message.</p>
+<blockquote>
+<p><strong>Check the record's other flags.</strong> Another field on the same record can disable a column for every user. <code>customer.job_pricing</code> is disabled while <code>customer.use_vendor_contracts_flag</code> is <code>Y</code>; see <a href="#customer-service-turning-on-jobcontract-pricing">Customer Service — Turning On Job/Contract Pricing</a>.</p>
+</blockquote>
 <p><strong>What this means in practice:</strong></p>
 <ul>
 <li><strong>A payload that works in development can fail in production</strong> purely because the service account there has a different role. The error will look like a schema problem and send you hunting through definitions.</li>
@@ -2265,6 +2269,8 @@ DataElements must appear in this order — the two payment elements go <strong>a
 <p><strong>Task — <code>target_date</code> before <code>start_date</code>:</strong>
 The Task window validates that start ≤ target, and <strong>both default to today</strong>. Setting <code>start_date</code> first validates it against a target that is still the default, and the transaction fails. Put <code>target_date</code> (and <code>target_minute</code>) <strong>earlier in the <code>Edits</code> array</strong> than <code>start_date</code>. Same class of bug as <code>pricing_method</code> before <code>price</code> — the API replays edits in order and each one validates as it lands.</p>
 <p>The Task service form is <code>Form.form</code>, keyed on <code>activity_trans_no</code>, carrying <code>subject</code>, <code>target_date</code>/<code>target_minute</code>, <code>start_date</code>/<code>start_minute</code>, <code>completed_flag</code>, <code>reminder_time_offset</code> + <code>reminder_time_offset_cd</code> (e.g. <code>"Minute(s)"</code>), <code>activity_id</code>, <code>assigned_to_id</code>, <code>contact_id</code>, <code>transaction_type_cd</code>. <em>(From the Epicor SDK Transaction API reference guide; the ordering rule is Epicor's own, not re-tested here.)</em></p>
+<p><strong>Customer — <code>use_vendor_contracts_flag</code> before <code>job_pricing</code>:</strong>
+On <code>TABPAGE_7.tp_7_dw_7</code>, <code>job_pricing</code> is disabled until <code>use_vendor_contracts_flag</code> is <code>N</code>. Put <code>use_vendor_contracts_flag = N</code> earlier in the <code>Edits</code> array than <code>job_pricing = Y</code>; see <a href="#customer-service-turning-on-jobcontract-pricing">Customer Service — Turning On Job/Contract Pricing</a>.</p>
 <p><strong>Multiple Lot Items:</strong>
 When creating items with lot tracking, interleave item and lot DataElements:
 1. Item 1 → Lot 1
@@ -3112,7 +3118,7 @@ successfully. Do you want to continue to retrieve? [Response: No]
 
 <p>Read back <code>job_price_customer_shipto</code> for the contract (the new row has <code>row_status_flag</code> 704), then confirm on a test order: a blank-price line for that ship-to should now fill in the contract price.</p>
 <p><strong><code>IgnoreDisabled</code> is not needed on 26.1.5950.0</strong> — the grid row landed without it, and the header was not re-saved (<code>job_price_hdr.date_last_modified</code> unchanged). The run credited below sent <code>IgnoreDisabled: true</code>; if your build refuses the row as disabled, add it at the payload top level and then <a href="#ignoredisabled">never trust <code>Passed</code> alone</a>.</p>
-<p><strong>The customer must have Job/Contract Pricing enabled.</strong> A ship-to whose customer has <code>customer.job_pricing = 'N'</code> fails <em>"Job/Contract Pricing is not enabled for Customer ID …"</em>. On the test tenant <code>job_pricing</code> (<code>Customer</code> service, <code>TABPAGE_7.tp_7_dw_7</code>) was <code>Column is disabled</code> for the API user on both create and update, and <code>IgnoreDisabled</code> turned that into a <a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">false success</a> — so a customer created through the API could not be put on a contract; set the flag in the Customer window first. The cause is still open: no web-client screen version disables <code>job_pricing</code>, <code>always_use_job_price</code> or <code>allow_non_job_item</code> on that tenant (checked with the <a href="04-Interactive-API.html#check-for-a-web-screen-version-on-the-grid">screen-version query</a>, filtered on <code>m.object_name</code>).</p>
+<p><strong>The customer must have Job/Contract Pricing enabled.</strong> A ship-to whose customer has <code>customer.job_pricing = 'N'</code> fails <em>"Job/Contract Pricing is not enabled for Customer ID …"</em>. Turn it on through the <code>Customer</code> service, and send <code>use_vendor_contracts_flag = N</code> before <code>job_pricing = Y</code>: while the customer uses vendor contracts, <code>job_pricing</code> is <code>Column is disabled</code>. A customer created through the API usually has <code>use_vendor_contracts_flag = Y</code> from the defaults. See <a href="#customer-service-turning-on-jobcontract-pricing">Customer Service — Turning On Job/Contract Pricing</a>.</p>
 <blockquote>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — verified on play, September 2026 (a blank-price order to the newly added ship-to auto-priced from the contract). <strong>Re-run here:</strong> Python and C# examples run on play 26.1.5950.0, 2026-10-10 — a ship-to attached to each of two throwaway contracts, confirmed by the <code>job_price_customer_shipto</code> read-back. The order-pricing step was not re-run.</p>
 </blockquote>
@@ -6227,6 +6233,76 @@ DataElement: order, Column: order_no
 <blockquote>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — found while reassigning takers at scale, where the RMA rows in an open-order set failed as a group.</p>
 </blockquote>
+<h3 id="customer-service-turning-on-jobcontract-pricing">Customer Service — Turning On Job/Contract Pricing</h3>
+<p><code>customer.job_pricing</code> (<code>Customer</code> service, <code>TABPAGE_7.tp_7_dw_7</code>) is disabled while <code>customer.use_vendor_contracts_flag</code> is <code>Y</code>. The two settings exclude each other, so the Transaction and Interactive APIs both refuse the field:</p>
+<div class="highlight"><pre><span></span><code>General Exception: Column is disabled: job_pricing
+</code></pre></div>
+
+<p><strong>Cause.</strong> A customer created through the API takes <code>use_vendor_contracts_flag = Y</code> from the defaults template: on the test tenant, <code>GET /api/v2/defaults/Customer</code> returns <code>use_vendor_contracts_flag</code> <code>ON</code> and <code>job_pricing</code> <code>OFF</code>. A customer whose box was cleared in the client accepts the same edit, which is why it works on one customer and fails on another. A screen version and the user's role are not involved, and <code>IgnoreDisabled: true</code> does not help: it <a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">reports success and writes nothing</a>.</p>
+<p><strong>Fix.</strong> Set <code>use_vendor_contracts_flag = N</code> first, in the same create or edit, then <code>job_pricing = Y</code>. The order of the two edits matters: with <code>job_pricing</code> first, the transaction fails with the error above.</p>
+<p>How the tab's fields depend on each other (Interactive <code>Customer</code> window, <code>TABPAGE_7</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>State</th>
+<th>Disabled</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>use_vendor_contracts_flag = Y</code></td>
+<td><code>job_pricing</code>, <code>always_use_job_price</code>, <code>allow_non_job_item</code>, <code>prompt_for_non_job_item</code>, <code>allow_exceed_job_qty</code>, <code>allow_item_level_contract_flag</code></td>
+</tr>
+<tr>
+<td><code>use_vendor_contracts_flag = N</code>, <code>job_pricing = N</code></td>
+<td>The five job settings after <code>job_pricing</code></td>
+</tr>
+<tr>
+<td><code>job_pricing = Y</code></td>
+<td><code>use_vendor_contracts_flag</code>; <code>prompt_for_non_job_item</code> stays disabled</td>
+</tr>
+</tbody>
+</table></div>
+<p>To switch a customer back to vendor contracts, set <code>job_pricing = N</code> first.</p>
+<p>Create a customer with Job/Contract Pricing on:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Customer&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">        </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">          </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;customer_name&quot;</span><span class="p">,</span><span class="w">    </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME Industrial Supply&quot;</span><span class="p">},</span>
+<span class="w">          </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;salesrep_id&quot;</span><span class="p">,</span><span class="w">      </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;100&quot;</span><span class="p">},</span>
+<span class="w">          </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mail_address1&quot;</span><span class="p">,</span><span class="w">    </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;123 Main St&quot;</span><span class="p">},</span>
+<span class="w">          </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mail_city&quot;</span><span class="p">,</span><span class="w">        </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Des Moines&quot;</span><span class="p">},</span>
+<span class="w">          </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mail_state&quot;</span><span class="p">,</span><span class="w">       </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IA&quot;</span><span class="p">},</span>
+<span class="w">          </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mail_postal_code&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;50309&quot;</span><span class="p">},</span>
+<span class="w">          </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mail_country&quot;</span><span class="p">,</span><span class="w">     </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;USA&quot;</span><span class="p">}</span>
+<span class="w">        </span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;SHIP_TO_GENERAL.ship_to_general&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">        </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">          </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;default_branch&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10&quot;</span><span class="p">}</span>
+<span class="w">        </span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_7.tp_7_dw_7&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">        </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">          </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;use_vendor_contracts_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;N&quot;</span><span class="p">},</span>
+<span class="w">          </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;job_pricing&quot;</span><span class="p">,</span><span class="w">               </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Y&quot;</span><span class="p">}</span>
+<span class="w">        </span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>To change an existing customer, send <code>company_id</code> and <code>customer_id</code> on <code>TABPAGE_1.tp_1_dw_1</code> in place of the create fields, followed by the same <code>TABPAGE_7.tp_7_dw_7</code> element. In the Interactive <code>Customer</code> window, load the customer, select <code>TABPAGE_7</code>, change <code>use_vendor_contracts_flag</code> to <code>N</code>, then <code>job_pricing</code> to <code>Y</code>, and save.</p>
+<p>Read the result back over OData:</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET {base}/odataservice/odata/table/customer?$filter=customer_id eq {customer_id}&amp;$select=customer_id,use_vendor_contracts_flag,job_pricing</span>
+</code></pre></div>
+
+<blockquote>
+<p>Verified on play 26.1.5950.0, 2026-10-17, on new test customers: the one-transaction create above, the same two edits on a customer created with the defaults, and the Interactive <code>Customer</code> window. Each saved <code>job_pricing = Y</code> and read back <code>use_vendor_contracts_flag = N</code>. The edits in the reverse order failed with <code>Column is disabled: job_pricing</code>.</p>
+</blockquote>
 <h3 id="customer-service-removing-a-salesrep-grid-row">Customer Service — Removing a Salesrep Grid Row</h3>
 <p>The <code>Customer</code> service's <code>CUSTOMERSALESREP.customersalesrep</code> grid (List, key <code>salesrep_id</code>, business object <code>customer_salesrep</code>) has <strong>no <code>delete_flag</code></strong>. Sending one fails the whole transaction:</p>
 <div class="highlight"><pre><span></span><code>General Exception: Invalid column name: delete_flag
@@ -8068,6 +8144,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li><a href="#convertpotovoucher-service-vouching-a-receipt">ConvertPOToVoucher Service — Vouching a Receipt</a></li>
 <li><a href="#vendor-service-creating-a-vendor-and-its-supplier">Vendor Service — Creating a Vendor (and Its Supplier)</a></li>
 <li><a href="#rma-service-orders-the-order-service-refuses">RMA Service — Orders the Order Service Refuses</a></li>
+<li><a href="#customer-service-turning-on-jobcontract-pricing">Customer Service — Turning On Job/Contract Pricing</a></li>
 <li><a href="#customer-service-removing-a-salesrep-grid-row">Customer Service — Removing a Salesrep Grid Row</a></li>
 <li><a href="#shipto-service-creating-a-ship-to">ShipTo Service — Creating a Ship-To</a></li>
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
