@@ -235,7 +235,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Production pick ticket at a specific location | [03 § m_picktickets example](03-Transaction-API.md#example-generate-a-production-order-pick-ticket-m_picktickets) |
 | PDFs from print flags on a normal transaction | [03 § PDFs from the /transaction endpoint](03-Transaction-API.md#pdfs-from-the-transaction-endpoint-print-flags) |
 | **Merge several report PDFs** — barcodes print as text | [03 § Merging Several Report PDFs into One File](03-Transaction-API.md#merging-several-report-pdfs-into-one-file) — rename the font-subset tags |
-| **Put an assembly's drawing on its pick ticket** · does an API pick-ticket PDF include linked documents? | [recipe: item-document-links](recipes/item-document-links.md) — display area `3453` Sales Order Pick Ticket; the API's pick-ticket PDF never includes the linked file, with *Transmit Document Links* on or off |
+| **Put an assembly's drawing on its pick ticket** · does an API pick-ticket PDF include linked documents? | [recipe: item-document-links](recipes/item-document-links.md) — display area `3453` Sales Order Pick Ticket; in the tests (`print_tix`, `m_reprintpicktickets`) the API's pick-ticket PDF did not include the linked file, with *Transmit Document Links* on or off; what the client prints was not tested |
 
 ## When something breaks
 

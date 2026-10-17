@@ -181,9 +181,12 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     headers = {**auth, "Content-Type": "application/json"}
 
     # The folder P21's own Add Link dialog uploads into, and the item's uid.
-    folder = odata(client, auth, "system_setting", "value",
-                   f"name eq '{UPLOAD_FOLDER_SETTING}'")[0]["value"].rstrip("\\")
-    items = odata(client, auth, "inv_mast", "inv_mast_uid", f"item_id eq '{ITEM_ID}'")
+    settings = odata(client, auth, "system_setting", "value", f"name eq '{UPLOAD_FOLDER_SETTING}'")
+    if not settings or not settings[0]["value"]:
+        sys.exit(f"System setting {UPLOAD_FOLDER_SETTING} is not set")
+    folder = settings[0]["value"].rstrip("\\")
+    quoted_id = ITEM_ID.replace("'", "''")  # OData doubles a quote inside a string literal
+    items = odata(client, auth, "inv_mast", "inv_mast_uid", f"item_id eq '{quoted_id}'")
     if not items:
         sys.exit(f"{ITEM_ID} is not in P21")
     uid = str(int(items[0]["inv_mast_uid"]))
@@ -350,9 +353,12 @@ var fileName = Path.GetFileName(FilePath);
 var content = await File.ReadAllBytesAsync(FilePath);
 
 // The folder P21's own Add Link dialog uploads into, and the item's uid.
-var folder = (await ODataAsync("system_setting", "value", $"name eq '{UploadFolderSetting}'"))[0]
-    .GetProperty("value").GetString()!.TrimEnd('\\');
-var items = await ODataAsync("inv_mast", "inv_mast_uid", $"item_id eq '{ItemId}'");
+var settings = await ODataAsync("system_setting", "value", $"name eq '{UploadFolderSetting}'");
+var folder = settings.Count == 0 ? null : settings[0].GetProperty("value").GetString();
+if (string.IsNullOrEmpty(folder)) { Console.WriteLine($"System setting {UploadFolderSetting} is not set"); return; }
+folder = folder.TrimEnd('\\');
+var quotedId = ItemId.Replace("'", "''");  // OData doubles a quote inside a string literal
+var items = await ODataAsync("inv_mast", "inv_mast_uid", $"item_id eq '{quotedId}'");
 if (items.Count == 0) { Console.WriteLine($"{ItemId} is not in P21"); return; }
 var uid = items[0].GetProperty("inv_mast_uid").GetDecimal().ToString("0");
 var linkPath = $"{folder}\\{fileName}";
