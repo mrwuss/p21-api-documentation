@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">26</span></summary>
+            <summary>Recipes <span class="nav-count">27</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -631,6 +631,7 @@
             <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
             <li><a href="recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
             <li><a href="recipes/item-document-links.html">Attach a Document to an Item, Assembly or Kit (Document Links)</a></li>
+            <li><a href="recipes/link-production-order.html">Link an Existing Production Order to a Sales-Order Line</a></li>
             <li><a href="recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
             <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
@@ -1720,6 +1721,7 @@
 </ul>
 <p>Neither min/max settings nor <code>make = 'Y'</code> is required for this path. Gotchas: the customer's <strong>salesrep must be valid at the sales location</strong> (a DynaChange rule blocks the order otherwise), and the <strong><code>requested_date</code> must be after the <code>order_date</code></strong>. Enter the order via the Interactive API when the line must explode — see <a href="04-Interactive-API.html#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a>.</p>
 <p><strong>Path B — Direct build-to-stock.</strong> Drive the <code>ProductionOrder</code> window: set the header <code>source_loc_id</code> (the make location — where components are stocked <em>and</em> the finished item exists) plus any required user-defined fields, then on <code>TABPAGE_17.tp_17_dw_17</code> set <code>assembly_item_id</code> and <code>qty_to_make</code> (add a row and select it for each additional line). No sales order involved. If the finished item isn't set up at the source location, the save fails with <em>"item ID does not exist at your source location."</em></p>
+<p><strong>Path C — Link an existing production order to a sales line.</strong> The order and the sales line both already exist and are not yet linked: drive the Transactions To Assign tab. See <a href="recipes/link-production-order.html">link-production-order</a>.</p>
 <p>Location notes: the production order's make location comes from <code>prod_order_hdr.source_location_id</code>. Physical components source from the stocking location; <strong>intangible components</strong> (labor, burden, charge items) can source from a paired non-stock location if the environment is configured that way — which is why a production order commonly has <strong>two pick tickets</strong> (parts + labor/intangibles). Dates stay synced between a linked sales order and its production order; quantities are copied once at entry and then move independently.</p>
 <h3 id="printing-the-pick-ticket-and-form">Printing the Pick Ticket and Form</h3>
 <p>Print via a <code>ProductionOrder</code> transaction with <code>print_pick_ticket = ON</code> and <code>print_form = ON</code> on <code>TABPAGE_1.tp_1_dw_1</code>. This creates the pick ticket, sets <code>prod_order_hdr.printed = 'Y'</code>, and returns the PDFs in the response — see <a href="03-Transaction-API.html#pdfs-from-the-transaction-endpoint-print-flags">PDFs from the /transaction endpoint</a>.</p>
@@ -1797,9 +1799,9 @@
 <li><strong>Only the first print returns a PDF.</strong> Reprint the form with the <code>m_productionorders</code> report, <code>reprint = ON</code>, at the <strong>make</strong> location (at the parts location it returns nothing). Reprint a pick ticket with <code>m_reprintpicktickets</code>, type "Production Order", at the parts location. See <a href="03-Transaction-API.html#pdf-report-generation">PDF Report Generation</a>.</li>
 <li><code>print_incomplete_assemblies = Y</code> on the <strong>assembly</strong> lets the form print while a component is short. Edit that flag on the assembly, not on the order: editing it on an existing order's line un-prints the order.</li>
 </ul>
-<p><strong>Not reachable through the API</strong></p>
+<p><strong>Linking</strong></p>
 <ul>
-<li><strong>Linking an existing production order to a sales order line.</strong> The "Transactions to Assign" tab (<code>TABPAGE_TRANSACTIONS_TO_ASSIGN</code>) fills only through a <code>retrieve_open_transactions</code> control that is a disabled column for the API user (on both an API-only role and an all-permissions role), and a Transaction row keyed <code>trans_number</code> + <code>customer_id</code> fails <em>"Object reference not set"</em>. A plain (<code>assembly = 'N'</code>) sales line cannot be switched to disposition <code>P</code> afterwards either. Do this in the UI, or enter the sales line as a production-order assembly in the first place so P21 creates and links the order itself.</li>
+<li><strong>Link an existing production order to a sales order line with the Interactive API.</strong> On the <code>ProductionOrder</code> window's Transactions To Assign tab, run the datawindow's right-click tool <code>m_retrieveotheropentransactions</code> ("Retrieve Other Open Transactions"), tick <code>assigned</code> on the sales-order row, and save. The hidden <code>retrieve_open_transactions</code> column is not the control: it is a constant (<code>'Y'</code>) in the tab's <code>SELECT</code> and stayed disabled on both roles tested (API-only and all-permissions), and a Transaction row keyed <code>trans_number</code> + <code>customer_id</code> fails <em>"Object reference not set"</em>. The save writes one <code>prod_order_line_link</code> row (<code>trans_type</code> <code>O</code>, <code>row_status_flag</code> <code>O</code>, <code>transaction_uid</code> = the sales line's <code>oe_line_uid</code>); <code>oe_line</code> is unchanged. Verified on play 26.1.5950.0 (2026-10-17). Full call sequence and complete Python and C# programs: <a href="recipes/link-production-order.html">link-production-order</a>. A plain (<code>assembly = 'N'</code>) sales line still cannot be switched to disposition <code>P</code> afterwards, so enter the line as a production-order assembly first.</li>
 </ul>
 <h3 id="key-tables">Key Tables</h3>
 <p><code>assembly_hdr</code> / <code>assembly_line</code> (BOM + behavior flags) · <code>oe_hdr</code> / <code>oe_line</code> (<code>assembly</code> B/N/P/S) · <code>prod_order_line_link</code> · <code>prod_order_hdr</code> / <code>prod_order_line</code> / <code>prod_order_line_component</code> · <code>prod_pick_ticket_hdr</code> / <code>prod_pick_ticket_detail</code> · <code>oe_pick_ticket</code> · <code>prod_order_line_comp_labor</code> · <code>invoice_hdr</code> / <code>invoice_line</code> · <code>inv_loc</code> (min/max, moving average, primary bin) · <code>inv_tran</code> (<code>PROP</code> receipt / <code>WO</code> ship).</p>

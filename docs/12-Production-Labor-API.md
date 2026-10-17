@@ -487,6 +487,8 @@ Neither min/max settings nor `make = 'Y'` is required for this path. Gotchas: th
 
 **Path B — Direct build-to-stock.** Drive the `ProductionOrder` window: set the header `source_loc_id` (the make location — where components are stocked *and* the finished item exists) plus any required user-defined fields, then on `TABPAGE_17.tp_17_dw_17` set `assembly_item_id` and `qty_to_make` (add a row and select it for each additional line). No sales order involved. If the finished item isn't set up at the source location, the save fails with *"item ID does not exist at your source location."*
 
+**Path C — Link an existing production order to a sales line.** The order and the sales line both already exist and are not yet linked: drive the Transactions To Assign tab. See [link-production-order](recipes/link-production-order.md).
+
 Location notes: the production order's make location comes from `prod_order_hdr.source_location_id`. Physical components source from the stocking location; **intangible components** (labor, burden, charge items) can source from a paired non-stock location if the environment is configured that way — which is why a production order commonly has **two pick tickets** (parts + labor/intangibles). Dates stay synced between a linked sales order and its production order; quantities are copied once at entry and then move independently.
 
 ### Printing the Pick Ticket and Form
@@ -577,9 +579,9 @@ Learned running production orders at volume through the API. Credit [Alex Westem
 - **Only the first print returns a PDF.** Reprint the form with the `m_productionorders` report, `reprint = ON`, at the **make** location (at the parts location it returns nothing). Reprint a pick ticket with `m_reprintpicktickets`, type "Production Order", at the parts location. See [PDF Report Generation](03-Transaction-API.md#pdf-report-generation).
 - `print_incomplete_assemblies = Y` on the **assembly** lets the form print while a component is short. Edit that flag on the assembly, not on the order: editing it on an existing order's line un-prints the order.
 
-**Not reachable through the API**
+**Linking**
 
-- **Linking an existing production order to a sales order line.** The "Transactions to Assign" tab (`TABPAGE_TRANSACTIONS_TO_ASSIGN`) fills only through a `retrieve_open_transactions` control that is a disabled column for the API user (on both an API-only role and an all-permissions role), and a Transaction row keyed `trans_number` + `customer_id` fails *"Object reference not set"*. A plain (`assembly = 'N'`) sales line cannot be switched to disposition `P` afterwards either. Do this in the UI, or enter the sales line as a production-order assembly in the first place so P21 creates and links the order itself.
+- **Link an existing production order to a sales order line with the Interactive API.** On the `ProductionOrder` window's Transactions To Assign tab, run the datawindow's right-click tool `m_retrieveotheropentransactions` ("Retrieve Other Open Transactions"), tick `assigned` on the sales-order row, and save. The hidden `retrieve_open_transactions` column is not the control: it is a constant (`'Y'`) in the tab's `SELECT` and stayed disabled on both roles tested (API-only and all-permissions), and a Transaction row keyed `trans_number` + `customer_id` fails *"Object reference not set"*. The save writes one `prod_order_line_link` row (`trans_type` `O`, `row_status_flag` `O`, `transaction_uid` = the sales line's `oe_line_uid`); `oe_line` is unchanged. Verified on play 26.1.5950.0 (2026-10-17). Full call sequence and complete Python and C# programs: [link-production-order](recipes/link-production-order.md). A plain (`assembly = 'N'`) sales line still cannot be switched to disposition `P` afterwards, so enter the line as a production-order assembly first.
 
 ### Key Tables
 

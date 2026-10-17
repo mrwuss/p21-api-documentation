@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">26</span></summary>
+            <summary>Recipes <span class="nav-count">27</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -631,6 +631,7 @@
             <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
             <li><a href="recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
             <li><a href="recipes/item-document-links.html">Attach a Document to an Item, Assembly or Kit (Document Links)</a></li>
+            <li><a href="recipes/link-production-order.html">Link an Existing Production Order to a Sales-Order Line</a></li>
             <li><a href="recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
             <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
@@ -914,7 +915,7 @@
 </tr>
 </tbody>
 </table></div>
-<p><em>Transaction API updates use <code>Status: "New"</code> with keyed rows — <a href="03-Transaction-API.html#status-new-is-the-only-value-the-enum-accepts"><code>"New"</code> is the only value the enum accepts</a>. Keyed rows behave as an </em><em>upsert</em>*: update if the key matches, insert if it doesn't. Verified at scale (170+ line updates, 80+ line inserts on JobContractPricing). See <a href="03-Transaction-API.html#updating-an-existing-contract">Updating an Existing Contract</a>. Flows that pop validation dialogs still need the Interactive API.</p>
+<p>*Transaction API updates use <code>Status: "New"</code> with keyed rows — <a href="03-Transaction-API.html#status-new-is-the-only-value-the-enum-accepts"><code>"New"</code> is the only value the enum accepts</a>. Keyed rows behave as an <strong>upsert</strong>: update if the key matches, insert if it doesn't. Verified at scale (170+ line updates, 80+ line inserts on JobContractPricing). See <a href="03-Transaction-API.html#updating-an-existing-contract">Updating an Existing Contract</a>. Flows that pop validation dialogs still need the Interactive API.</p>
 <hr />
 <h2 id="odata-api">OData API</h2>
 <h3 id="best-for">Best For</h3>
