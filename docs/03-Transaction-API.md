@@ -1985,16 +1985,110 @@ So a `Value` commission cost **is** multiplied by `commission_cost_calc_value`; 
 
 > **Credit:** *@mrwuss* — verified on play 26.1, October 2026 (entry and invoice), with supporting production observations ([#169](https://github.com/mrwuss/p21-api-documentation/issues/169)). An earlier round of this test ran in quote mode by accident — see [Set `quote` to `OFF` first](04-Interactive-API.md#set-quote-to-off-first-the-window-can-open-in-quote-mode); only the results re-confirmed on real orders are shown here.
 
-##### Rebate prerequisites (other cost `Value` + a rebate-tracking vendor)
+##### Rebate prerequisites (other cost below actual + a rebate-tracking vendor)
 
 For a contract-priced line to write a supplier rebate at invoice, both of these must hold:
 
-1. The bound contract line carries **other cost type `Value`** (`other_cost_type_cd` = `Value`, `other_cost_value` = the rebated cost) below the actual cost.
-2. The item's **primary supplier at the line's ship-from location** belongs to a vendor with **Track Rebates** on. `oe_line.supplier_id` is stamped at entry from the primary supplier at `source_loc_id`, not the sales location — the sales location's primary supplier is irrelevant.
+1. The bound contract line carries an **other cost below the line's actual cost**. Two settings do this: other cost type `Value` (`other_cost_type_cd` = `Value`, `other_cost_value` = the rebated cost), or type `Source` with source `Average Cost` and method `Difference`, which gives a fixed rebate per unit ([below](#a-fixed-per-unit-rebate-source-average-cost-difference)).
+2. The **line's supplier** belongs to a vendor with **Track Rebates** on. `vendor_rebate.vendor_id` is `oe_line.supplier_id`, which P21 usually stamps at entry from the item's primary supplier at the line's **source location** (`oe_line.source_loc_id`). On a transfer line, the source location differs from the ship location (`ship_loc_id`). The sales location's primary supplier does not normally decide it, and on a transfer line neither does the ship location's. Read `oe_line.supplier_id` back after entry rather than assuming it.
 
-Then at invoice, `invoice_line.cogs_amount` = the contract value, a `vendor_rebate` row is written for the difference, and GL posts the sale at MAC plus a Rebate Journal entry that moves the difference to the vendor's rebate receivable. Setting only the other cost lowers COGS but writes no rebate. The same holds for assemblies built on production orders. Creating the vendor: [Vendor Service](#vendor-service-creating-a-vendor-and-its-supplier). The end-to-end setup: [recipe: rebate-assembly-program](recipes/rebate-assembly-program.md).
+> **The source-location rule.** On a play transfer line (`disposition` `T`, set by P21; sales and ship location `10`, source `20`), `supplier_id` was location `20`'s primary supplier and `sales_cost` was location `20`'s moving average. In a read-only review of production lines whose ship and source locations have different primary suppliers, most lines, not all, carried the source location's primary. That review compared today's primaries, not the primaries at entry. Not tested: a line-level supplier override, and a transfer line carried through to an invoice (the transfer has to ship and be received first).
 
-> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — rebate trigger proven end to end on play, September 2026. **Re-run here** with the Python and C# [rebate runbook](recipes/rebate-assembly-program.md) (play 26.1.5950.0, 2026-10-10): with other cost type `Value` on the contract line and the Track Rebates vendor's supplier primary at the ship-from location, the invoice line's `cogs_amount` equalled the contract value and a `vendor_rebate` row was written for that vendor with `after_rebate_cost` = the contract value. In those runs the ship-from and sales locations were the same location, so the ship-from-not-sales rule rests on the original report, as do the other-cost-only case (no rebate), the Rebate Journal GL entry (read by a person, not the runbooks) and assemblies built on production orders.
+Then at invoice, `invoice_line.cogs_amount` = the contract's other cost, a `vendor_rebate` row is written for the difference, and GL posts the sale at moving average plus a Rebate Journal entry that moves the difference to the vendor's rebate receivable ([GL flow](#the-gl-flow-of-a-contract-rebate)). Setting only the other cost, with a supplier that does not track rebates, lowers COGS but writes no rebate. Creating the vendor: [Vendor Service](#vendor-service-creating-a-vendor-and-its-supplier). The end-to-end setup: [recipe: rebate-assembly-program](recipes/rebate-assembly-program.md).
+
+`vendor_rebate` amounts are **extended for the line**, not per unit. On a two-unit line, `base_cost`, `after_rebate_cost` and `rebate_due` were each twice the one-unit values, and `rebate_due` = `base_cost` − `after_rebate_cost`.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — rebate trigger proven end to end on play, September 2026. **Re-run here** with the Python and C# [rebate runbook](recipes/rebate-assembly-program.md) (play 26.1.5950.0, 2026-10-10). Checked again on 2026-10-17 with separate Interactive order entries whose source location differed from the sales location, not the runbooks ([#201](https://github.com/mrwuss/p21-api-documentation/issues/201)): across nine invoices for three different suppliers, every `vendor_rebate.vendor_id` equalled its `oe_line.supplier_id`. Not re-run: the other-cost-only case with a non-tracking supplier.
+
+##### Rebates on assembled parents: production orders, build-to-stock and kits
+
+The contract line goes on the **parent** item, and the accrual follows the parent line, whether the unit was built for the order, built to stock, or is a kit:
+
+| Parent line | How the unit came to exist | Parent `vendor_rebate` at invoice |
+|---|---|---|
+| `assembly = 'P'`, production order linked to the sales line (`prod_order_line_link` row) | Built for the order | Yes |
+| `assembly = 'P'`, sold from stock | Built to stock (no `prod_order_line_link` row) | Yes |
+| `assembly = 'N'` (plain stock line of the assembled item) | Built to stock | Yes |
+| `assembly = 'B'` (kit), parent's supplier **does not** track rebates | Exploded at order entry | No — the components accrue from their own rebate pages |
+
+On the production-order and stock lines, the rebate row sits on the parent invoice line with the parent's supplier as vendor, and `cogs_amount` is the contract's other cost. The contract's `Value` costs also replace the rollup on the parent: `commission_cost` and `other_cost` read the contract values, not the [pre-rebate rollup](02-OData-API.md#kit-and-assembly-lines-parent-cost-ignores-rebates-and-component-lines-carry-cogs-too) an assembly line carries without a contract cost.
+
+**Kit parent on a contract.** With a contract line on an `assembly = 'B'` parent whose own supplier does not track rebates:
+
+- The parent's `commission_cost` is the contract's commission value, **not** the pre-rebate rollup, and its `cogs_amount` is the contract's other cost.
+- Each component that has a rebate price page and a rebate-tracking supplier writes its own `vendor_rebate` row, and those rows sum to the rollup minus the contract's other cost.
+- The parent writes no `vendor_rebate` row, so the rebate is not counted twice.
+
+Not tested: a kit whose **parent** primary supplier also tracks rebates (whether parent and components then both accrue). The Transaction `Item` flip of the parent's primary supplier stopped on *Item Issues Detected*, and the Interactive `Item` window's `PUT /v2/change` of `primary_supplier` on the location supplier grid did not stage.
+
+> **Components consumed by a production order do not accrue.** In a read-only review of a production tenant's data (26.1, October 2026), component rebate pages accrued only on kit components. A production order issues its components at moving average, the finished good receives the pre-rebate rollup, and no component reaches an invoice line at the page cost. That is why a production-order or build-to-stock assembly needs its rebate on the **parent's** contract line. *(Reported in [#201](https://github.com/mrwuss/p21-api-documentation/issues/201); a production observation, not re-run on play.)*
+
+> **Verified** on play 26.1.5950.0, 2026-10-17 ([#201](https://github.com/mrwuss/p21-api-documentation/issues/201)), by reading the invoices back over OData: three build-to-stock production orders with no `prod_order_line_link` row, whose units were later sold on contract-bound lines (`assembly = 'P'` and `'N'`), and one linked production order. Each invoice wrote a parent `vendor_rebate` row. The kit case was a fresh order and invoice with the parent added to the contract — *@mrwuss*
+
+##### A fixed per-unit rebate: Source + Average Cost + Difference
+
+When the supplier pays a fixed amount per unit rather than bringing cost down to a fixed price, set the contract line's other cost to **`Source`**, source **`Average Cost`**, method **`Difference`**, with the rebate as the calculation value. The other cost is then the moving average at the line's source location (`source_loc_id`) minus the rebate, and the accrual stays exactly the rebate as moving average drifts.
+
+**Send the rebate as a positive number.** `Difference` *subtracts* the calculation value: `20.00` gives moving average − 20.00; `-20.00` gives moving average **+** 20.00, a cost above actual.
+
+> Payload shape only — drop this DataElement into a full program. Full runnable version: [Updating an Existing Contract](#updating-an-existing-contract). `item_id` is disabled on this element, so send `IgnoreDisabled: true` and read the line back.
+
+```json
+{
+    "Name": "JOBPRICECOST.jobpricecost",
+    "Type": "Form",
+    "Keys": ["item_id"],
+    "Rows": [{
+        "Edits": [
+            {"Name": "item_id", "Value": "WIDGET-001"},
+            {"Name": "other_cost_type_cd", "Value": "Source"},
+            {"Name": "other_cost_source_cd", "Value": "Average Cost"},
+            {"Name": "other_cost_calc_method_cd", "Value": "Difference"},
+            {"Name": "other_cost_calc_value", "Value": "20.00"}
+        ]
+    }]
+}
+```
+
+With `UseCodeValues: false` on the write, `job_price_line` reads back the system code values:
+
+| Column | Value |
+|---|---|
+| `other_cost_type_cd` | `220` (Source) |
+| `other_cost_source_cd` | `203` (Average Cost) |
+| `other_cost_calc_method_cd` | `228` (Difference) |
+| `other_cost_calc_value` | `20` |
+
+Effect, for one unit at a source-location moving average of 50.00:
+
+| Where | Value |
+|---|---|
+| `oe_line.other_cost` at entry | 30.00 (50.00 − 20.00) |
+| `invoice_line.cogs_amount` | 30.00 |
+| `vendor_rebate.base_cost` / `after_rebate_cost` / `rebate_due` | 50.00 / 30.00 / **20.00** |
+
+A bound line re-reads the contract at invoice, as [above](#binding-happens-once-at-line-entry): a line entered while the value was `-20.00` (entry `other_cost` 70.00) invoiced at 30.00 once the contract was corrected to `20.00`. To restore the line to a `Value` type, send `other_cost_type_cd` = `Value` and `other_cost_value`; P21 resets the source and method codes.
+
+> **Verified** on play 26.1.5950.0, 2026-10-17 ([#201](https://github.com/mrwuss/p21-api-documentation/issues/201)): a fresh order and invoice on a contract line set this way. The moving average had risen by nearly half since earlier invoices on the same contract line, and the accrual was still exactly the calculation value. The negative-value case is from the first run the same day (entry `other_cost` = moving average + the value) — *@mrwuss*
+
+##### The GL flow of a contract rebate
+
+One invoice line, one unit, sold at 15.00 on a sale booked at location `10` (`oe_hdr.location_id`), with location `20` as both the source and the ship location; moving average 50.00, contract other cost 30.00, rebate 20.00. The invoice's GL entry (one `transaction_number`, `source` = the invoice number) held:
+
+| Journal | Account | Amount | What it is |
+|---|---|---|---|
+| SJ | Accounts receivable (location 10) | +15.00 | The sale |
+| SJ | Sales (location 10) | −15.00 | |
+| SJ | COGS (location 10) | **+50.00** | Full moving average |
+| SJ | Inventory (location 20) | −50.00 | Stock relieved at location 20 |
+| SJ | Inter-location clearing (location 20) | +50.00 | Present because location 20 is not the sales location |
+| SJ | Inter-location clearing (location 10) | −50.00 | |
+| RJ | Rebate receivable (location 10) | **+20.00** | The `vendor_rebate.rebate_due` |
+| RJ | COGS (location 10) | **−20.00** | |
+
+Net COGS = 30.00 = `invoice_line.cogs_amount` = `vendor_rebate.after_rebate_cost`. The Sales Journal books COGS at the full moving average; the Rebate Journal (`journal_id` `RJ`) brings it down, and it posts only with a `vendor_rebate` row. Without a rebate-tracking supplier there is no RJ pair and no receivable. The receivable posts at the order's sales location (`oe_hdr.location_id`), not the source location. `customer.default_rebate_location_id`, empty for this customer, is reported to override that location; the override was not tested. Read the whole entry with [`GET /api/accounting/gl/{transactionNumber}`](15-Other-REST-Families.md#accountinggl), or over OData with `gl?$filter=source eq '{invoice_no}'`.
+
+> **Verified** on play 26.1.5950.0, 2026-10-17: the GL rows for the fixed-rebate invoice above, read over OData and through `accounting/gl`, matched line for line, and the RJ pair equalled `rebate_due` — *@mrwuss*
 
 #### Updating an Existing Contract
 
@@ -4265,7 +4359,7 @@ Create the **vendor** first. Saving it creates the same-ID **supplier**, its div
 | `default_terms_id` | **The terms description** (`Net 30 Days`), not the terms ID — the ID fails *Invalid default_terms_id value* |
 | `currency_id` | **Omit it.** The ID is rejected (*Invalid currency_id value*); the default is the company currency |
 | `ap_account_no`, `name` | Required |
-| `track_rebates` | `ON` for a vendor that books supplier rebates — the second half of the [rebate prerequisites](#rebate-prerequisites-other-cost-value-a-rebate-tracking-vendor). The rebate receivable is re-suffixed to the sales location at posting |
+| `track_rebates` | `ON` for a vendor that books supplier rebates — the second half of the [rebate prerequisites](#rebate-prerequisites-other-cost-below-actual-a-rebate-tracking-vendor). The rebate receivable is re-suffixed to the sales location at posting |
 
 - **Do not send the supplier link tab (`TABPAGE_6.tp_6_dw_6`) on the create.** If the supplier does not exist yet it fails *"A valid supplier ID must be entered"*. The vendor save creates the supplier itself.
 - **Supplier-first fails.** The `Supplier` service requires *"At least one valid primary vendor"*, and that vendor in turn needs its address to exist.
