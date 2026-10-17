@@ -4714,7 +4714,7 @@ The payload follows the standard TransactionSet format. Report-specific criteria
 
 Constants that apply to every report payload: `Status` is `"New"` — the [same rule as every Transaction API payload](#status-new-is-the-only-value-the-enum-accepts) — `Type` is `"Form"`, and the DataElement carries `Keys: []`. Get the criteria field names from `GET /api/v2/definition/{service_name}` and default values from `GET /api/v2/defaults/{service_name}`.
 
-> **`UseCodeValues` requirements vary per report service.** `m_reprintpurchaseorders` works with `UseCodeValues: false` (as above), but `m_picktickets` **requires `UseCodeValues: true` with code values** — e.g. `create_pick_ticket_type` must be the code `"P"`; the display label `"Production Order"` is rejected, and `UseCodeValues: false` returns HTTP 500. When a report errors on seemingly-correct criteria, retry with `UseCodeValues: true` and the code values from the service's definition (`ValidValues`).
+> **`UseCodeValues` requirements vary per report service.** `m_reprintpurchaseorders` works with `UseCodeValues: false` (as above), but a production-order `m_picktickets` run **requires `UseCodeValues: true` with code values** — e.g. `create_pick_ticket_type` must be the code `"P"`; the display label `"Production Order"` is rejected, and `UseCodeValues: false` returns HTTP 500. A sales-order run of the same service is the reverse: the label `"Sales Order"` with `UseCodeValues: false` works, and `true` with `"S"` or `"O"` returned an empty HTTP 500 (play 26.1.5950.0, 2026-10-17). When a report errors on seemingly-correct criteria, retry with `UseCodeValues: true` and the code values from the service's definition (`ValidValues`).
 
 #### `reprint_flag` must match the PO's `po_hdr.printed`
 
@@ -5150,6 +5150,8 @@ The response is the standard document array; the PDF is base64 at `[0].DocumentD
 For any *other* report, swap `Name` and the criteria `Edits` (field names from `GET /api/v2/definition/{name}`); the endpoint, `Status: "New"`, `Type: "Form"`, `Keys: []`, and the `DocumentData` extraction stay the same.
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified end-to-end (report run → pick ticket row created → PDF returned → ticket confirmed and completed).
+
+> **Sales-order pick tickets through `m_picktickets` — two traps that return HTTP 200 and `[]`.** A sales-order run takes `create_pick_ticket_type` = `"Sales Order"` with `UseCodeValues: false`, `order_no` + `order_number` (the same order) and `location_id`. (1) **Send all three date ranges wide** — `dt_beg_date2`/`dt_end_date2` (sales order required date), `beg_order_date`/`end_order_date` and `beg_pick_date`/`end_pick_date`. An omitted range takes its value from `GET /api/v2/defaults/m_picktickets`; on play those defaults ended on a fixed past date and silently excluded current orders, and sending only the pick-date range was not enough. (2) **An order whose kit or assembly parent line cannot fully allocate is skipped entirely**; the client's *Pick Ticket* window says *"No records exist to print for this range."* for it too. Either way the response is HTTP 200 with an empty array and no ticket. Verified on play 26.1.5950.0, 2026-10-17. Payload, complete Python and C# programs and the `oe_pick_ticket` read-back: [generate-pick-ticket-pdf § Sales-order pick ticket](recipes/generate-pick-ticket-pdf.md#sales-order-pick-ticket).
 
 ### PDFs from the /transaction endpoint (print flags)
 
