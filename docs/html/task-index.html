@@ -1406,6 +1406,10 @@
 <td><a href="04-Interactive-API.html#finding-field-names">04 § Finding Field Names</a> · <a href="04-Interactive-API.html#window-discovery-techniques">04 § Window Discovery</a></td>
 </tr>
 <tr>
+<td><strong>An action works in the client but not the API</strong> — capture the web client's request and replay it</td>
+<td><a href="04-Interactive-API.html#6-browser-devtools">04 § Browser DevTools</a> — the web client calls <code>ui/full</code>, not <code>/api/ui/interactive</code>; worked example: selecting one row (<code>ui/full/v2/data/select</code>)</td>
+</tr>
+<tr>
 <td>Open a window (use <code>ServiceName</code> — Name/Title can 400) · map window→service</td>
 <td><a href="04-Interactive-API.html#2-open-window">04 § Open Window</a> · <a href="04-Interactive-API.html#8-window-to-service-discovery-frame_menu">04 § Window→Service Discovery</a></td>
 </tr>
@@ -1439,7 +1443,7 @@
 </tr>
 <tr>
 <td><strong>Attach a document to an item, assembly or kit</strong> (Document Links) — Transaction API says <code>Column is disabled: link_name</code></td>
-<td><a href="recipes/item-document-links.html">recipe: item-document-links</a> — upload with the file handler, add through the <code>Item</code> window's <code>m_addlink</code> dialog, save · <a href="04-Interactive-API.html#adding-a-document-link-in-the-item-window">04 § Adding a Document Link in the Item Window</a></td>
+<td><a href="recipes/item-document-links.html">recipe: item-document-links</a> — upload with the file handler, add through the <code>Item</code> window's <code>m_addlink</code> dialog (one display area at a time via <code>ui/full/v2/data/select</code> + <code>cb_select</code>, or all with <code>cb_selectall</code>), save · <a href="04-Interactive-API.html#adding-a-document-link-in-the-item-window">04 § Adding a Document Link in the Item Window</a></td>
 </tr>
 <tr>
 <td><strong>Add a price library to a customer</strong> · library order (<code>sequence_number</code>)</td>

@@ -741,7 +741,14 @@ This is the most reliable way to determine the exact names the API expects.
 
 ### 6. Browser DevTools
 
-When using the P21 Web Client, open your browser's Developer Tools (F12) and watch the **Network** tab. Every action you perform in the UI generates REST calls to the Interactive API. This lets you see the exact payloads, endpoints, and field names the web client uses — which you can replicate in your automation.
+When the P21 web client can do something the API docs don't show how to do, capture the request the web client sends and replay it. This is the prudent way to find an undocumented call:
+
+1. Open the window in the P21 web client (`{base}/Prophet21/`) on a test tenant, and open the browser's Developer Tools (F12) on the **Network** tab.
+2. Perform the one UI action you can't reproduce, and read the request it sends — URL and request payload. The web client talks to its own surface, `{ui_server}/ui/full/v2/...`, not to `/api/ui/interactive/`, so the call you need may exist only there.
+3. Replay that exact request with the API bearer token, against the window your Interactive session opened. Confirm the effect — a button enabled, a row moved — before you rely on it.
+4. Record what you tried that failed, too.
+
+Guessing is the slow route: the server ignores body fields it does not know, so a wrong guess looks like a right one until it fails, often as an empty HTTP 500. **Worked example:** selecting one display area in the Item window's Add Link dialog. Every body guessed for `PUT /api/ui/interactive/v2/rows/selected` returned an empty 500; one captured click on an Available Area row gave the exact call, `POST {ui_server}/ui/full/v2/data/select` — see [Adding a Document Link in the Item Window](#adding-a-document-link-in-the-item-window). Some windows are not enabled in the web client, and then there is nothing to capture — see [The ui/full Surface](#the-uifull-surface-the-web-clients-own-rest-api).
 
 ### 7. Transaction API Service Definition
 
@@ -3097,10 +3104,10 @@ Item links — the **Document Links** tab — cannot be added through the Transa
 
 1. Change `item_id` on `TABPAGE_1`, select the `DOCUMENT_LINK` tab.
 2. Run `m_addlink` **with `DatawindowName: "document_link"`** — it is a datawindow-level tool, listed only by `GET /v2/tools?windowId=…&dwName=document_link`. It opens the tabless *Document Link* dialog (`w_inventory_sheet`, datawindow `_dw_link`, area lists `source` and `target`).
-3. Set `link_path`, `link_name`, `outside_use_flag`, `mandatory_flag` on `_dw_link`; `cb_selectall` selects every display area; `cb_ok` closes the dialog.
+3. Set `link_path`, `link_name`, `outside_use_flag`, `mandatory_flag` on `_dw_link`. Add display areas: `cb_selectall` for every area, or, per area, select its row in `source` with `POST {ui_server}/ui/full/v2/data/select` and run `cb_select`. `cb_ok` closes the dialog.
 4. Save the `Item` window. Only the save writes `document_link` and its `document_link_area` rows.
 
-Assemblies and kits use the same item link: the Assembly window's Document Links tab only views links (`m_viewlink`) and shows the ones whose display areas include Assembly Maintenance (`1302`). Selecting a single display area needs a row selection the API has not been seen to make (`cb_select` stays disabled). Full recipe, both languages, with the file upload and the pick-ticket area: [recipes/item-document-links](recipes/item-document-links.md). *(play 26.1.5950.0, 2026-10-17 — [#200](https://github.com/mrwuss/p21-api-documentation/issues/200))*
+Assemblies and kits use the same item link: the Assembly window's Document Links tab only views links (`m_viewlink`) and shows the ones whose display areas include Assembly Maintenance (`1302`). A single display area needs a *selected* `source` row before `cb_select` is enabled. The Interactive API cannot select one — `PUT /v2/row` only moves the current row, and `PUT /v2/rows/selected` returns an empty HTTP 500 — but the web client's `POST {ui_server}/ui/full/v2/data/select` (`{"WindowId": dialog, "DatawindowName": "source", "TabPageName": null, "RowsToSelect": [n], "ActiveRowSpecification": "*"}`, `n` 1-based) does, on the Interactive-opened dialog, with the API token. Full recipe, both languages, with the file upload and the pick-ticket area: [recipes/item-document-links](recipes/item-document-links.md). *(play 26.1.5950.0, 2026-10-17 — [#200](https://github.com/mrwuss/p21-api-documentation/issues/200))*
 
 ## Customer Window: Adding a Price Library
 
@@ -3316,6 +3323,8 @@ The Angular web client at `/prophet21/` does not resolve windows through the ser
 Verified end-to-end on 26.1.5940.0 (August 2026): created a supplier group (`supplier_group_hdr` + `supplier_group_line`) through Supplier Group Maintenance, a window with **no service name at all**, and confirmed both rows over OData.
 
 > **When to reach for it.** Prefer a registered service and the Interactive API whenever one exists — this surface is less documented and its failure reporting is thinner (see the gotchas below). Reach for `ui/full` when `frame_menu.service_name` is NULL and the window is web-client enabled.
+
+Single `ui/full` calls also work on a window the Interactive API opened, with the same API token: `POST {ui-server}/ui/full/v2/data/select` selects datawindow rows by window id, which the Interactive API cannot do — see [Adding a Document Link in the Item Window](#adding-a-document-link-in-the-item-window) (play 26.1.5950.0).
 
 ### Base URL and route shape
 

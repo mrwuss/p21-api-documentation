@@ -1,6 +1,6 @@
 # Attach a Document to an Item, Assembly or Kit (Document Links)
 
-Upload a file and add it to an item's **Document Links** tab through the API, the way the P21 client does it — including on assemblies and kits, and on the display area that puts a document on the sales-order pick ticket.
+Upload a file and add it to an item's **Document Links** tab through the API, the way the P21 client does it — including on assemblies and kits, on exactly the display areas you name (Assembly Maintenance, the sales-order pick ticket), or on all of them.
 
 **API:** File handler REST (`/api/filehandler`) + Interactive (`Item` window) + OData read-back · **Service:** `Item` · **Deep dive:** [04 § Adding a Document Link in the Item Window](../04-Interactive-API.md#adding-a-document-link-in-the-item-window) · [15 § filehandler](../15-Other-REST-Families.md#filehandler) · **Full schema:** [Item.json](../../definitions/Item.json) · [Assembly.json](../../definitions/Assembly.json)
 
@@ -50,7 +50,7 @@ The Add Link dialog lists the rest in its **Available Area** list (26 areas on 2
 2. **Open** the `Item` window, change `item_id` on `TABPAGE_1`, select the `DOCUMENT_LINK` tab.
 3. **Add Link:** `POST /v2/tools` with `ToolName: "m_addlink"` **and** `DatawindowName: "document_link"`. It opens the tabless **Document Link** dialog (`w_inventory_sheet`).
 4. **Fill the dialog's `_dw_link`:** `link_path`, `link_name`, `outside_use_flag`, `mandatory_flag`.
-5. **Display areas:** the dialog starts with Item Maintenance and Item Master Inquiry selected. `cb_selectall` moves every available area to Selected Areas.
+5. **Display areas:** the dialog starts with Item Maintenance and Item Master Inquiry selected. To add one area, select its row in the `source` (Available Areas) list with the web client's `POST {ui_server}/ui/full/v2/data/select` — 1-based row, read fresh from `GET /v2/data?id={dialog id}` — then run `cb_select`. `cb_selectall` moves every available area at once.
 6. **`cb_ok`** closes the dialog. Nothing is written yet.
 7. **Save** the `Item` window (`PUT /v2/data`, body = the bare window id). Only the save writes the `document_link` row and its `document_link_area` rows. A business rule can answer the save with a prompt (Status 3) — see [Gotchas](#gotchas-verified-on-play-26159500-2026-10-17).
 8. **Read back** `document_link` and `document_link_area` over OData.
@@ -64,13 +64,19 @@ PUT {ui_server}/api/ui/interactive/v2/change
   { "TabName": null, "DatawindowName": "_dw_link", "FieldName": "link_path",
     "Value": "\\\\fileserver\\share\\P21\\Files\\ItemMaint\\WIDGET-001 drawing.pdf" } ] }
 
+POST {ui_server}/ui/full/v2/data/select
+{ "WindowId": "<dialog id>", "DatawindowName": "source", "TabPageName": null,
+  "RowsToSelect": [3], "ActiveRowSpecification": "*" }
+
 POST {ui_server}/api/ui/interactive/v2/tools
-{ "WindowId": "<dialog id>", "ToolName": "cb_selectall" }
+{ "WindowId": "<dialog id>", "ToolName": "cb_select" }
 ```
+
+`RowsToSelect` holds the area's 1-based position in the current `source` list (`3` here is an example). The answer is HTTP 200 with `Result.SelectedRows` and a `buttonenabled` event for `cb_select`.
 
 ## Complete example
 
-Attach a local file to an item — an assembly or kit works the same way. Set `ALL_AREAS` / `AllAreas` to show the document everywhere, Assembly Maintenance and Sales Order Pick Ticket included. A second run finds the existing link and adds nothing.
+Attach a local file to an item — an assembly or kit works the same way. `AREAS` / `Areas` names the display areas to add to the dialog's defaults, spelled as the Available Areas list spells them; leave it empty for the defaults, or set `"ALL"` / `{ "ALL" }` for every area. A second run finds the existing link and adds nothing.
 
 <!-- tabs -->
 ```python
@@ -81,7 +87,8 @@ its pick tickets use the same link, through the link's display areas.
 
 1. Upload the file into Item Maintenance's document upload folder (file handler).
 2. Add the link in the Item window's "Add Item Maintenance Link" dialog (Interactive),
-   on the dialog's default display areas or, with ALL_AREAS, on every area.
+   on the dialog's default display areas plus the ones named in AREAS, or on every
+   area when AREAS is "ALL".
 3. Save the Item window -- the dialog's OK alone writes nothing.
 4. Read the link and its display areas back over OData.
 """
@@ -99,7 +106,8 @@ VERIFY_SSL = False                        # True once you trust the cert chain
 ITEM_ID = "WIDGET-001"                    # the item to attach to
 FILE_PATH = "WIDGET-001 drawing.pdf"      # the local file to attach
 OUTSIDE_USE = "N"                         # "Y" lets the document leave the company
-ALL_AREAS = False                         # True: show it everywhere, pick tickets included
+AREAS = ["Assembly Maintenance", "Sales Order Pick Ticket"]  # extra display areas, by name;
+                                          # [] = the dialog's defaults, "ALL" = every area
 SAVE_PROMPT_ANSWER = ""                   # e.g. "cb_1" -- the button for a prompt the save raises
 # ---------------------------------------------------------------------------
 
@@ -256,13 +264,43 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
         for field, value in (("link_path", link_path), ("link_name", source.name),
                              ("outside_use_flag", OUTSIDE_USE), ("mandatory_flag", "N")):
             change(dialog, field, value, datawindow="_dw_link")
-        if ALL_AREAS:
-            # Select All moves every Available Area to Selected Areas, Assembly
-            # Maintenance and Sales Order Pick Ticket among them.
+
+        def area_names(datawindow: str) -> list[str]:
+            """The dialog's Available ("source") or Selected ("target") areas, in order."""
+            r = client.get(f"{ui_server}/api/ui/interactive/v2/data",
+                           params={"id": dialog}, headers=headers)
+            r.raise_for_status()
+            for dw in r.json():
+                if dw.get("Name") == datawindow:
+                    column = dw["Columns"].index("code_description")
+                    return [row[column] for row in dw.get("Data") or []]
+            return []
+
+        if AREAS == "ALL":
+            # Select All moves every Available Area to Selected Areas.
             checked(client.post(f"{ui_server}/api/ui/interactive/v2/tools",
                                 json={"SessionId": session_id, "WindowId": dialog,
                                       "ToolName": "cb_selectall"},
                                 headers=headers), "Select All")
+        else:
+            for area in AREAS:
+                if area in area_names("target"):
+                    continue  # one of the dialog's defaults
+                available = area_names("source")  # re-read: the list shrinks as areas move
+                if area not in available:
+                    raise RuntimeError(f"'{area}' is not an Available Area: {available}")
+                # Selecting the row is a web-client call: ui/full, no /api/ prefix,
+                # 1-based row. It is what enables the dialog's Select (cb_select) button.
+                checked(client.post(f"{ui_server}/ui/full/v2/data/select",
+                                    json={"WindowId": dialog, "DatawindowName": "source",
+                                          "TabPageName": None,
+                                          "RowsToSelect": [available.index(area) + 1],
+                                          "ActiveRowSpecification": "*"},
+                                    headers=headers), f"select {area}")
+                checked(client.post(f"{ui_server}/api/ui/interactive/v2/tools",
+                                    json={"SessionId": session_id, "WindowId": dialog,
+                                          "ToolName": "cb_select"},
+                                    headers=headers), f"Select {area}")
         checked(client.post(f"{ui_server}/api/ui/interactive/v2/tools",
                             json={"SessionId": session_id, "WindowId": dialog,
                                   "ToolName": "cb_ok"},
@@ -315,7 +353,8 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
 // its pick tickets use the same link, through the link's display areas.
 // 1. Upload the file into Item Maintenance's document upload folder (file handler).
 // 2. Add the link in the Item window's "Add Item Maintenance Link" dialog (Interactive),
-//    on the dialog's default display areas or, with AllAreas, on every area.
+//    on the dialog's default display areas plus the ones named in Areas, or on every
+//    area when Areas is { "ALL" }.
 // 3. Save the Item window -- the dialog's OK alone writes nothing.
 // 4. Read the link and its display areas back over OData.
 using System.Net.Http.Headers;
@@ -329,7 +368,8 @@ const string Password = "your-password";
 const string ItemId = "WIDGET-001";                   // the item to attach to
 const string FilePath = "WIDGET-001 drawing.pdf";     // the local file to attach
 const string OutsideUse = "N";                        // "Y" lets the document leave the company
-bool AllAreas = false;                                // true: show it everywhere, pick tickets included
+string[] Areas = { "Assembly Maintenance", "Sales Order Pick Ticket" };  // extra display areas, by name;
+                                                      // { } = the dialog's defaults, { "ALL" } = every area
 const string SavePromptAnswer = "";                   // e.g. "cb_1" -- the button for a prompt the save raises
 // ---------------------------------------------------------------------------
 
@@ -412,11 +452,29 @@ try
                  ("link_path", linkPath), ("link_name", fileName),
                  ("outside_use_flag", OutsideUse), ("mandatory_flag", "N") })
         await ChangeAsync(dialog, field, value, datawindow: "_dw_link");
-    if (AllAreas)
-        // Select All moves every Available Area to Selected Areas, Assembly
-        // Maintenance and Sales Order Pick Ticket among them.
+    if (Areas.SequenceEqual(new[] { "ALL" }))
+        // Select All moves every Available Area to Selected Areas.
         await SendAsync(HttpMethod.Post, $"{uiServer}/api/ui/interactive/v2/tools",
             new { SessionId = sessionId, WindowId = dialog, ToolName = "cb_selectall" }, "Select All");
+    else
+        foreach (var area in Areas)
+        {
+            if ((await AreaNamesAsync(dialog, "target")).Contains(area))
+                continue;  // one of the dialog's defaults
+            var available = await AreaNamesAsync(dialog, "source");  // re-read: the list shrinks
+            if (!available.Contains(area))
+                throw new InvalidOperationException(
+                    $"'{area}' is not an Available Area: {string.Join(", ", available)}");
+            // Selecting the row is a web-client call: ui/full, no /api/ prefix, 1-based
+            // row. It is what enables the dialog's Select (cb_select) button.
+            await SendAsync(HttpMethod.Post, $"{uiServer}/ui/full/v2/data/select",
+                new { WindowId = dialog, DatawindowName = "source", TabPageName = (string?)null,
+                      RowsToSelect = new[] { available.IndexOf(area) + 1 },
+                      ActiveRowSpecification = "*" }, $"select {area}");
+            await SendAsync(HttpMethod.Post, $"{uiServer}/api/ui/interactive/v2/tools",
+                new { SessionId = sessionId, WindowId = dialog, ToolName = "cb_select" },
+                $"Select {area}");
+        }
     await SendAsync(HttpMethod.Post, $"{uiServer}/api/ui/interactive/v2/tools",
         new { SessionId = sessionId, WindowId = dialog, ToolName = "cb_ok" }, "OK");
 
@@ -484,6 +542,23 @@ async Task<List<JsonElement>> ODataAsync(string table, string select, string whe
     response.EnsureSuccessStatusCode();
     using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
     return doc.RootElement.GetProperty("value").EnumerateArray().Select(e => e.Clone()).ToList();
+}
+
+// The dialog's Available ("source") or Selected ("target") areas, in order.
+async Task<List<string>> AreaNamesAsync(string window, string datawindow)
+{
+    using var doc = JsonDocument.Parse(await client.GetStringAsync(
+        $"{uiServer}/api/ui/interactive/v2/data?id={window}"));
+    foreach (var dw in doc.RootElement.EnumerateArray())
+    {
+        if (dw.GetProperty("Name").GetString() != datawindow) continue;
+        var column = dw.GetProperty("Columns").EnumerateArray()
+            .Select(c => c.GetString()).ToList().IndexOf("code_description");
+        return dw.TryGetProperty("Data", out var data) && data.ValueKind == JsonValueKind.Array
+            ? data.EnumerateArray().Select(row => row[column].GetString()!).ToList()
+            : new List<string>();
+    }
+    return new List<string>();
 }
 
 // One Interactive call; refuses HTTP errors and P21's Status 2 (failure).
@@ -573,7 +648,9 @@ static string ReadField(string payload, string field)
 ## Gotchas (verified on play 26.1.5950.0, 2026-10-17)
 
 - **Only the window save writes.** `cb_ok` closes the dialog and adds a grid row; closing the window without saving writes nothing.
-- **Areas: all, or the defaults.** `cb_selectall` works. Moving a single area needs a *selected* row in the dialog's `source` list, and setting the current row with `PUT /v2/row` does not select it: `cb_select` then fails with `Button cb_select is not enabled`. `PUT /v2/rows/selected` takes a `RowsSpecification` object whose row field this page has not identified — every shape tried returned an empty HTTP 500. Until it is captured (the web client's DevTools Network tab shows it), add the link with all areas or the defaults, and narrow the list in the client's Edit Link dialog.
+- **Selecting one area is a ui/full call.** `cb_select` moves the *selected* rows of the dialog's `source` list, and the Interactive API has no call that selects one. The web client does it with `POST {ui_server}/ui/full/v2/data/select` — no `/api/` prefix, the same bearer token, and it works on the dialog the Interactive session opened. `RowsToSelect` is 1-based and counts the `source` list as it is *now*: each `cb_select` removes the area from it, so read the list again before the next one. Found by [capturing the web client's request](../04-Interactive-API.md#6-browser-devtools). What does not work:
+  - `PUT /api/ui/interactive/v2/row` sets the current row without selecting it; `cb_select` then fails with `Button cb_select is not enabled`.
+  - `PUT /api/ui/interactive/v2/rows/selected` returned an empty HTTP 500 for every body tried, `RowsToSelect` included; `POST` to it is HTTP 405.
 - **A business rule can stop the save.** On a tenant with an Item rule, the save returns Status 3 and opens a rule-callback window — on play, *Item Issues Detected* with `cb_1` = *Yes, Proceed Anyway* and `cb_2` = *No, Cancel*. The example names the prompt and its buttons and stops; set `SAVE_PROMPT_ANSWER` / `SavePromptAnswer` to answer it. Read the rule's message before you choose: [04 § Worked Example: Item Issues Detected](../04-Interactive-API.md#worked-example-item-issues-detected-rule-callback).
 - **The link path must be a real UNC path.** A path that reaches the server with one leading backslash (`\fileserver\share\...`, typically an escaping slip) is refused on the `link_path` change: *The path '…' is not valid - this path needs to point to a valid FileHandler location.* With link-in-place allowed, a well-formed UNC path outside the upload folder is accepted as well — the upload is only needed when the file is not already on a share the server reads.
 - **The upload does not overwrite.** `POST /api/filehandler/file/path` to a file name that already exists in the folder returns an HTTP 500. The example checks for an existing link first; a file left by a run that failed after the upload has to be removed or renamed before the next run.
@@ -590,6 +667,6 @@ WHERE dl.source_area_cd = 1314 AND dl.key1_cd = 'inv_mast_uid'
 ORDER BY dl.document_link_uid, a.display_area_cd
 ```
 
-Over OData the example reads the same two tables (`document_link`, then `document_link_area` by `document_link_uid`). Expected after a run with all areas: one link and 26 area rows, `1302` and `3453` among them; with the defaults, two rows (`1314`, `1445`). Then open the assembly in Assembly Maintenance: the link is on the header Document Links tab only when `1302` is among its areas.
+Over OData the example reads the same two tables (`document_link`, then `document_link_area` by `document_link_uid`). Expected after a run with `AREAS = ["Assembly Maintenance", "Sales Order Pick Ticket"]`: one link and four area rows — `1302`, `1314`, `1445`, `3453`. With the defaults, two rows (`1314`, `1445`); with `"ALL"`, 26 rows. Then open the assembly in Assembly Maintenance: the link is on the header Document Links tab only when `1302` is among its areas.
 
-> **Credit:** *@mrwuss* — Item-window flow and file-handler upload found and verified on play 26.1 ([#200](https://github.com/mrwuss/p21-api-documentation/issues/200)); display areas, assemblies and kits, and the pick-ticket check verified on play 26.1.5950.0, 2026-10-17.
+> **Credit:** *@mrwuss* — Item-window flow and file-handler upload found and verified on play 26.1 ([#200](https://github.com/mrwuss/p21-api-documentation/issues/200)); display areas (single-area selection through `ui/full/v2/data/select` included), assemblies and kits, and the pick-ticket check verified on play 26.1.5950.0, 2026-10-17.
