@@ -662,7 +662,10 @@
 <li><a href="#prerequisites">Prerequisites</a></li>
 <li><a href="#payload">Payload</a></li>
 <li><a href="#complete-example">Complete example</a></li>
-<li><a href="#gotchas">Gotchas</a></li>
+<li><a href="#gotchas">Gotchas</a><ul>
+<li><a href="#direct-ship-pick-tickets-do-not-reprint">Direct-ship pick tickets do not reprint</a></li>
+</ul>
+</li>
 <li><a href="#verify">Verify</a></li>
 <li><a href="#sales-order-pick-ticket">Sales-order pick ticket</a><ul>
 <li><a href="#sales-order-payload">Sales-order payload</a></li>
@@ -752,7 +755,7 @@
 </tr>
 </tbody>
 </table></div>
-<p>A <strong>direct-ship</strong> pick ticket (the one <code>DirectShipConfirmation</code> creates) returned HTTP 200 with an empty array <code>[]</code> — no document and no error — on every attempt, while a stock ticket from the same location printed. Check for an empty array as well as for a failed <code>ResponseStatus</code>. The production-ticket case is under <a href="#verify">Verify</a>. Before you treat any other 5xx as a payload problem, read <a href="../03-Transaction-API.html#an-empty-5xx-has-several-causes-and-is-usually-transient">An empty 5xx has several causes</a>; on the Play tenant at 26.1.5910.3 <em>every</em> report returned an empty HTTP 500.</p>
+<p>A <strong>direct-ship</strong> pick ticket (<code>oe_pick_ticket.direct_shipment</code> = <code>Y</code>, the kind <code>DirectShipConfirmation</code> creates) returned HTTP 200 with an empty array <code>[]</code> in every test: no document and no error. This is a known limitation, and no API workaround was found; see <a href="#direct-ship-pick-tickets-do-not-reprint">Direct-ship pick tickets do not reprint</a>. Check for an empty array as well as for a failed <code>ResponseStatus</code>. The production-ticket case is under <a href="#verify">Verify</a>. Before you treat any other 5xx as a payload problem, read <a href="../03-Transaction-API.html#an-empty-5xx-has-several-causes-and-is-usually-transient">An empty 5xx has several causes</a>; on the Play tenant at 26.1.5910.3 <em>every</em> report returned an empty HTTP 500.</p>
 </blockquote>
 <p>For any <em>other</em> report, swap <code>Name</code> and the criteria <code>Edits</code> (field names from <code>GET /api/v2/definition/{name}</code>); the endpoint, <code>Status</code>/<code>Type: 0</code>, <code>Keys: []</code>, and the <code>DocumentData</code> extraction stay the same.</p>
 <h2 id="complete-example">Complete example</h2>
@@ -1187,9 +1190,19 @@
 <li><strong><code>m_picktickets</code> prerequisite (production order)</strong>: the production order's form must already be printed (<code>prod_order_hdr.printed = 'Y'</code>) — run a <code>ProductionOrder</code> transaction with <code>print_form = ON</code> first. No date range is needed for a production order (a sales order needs all three — see <a href="#eligibility-traps">Eligibility traps</a>); <code>location_id</code> is the location the components pick from.</li>
 <li><strong><code>m_picktickets</code> has a side effect</strong>: the pick-ticket row now exists in P21 at that location and can be confirmed/completed like any other.</li>
 <li><strong>Print flags on <code>/transaction</code> have limits.</strong> A service's print flags (e.g. <code>ProductionOrder</code> <code>print_pick_ticket</code>/<code>print_form</code> on <code>TABPAGE_1.tp_1_dw_1</code>) return PDFs at <code>Results.Transactions[].Documents[].DocumentData</code>, but only on a <strong>savable</strong> transaction (a bare reprint errors with <em>"Save is not enabled"</em>), and <code>print_pick_ticket</code> emits only at the order's <strong>make location</strong> — if components stock elsewhere, generate with <code>m_picktickets</code> at the stock <code>location_id</code> instead.</li>
-<li><strong>An empty array is not success.</strong> A sales-order run whose criteria match nothing printable returns HTTP 200 with <code>[]</code> and creates no ticket — see <a href="#eligibility-traps">Eligibility traps</a>.</li>
+<li><strong>An empty array is not success.</strong> A sales-order run whose criteria match nothing printable returns HTTP 200 with <code>[]</code> and creates no ticket — see <a href="#eligibility-traps">Eligibility traps</a>. The direct-ship tickets tested always reprinted as <code>[]</code> — see <a href="#direct-ship-pick-tickets-do-not-reprint">Direct-ship pick tickets do not reprint</a>.</li>
 <li><strong>Success is a JSON array</strong> (even for one document); <strong>errors use the P21 error envelope</strong> (<code>ErrorType</code>/<code>ErrorMessage</code>), not the <code>Summary</code>/<code>Messages</code> format of <code>/transaction</code> — e.g. <em>"No records to print for this range."</em> when the range matches nothing.</li>
 </ul>
+<h3 id="direct-ship-pick-tickets-do-not-reprint">Direct-ship pick tickets do not reprint</h3>
+<p><strong>Known limitation.</strong> <code>m_reprintpicktickets</code> returned HTTP 200 with <code>[]</code> for every direct-ship pick ticket tested (<code>oe_pick_ticket.direct_shipment</code> = <code>Y</code>), on every attempt. No workaround through the API was found:</p>
+<ul>
+<li><strong>The ticket state matches.</strong> The direct-ship tickets were printed, invoiced and not deleted, like the stock tickets that reprinted, and their <code>oe_pick_ticket_detail</code> rows have the same shape: <code>print_quantity</code>, <code>ship_quantity</code>, <code>qty_to_pick</code> and <code>invoice_line_uid</code> are all filled. Three header columns differ: <code>direct_shipment</code> (<code>Y</code>), <code>tracking_no</code> (an empty string instead of NULL) and <code>exported_to_router_flag</code> (<code>N</code> instead of NULL). The direct-ship path writes all three, so the test could not separate them.</li>
+<li><strong>The location is not the cause.</strong> Invoiced stock tickets at the <strong>same</strong> location as the direct-ship tickets reprinted, each as a one-page PDF.</li>
+<li><strong>No criteria field includes them.</strong> The <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/m_reprintpicktickets.json">definition</a> has no direct-ship option. <code>print_dea_pick_tickets</code> concerns DEA (controlled-substance) tickets, not direct shipments.</li>
+<li><strong>The selection cannot be inspected through the API.</strong> Report criteria windows expose no <code>SELECT</code> (<a href="window-sql-information.html">SQL Information limits</a>).</li>
+</ul>
+<p>The most likely explanation is that the report's own selection excludes direct-ship tickets, which no criteria field can change. Treat <code>[]</code> for a direct-ship ticket as expected, not as a fault to retry. Not tested: unprinted or partly shipped direct-ship tickets, other builds, and which report the client uses for direct-ship paperwork.</p>
+<p><em>Verified on play 26.1.5950.0, 2026-10-17 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/214">#214</a>): two direct-ship tickets returned <code>[]</code>; four invoiced stock tickets returned <code>Success</code> with a PDF, two at the direct-ship tickets' location and two at another location. The payload was identical apart from the ticket number and location (<code>UseCodeValues: false</code>, <code>pick_ticket_type</code> = <code>Sales Order</code>, <code>print_qty</code> = <code>1</code>).</em> — <em>@mrwuss</em></p>
 <h2 id="verify">Verify</h2>
 <ul>
 <li>The saved file opens as a PDF (<code>DocumentContentType</code> is <code>"application/pdf"</code>, <code>DocumentFormat</code> is <code>5</code>, and the decoded bytes start with <code>%PDF</code>).</li>
@@ -1735,7 +1748,10 @@
 <li><a href="#prerequisites">Prerequisites</a></li>
 <li><a href="#payload">Payload</a></li>
 <li><a href="#complete-example">Complete example</a></li>
-<li><a href="#gotchas">Gotchas</a></li>
+<li><a href="#gotchas">Gotchas</a><ul>
+<li><a href="#direct-ship-pick-tickets-do-not-reprint">Direct-ship pick tickets do not reprint</a></li>
+</ul>
+</li>
 <li><a href="#verify">Verify</a></li>
 <li><a href="#sales-order-pick-ticket">Sales-order pick ticket</a><ul>
 <li><a href="#sales-order-payload">Sales-order payload</a></li>
