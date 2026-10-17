@@ -571,7 +571,7 @@ Before you blame the payload, check the order the way the client would: allocate
 
 ### Complete example: sales order
 
-Takes the order number and location as arguments (`python so_pick_ticket.py 1001234 10`, `dotnet run -- 1001234 10`), generates the ticket, saves the PDF to `OUTPUT_DIR`, and reads the new `oe_pick_ticket` row back over OData by comparing the order's tickets before and after the run. An empty array stops with the eligibility checklist above. The programs retry an empty 5xx like the production example, but here the retry is **not** free of side effects: `m_picktickets` creates the ticket, so a 5xx after the ticket was created makes the retry return `[]`. That is why both programs read `oe_pick_ticket` before they report a failure; if a ticket exists without a PDF, reprint it with `m_reprintpicktickets`.
+Takes the order number and location as arguments (`python so_pick_ticket.py 1001234 10`, `dotnet run -- 1001234 10`), generates the ticket, saves the PDF to `OUTPUT_DIR`, and reads the new `oe_pick_ticket` row back over OData by comparing the order's tickets before and after the run. An empty array stops with the eligibility checklist above. The programs retry an empty 5xx like the production example, but here the retry is **not** free of side effects: `m_picktickets` creates the ticket, so a 5xx after the ticket was created makes the retry return `[]`. That is why both programs read `oe_pick_ticket` before they treat an empty array as "nothing matched", and why an HTTP error after the last attempt tells you to check `oe_pick_ticket` before you rerun. If a ticket exists without a PDF, reprint it with `m_reprintpicktickets`.
 
 <!-- tabs -->
 ```python
@@ -604,6 +604,8 @@ if len(sys.argv) > 1:
     ORDER_NO = sys.argv[1]
 if len(sys.argv) > 2:
     LOCATION_ID = sys.argv[2]
+if not (ORDER_NO.isdigit() and LOCATION_ID.isdigit()):  # both go into an OData filter
+    raise SystemExit("ORDER_NO and LOCATION_ID must be numbers")
 
 
 def get_token(client: httpx.Client) -> str:
@@ -667,7 +669,8 @@ def run_report(client: httpx.Client, ui_server: str, headers: dict,
             time.sleep(0.5 * attempt)
     if response.status_code >= 400:
         raise SystemExit(f"HTTP {response.status_code} after {attempts} attempts. "
-                         f"Body: {(response.text or '(empty)')[:300]}")
+                         f"Body: {(response.text or '(empty)')[:300]} -- an attempt may "
+                         "still have created the ticket; check oe_pick_ticket before rerunning.")
     if not isinstance(result, list):
         raise SystemExit(f"Unexpected response: {str(result)[:300]}")
     return result
@@ -786,6 +789,10 @@ const string OutputDir = ".";                   // where the .pdf file is writte
 
 var orderNo = args.Length > 0 ? args[0] : DefaultOrderNo;
 var locationId = args.Length > 1 ? args[1] : DefaultLocationId;
+// Both go into an OData filter, so accept digits only.
+if (orderNo.Length == 0 || !orderNo.All(char.IsAsciiDigit) ||
+    locationId.Length == 0 || !locationId.All(char.IsAsciiDigit))
+    throw new ArgumentException("Order number and location ID must be numbers");
 
 var handler = new HttpClientHandler
 {
@@ -938,7 +945,8 @@ static async Task<List<JsonElement>> RunReportAsync(
             {
                 throw new InvalidOperationException(
                     $"HTTP {(int)response.StatusCode} after {attempts} attempts. " +
-                    $"Body: {(string.IsNullOrEmpty(bodyText) ? "(empty)" : bodyText)}");
+                    $"Body: {(string.IsNullOrEmpty(bodyText) ? "(empty)" : bodyText)} -- an " +
+                    "attempt may still have created the ticket; check oe_pick_ticket before rerunning.");
             }
         }
         await Task.Delay(TimeSpan.FromSeconds(0.5 * attempt));
