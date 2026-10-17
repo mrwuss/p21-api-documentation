@@ -959,12 +959,13 @@ static void SaveDocuments(List<JsonElement> documents, string orderNo)
 {
     foreach (var doc in documents)
     {
-        var responseStatus = doc.GetProperty("ResponseStatus");
-        var status = responseStatus.GetProperty("StatusCode").GetString();
+        var hasStatus = doc.TryGetProperty("ResponseStatus", out var responseStatus);
+        var status = hasStatus && responseStatus.TryGetProperty("StatusCode", out var s)
+            ? s.GetString() : null;
         var documentData = doc.TryGetProperty("DocumentData", out var d) ? d.GetString() : null;
         if (status != "Success" || string.IsNullOrEmpty(documentData))
         {
-            Console.WriteLine($"Document failed: {responseStatus}");
+            Console.WriteLine($"Document failed: {(hasStatus ? responseStatus.ToString() : doc.ToString())}");
             continue;
         }
         var pdfBytes = Convert.FromBase64String(documentData);
