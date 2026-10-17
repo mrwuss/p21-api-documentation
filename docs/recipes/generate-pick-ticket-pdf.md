@@ -663,7 +663,7 @@ def run_report(client: httpx.Client, ui_server: str, headers: dict,
             result = None
         if isinstance(result, dict) and result.get("ErrorMessage"):
             raise SystemExit(f"{result.get('ErrorType')}: {result['ErrorMessage']}")
-        if response.status_code < 400:
+        if response.status_code < 500:  # only a 5xx is worth retrying
             break
         if attempt < attempts:
             time.sleep(0.5 * attempt)
@@ -676,12 +676,13 @@ def run_report(client: httpx.Client, ui_server: str, headers: dict,
     return result
 
 
-def save_documents(result: list) -> None:
-    """Write every returned base64 document to OUTPUT_DIR."""
+def save_documents(result: list) -> int:
+    """Write every returned base64 document to OUTPUT_DIR; return how many were saved."""
+    saved = 0
     for doc in result:
-        status = doc.get("ResponseStatus", {}).get("StatusCode")
-        if status != "Success" or not doc.get("DocumentData"):
-            print(f"Document failed: {doc.get('ResponseStatus', {}).get('Message')}")
+        response_status = doc.get("ResponseStatus") or {}
+        if response_status.get("StatusCode") != "Success" or not doc.get("DocumentData"):
+            print(f"Document failed: {response_status.get('Message') or doc}")
             continue
         pdf_bytes = base64.b64decode(doc["DocumentData"])
         # FileName is like "PT<nnn> PICK_TICKET.pdf"; <nnn> is a document
@@ -691,6 +692,8 @@ def save_documents(result: list) -> None:
         with open(path, "wb") as f:
             f.write(pdf_bytes)
         print(f"Saved {path} ({len(pdf_bytes)} bytes, starts with {pdf_bytes[:4]!r})")
+        saved += 1
+    return saved
 
 
 with httpx.Client(verify=VERIFY_SSL, timeout=300, follow_redirects=True) as client:
@@ -746,27 +749,29 @@ with httpx.Client(verify=VERIFY_SSL, timeout=300, follow_redirects=True) as clie
 
     before = read_tickets()
     documents = run_report(client, ui_server, headers, payload)
-    save_documents(documents)
+    saved = save_documents(documents)
 
     # --- Read-back: m_picktickets CREATED an oe_pick_ticket row. ---
     # Read it even when no document came back: a retried 5xx can leave a ticket
     # created by the first attempt and an empty array from the retry.
     after = read_tickets()
     new = [after[n] for n in sorted(set(after) - set(before))]
-    if not documents and new:
-        print("Ticket created but no PDF returned; reprint it with m_reprintpicktickets.")
-    elif not documents:
+    if not new and documents:
+        raise SystemExit(f"{len(documents)} document(s) returned but no new "
+                         f"oe_pick_ticket row on order {ORDER_NO}")
+    if not new:
         # HTTP 200 with [] means the criteria matched nothing printable.
         raise SystemExit(
             f"No pick ticket generated for order {ORDER_NO} at location {LOCATION_ID}. "
             "Check: the order has allocated quantity at that location not already on a "
             "ticket; every kit/assembly parent line can fully allocate; the order and "
             "required dates fall inside the date ranges sent.")
-    if not new:
-        raise SystemExit(f"PDF returned but no new oe_pick_ticket row on order {ORDER_NO}")
     for ticket in new:
         print(f"New pick ticket {ticket['pick_ticket_no']} on order {ticket['order_no']} "
               f"at location {ticket['location_id']}, printed {ticket['print_date']}")
+    if saved == 0:
+        raise SystemExit("The ticket exists but no PDF was saved; "
+                         "reprint it with m_reprintpicktickets.")
 ```
 
 ```csharp
@@ -857,18 +862,19 @@ var payload = new
 
 var before = await ReadTicketsAsync(client, orderNo);
 var documents = await RunReportAsync(client, uiServer, payload);
-SaveDocuments(documents, orderNo);
+var saved = SaveDocuments(documents, orderNo);
 
 // --- Read-back: m_picktickets CREATED an oe_pick_ticket row. ---
 // Read it even when no document came back: a retried 5xx can leave a ticket
 // created by the first attempt and an empty array from the retry.
 var after = await ReadTicketsAsync(client, orderNo);
 var created = after.Keys.Except(before.Keys).OrderBy(n => n).ToList();
-if (documents.Count == 0 && created.Count > 0)
+if (created.Count == 0 && documents.Count > 0)
 {
-    Console.WriteLine("Ticket created but no PDF returned; reprint it with m_reprintpicktickets.");
+    throw new InvalidOperationException(
+        $"{documents.Count} document(s) returned but no new oe_pick_ticket row on order {orderNo}");
 }
-else if (documents.Count == 0)
+if (created.Count == 0)
 {
     // HTTP 200 with [] means the criteria matched nothing printable.
     throw new InvalidOperationException(
@@ -877,14 +883,17 @@ else if (documents.Count == 0)
         "kit/assembly parent line can fully allocate; the order and required dates fall " +
         "inside the date ranges sent.");
 }
-if (created.Count == 0)
-    throw new InvalidOperationException($"PDF returned but no new oe_pick_ticket row on order {orderNo}");
 foreach (var number in created)
 {
     var ticket = after[number];
     Console.WriteLine($"New pick ticket {number} on order {ticket.GetProperty("order_no")} " +
                       $"at location {ticket.GetProperty("location_id")}, " +
                       $"printed {ticket.GetProperty("print_date")}");
+}
+if (saved == 0)
+{
+    throw new InvalidOperationException(
+        "The ticket exists but no PDF was saved; reprint it with m_reprintpicktickets.");
 }
 
 // --- helpers ---------------------------------------------------------------
@@ -942,7 +951,8 @@ static async Task<List<JsonElement>> RunReportAsync(
                 return arr.EnumerateArray().Select(x => x.Clone()).ToList();
             }
 
-            if (attempt >= attempts)
+            // Only a 5xx is worth retrying.
+            if ((int)response.StatusCode < 500 || attempt >= attempts)
             {
                 throw new InvalidOperationException(
                     $"HTTP {(int)response.StatusCode} after {attempts} attempts. " +
@@ -954,12 +964,14 @@ static async Task<List<JsonElement>> RunReportAsync(
     }
 }
 
-// Write every returned base64 document to OutputDir.
-static void SaveDocuments(List<JsonElement> documents, string orderNo)
+// Write every returned base64 document to OutputDir; return how many were saved.
+static int SaveDocuments(List<JsonElement> documents, string orderNo)
 {
+    var saved = 0;
     foreach (var doc in documents)
     {
-        var hasStatus = doc.TryGetProperty("ResponseStatus", out var responseStatus);
+        var hasStatus = doc.TryGetProperty("ResponseStatus", out var responseStatus) &&
+                        responseStatus.ValueKind == JsonValueKind.Object;
         var status = hasStatus && responseStatus.TryGetProperty("StatusCode", out var s)
             ? s.GetString() : null;
         var documentData = doc.TryGetProperty("DocumentData", out var d) ? d.GetString() : null;
@@ -977,7 +989,9 @@ static void SaveDocuments(List<JsonElement> documents, string orderNo)
         File.WriteAllBytes(path, pdfBytes);
         Console.WriteLine($"Saved {path} ({pdfBytes.Length} bytes, starts with " +
                           $"{Encoding.ASCII.GetString(pdfBytes, 0, 4)})");
+        saved++;
     }
+    return saved;
 }
 
 // v2 token endpoint — credentials go in the body, never in headers.
