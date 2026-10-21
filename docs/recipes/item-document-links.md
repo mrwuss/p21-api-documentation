@@ -42,7 +42,7 @@ Display areas that matter for assemblies and kits (code values, the same on ever
 | `1325` | Production Order Entry/Processing |
 | `2750` | Production Order Form |
 
-The Add Link dialog lists the rest in its **Available Area** list (26 areas on 26.1.5950.0). A document reaches a printed form only through that form's area — for the sales-order pick ticket, `3453`.
+The Add Link dialog lists the rest in its **Available Area** list (26 areas on 26.1.5950.0). A document reaches a printed form only through that form's area — for the sales-order pick ticket, `3453` — and only when the link is **Outside Use** and the location sends outside-use documents to print. See [Printing the document with a form](#printing-the-document-with-a-form).
 
 ## Call sequence
 
@@ -105,7 +105,7 @@ PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
 ITEM_ID = "WIDGET-001"                    # the item to attach to
 FILE_PATH = "WIDGET-001 drawing.pdf"      # the local file to attach
-OUTSIDE_USE = "N"                         # "Y" lets the document leave the company
+OUTSIDE_USE = "Y"                         # Outside Use: required to print with a form; "N" = internal only
 AREAS = ["Assembly Maintenance", "Sales Order Pick Ticket"]  # extra display areas, by name;
                                           # [] = the dialog's defaults, "ALL" = every area
 SAVE_PROMPT_ANSWER = ""                   # e.g. "cb_1" -- the button for a prompt the save raises
@@ -367,7 +367,7 @@ const string Username = "apiuser";
 const string Password = "your-password";
 const string ItemId = "WIDGET-001";                   // the item to attach to
 const string FilePath = "WIDGET-001 drawing.pdf";     // the local file to attach
-const string OutsideUse = "N";                        // "Y" lets the document leave the company
+const string OutsideUse = "Y";                        // Outside Use: required to print with a form; "N" = internal only
 string[] Areas = { "Assembly Maintenance", "Sales Order Pick Ticket" };  // extra display areas, by name;
                                                       // { } = the dialog's defaults, { "ALL" } = every area
 const string SavePromptAnswer = "";                   // e.g. "cb_1" -- the button for a prompt the save raises
@@ -645,6 +645,68 @@ static string ReadField(string payload, string field)
 ```
 <!-- /tabs -->
 
+## Printing the document with a form
+
+P21 never merges a linked document into a form's PDF. When a form prints, P21 renders the form by itself and names each linked file beside it. The client then prints each file as its own job, on the same printer.
+
+### What has to be true
+
+| # | Condition | Where it is set |
+|---|---|---|
+| 1 | The link is on an item that appears on the form, and it has the form's display area: `3453` sales-order pick ticket, `999` packing list, `2750` production order form | The link's areas (this recipe) |
+| 2 | The link is **Outside Use** (`document_link.outside_use_flag` = `Y`) | The link (`OUTSIDE_USE` / `OutsideUse` in the example) |
+| 3 | The entity the form prints for sends outside-use documents to print. That is the **location** for the sales-order pick ticket and the production order form, and the **ship-to** for the packing list | `document_link_entity_req`: `send_outside_use_docs_flag` = `Y` and `send_outside_use_print_flag` = `Y` (Location Maintenance or Ship To: *Send Outside Use Documents* and its *Print* box) |
+| 4 | *Transmit Document Links* (`process_doclinks`) is on when the form prints | The print window. It defaults off in Pick Tickets, Reprint Pick Tickets, Production Order Report and Packing Lists. The `Order` service's `print_tix` sent the links without it |
+
+A link that misses any one of these prints nothing. Neither the client nor the API reports an error, and the form prints alone.
+
+- **Outside Use off.** A link with area `3453` and Outside Use off didn't print, while the Outside Use links on the same ticket did.
+- **Location off.** With only the ship-to's requirements on, the pick ticket sent nothing. With only the location's on, the pick ticket sent its links, and the packing list sent nothing until the ship-to's were on.
+- **The other boxes in the panel.** The requirements panel's own **Print**, **Fax** and **Email** boxes are for lot documentation. Setting `print_flag` without *Require Lot Documentation* is refused with *"Print, Email or Fax may not be checked unless Require Lot Documentation is set to Yes."*
+
+In the test the location was the sales, source and pick location at once, so which of the three counts was not separated.
+
+Turn the location requirement on with the Transaction API `Location` service:
+
+```json
+{ "Name": "Location", "UseCodeValues": false, "IgnoreDisabled": true,
+  "Transactions": [{ "Status": "New", "DataElements": [{
+    "Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": ["id", "company_id"],
+    "Rows": [{ "Edits": [
+      { "Name": "id", "Value": "10" }, { "Name": "company_id", "Value": "ACME" },
+      { "Name": "send_outside_use_docs_flag", "Value": "Yes" },
+      { "Name": "send_outside_use_print_flag", "Value": "ON" },
+      { "Name": "outside_use_number_of_copies", "Value": "1" } ] }] }] }] }
+```
+
+`send_outside_use_docs_flag` takes the label `Yes` or `No`; `ON` is refused with *"Invalid send_outside_use_docs_flag value: ON"*. Read the row back from `document_link_entity_req` (`entity_type` `1370` = location, `entity_id` = the location ID). The `ShipTo` service sets the same fields on `TABPAGE_7.tp_7_dw_7` (`entity_type` `1328`).
+
+### Assemblies and kits
+
+- **Kit.** The pick ticket lists the kit and its components, and each item's own `3453` links print: the kit item's and each component's.
+- **Production-order assembly sold on a sales order.** Only the assembly item's `3453` link prints with the sales-order pick ticket; the components are not on it. The component links print with the **Production Order Form** (`2750`), together with the assembly's own `2750` link. The production pick ticket has no display area, and it printed no links.
+
+### What the client and the API return
+
+**Web client** (`ui/full`, the Print, Print Immediately or Print Preview tool). The tool answers with a `formdatastreamready` event for the form and one `filerequested` event per linked file:
+
+```json
+{ "Name": "filerequested", "EventData": {
+    "print": "\\\\fileserver\\share\\P21\\Files\\ItemMaint\\DRAWING.pdf", "link_name": "DRAWING.pdf" } }
+```
+
+The client renders the form with `POST /api/document/generate/form`, asks *"Do you want to print the associated document links?"*, downloads each file with `GET /api/filehandler/file/path?fileName=…&path=…`, and sends it to the current printer. `formdatastreamready.EventData.documentLinks` repeats the list as `ticket|name|path|…`.
+
+**Report API and Transaction print flags.** `POST /api/v2/process/pdfreport` (`m_reprintpicktickets` with `process_doclinks` `ON`) and the `Order` service's `print_tix` return the form PDF alone. Each document carries the links in `DocumentAssociations`:
+
+```json
+"DocumentAssociations": [
+  { "AssociationType": 0, "DocumentId": "2840476", "Name": "DRAWING.pdf",
+    "Uri": "\\\\fileserver\\share\\P21\\Files\\ItemMaint\\DRAWING.pdf" } ]
+```
+
+`DocumentId` is the pick-ticket number. To print what the client prints, fetch each `Uri` through the file handler and send it after the form. With `process_doclinks` `OFF` on `pdfreport`, or with the location requirement off, the list is `[]`.
+
 ## Gotchas (verified on play 26.1.5950.0, 2026-10-17)
 
 - **Only the window save writes.** `cb_ok` closes the dialog and adds a grid row; closing the window without saving writes nothing.
@@ -654,7 +716,7 @@ static string ReadField(string payload, string field)
 - **A business rule can stop the save.** On a tenant with an Item rule, the save returns Status 3 and opens a rule-callback window — on play, *Item Issues Detected* with `cb_1` = *Yes, Proceed Anyway* and `cb_2` = *No, Cancel*. The example names the prompt and its buttons and stops; set `SAVE_PROMPT_ANSWER` / `SavePromptAnswer` to answer it. Read the rule's message before you choose: [04 § Worked Example: Item Issues Detected](../04-Interactive-API.md#worked-example-item-issues-detected-rule-callback).
 - **The link path must be a real UNC path.** A path that reaches the server with one leading backslash (`\fileserver\share\...`, typically an escaping slip) is refused on the `link_path` change: *The path '…' is not valid - this path needs to point to a valid FileHandler location.* With link-in-place allowed, a well-formed UNC path outside the upload folder is accepted as well — the upload is only needed when the file is not already on a share the server reads.
 - **The upload does not overwrite.** `POST /api/filehandler/file/path` to a file name that already exists in the folder returns an HTTP 500. The example checks for an existing link first; a file left by a run that failed after the upload has to be removed or renamed before the next run.
-- **Pick tickets returned by the API do not carry the document.** A sales-order pick ticket printed through the API comes back as one PDF of the ticket alone — from the `Order` service's `print_tix` and from `m_reprintpicktickets` with `process_doclinks` (*Transmit Document Links*) `ON` or `OFF` alike, for a kit whose links include area `3453`: same page count, same size. Generating a new sales-order ticket with `m_picktickets` and `process_doclinks` `ON` gave the same result: the flag is accepted and the PDF holds the ticket alone (2026-10-17; see [generate-pick-ticket-pdf § Sales-order pick ticket](generate-pick-ticket-pdf.md#sales-order-pick-ticket)). *Transmit Document Links* is a print-time option of the client's pick-ticket windows (`process_doclinks`, default `OFF` on play); whether the client then prints the linked file alongside the ticket was not tested here.
+- **The document is never inside the ticket's PDF.** It prints as a separate job. The API returns it as a `DocumentAssociations` entry beside the PDF, and only when the location's requirements send outside-use documents. Without that setting the entry list is empty. That is why the 10/17 test saw *the ticket alone* with *Transmit Document Links* on and off. See [Printing the document with a form](#printing-the-document-with-a-form).
 
 ## Verify
 
@@ -669,4 +731,4 @@ ORDER BY dl.document_link_uid, a.display_area_cd
 
 Over OData the example reads the same two tables (`document_link`, then `document_link_area` by `document_link_uid`). Expected after a run with `AREAS = ["Assembly Maintenance", "Sales Order Pick Ticket"]`: one link and four area rows — `1302`, `1314`, `1445`, `3453`. With the defaults, two rows (`1314`, `1445`); with `"ALL"`, 26 rows. Then open the assembly in Assembly Maintenance: the link is on the header Document Links tab only when `1302` is among its areas.
 
-> **Credit:** *@mrwuss* — Item-window flow and file-handler upload found and verified on play 26.1 ([#200](https://github.com/mrwuss/p21-api-documentation/issues/200)); display areas (single-area selection through `ui/full/v2/data/select` included), assemblies and kits, and the pick-ticket check verified on play 26.1.5950.0, 2026-10-17.
+> **Credit:** *@mrwuss* — Item-window flow and file-handler upload found and verified on play 26.1 ([#200](https://github.com/mrwuss/p21-api-documentation/issues/200)); display areas (single-area selection through `ui/full/v2/data/select` included), assemblies and kits, and the pick-ticket check verified on play 26.1.5950.0, 2026-10-17. Printing with a form (the location and Outside Use conditions, `DocumentAssociations`, and the client's `filerequested` jobs) verified on play 26.1.5950.0, 2026-10-21, with a kit, a production-order assembly and two components through ship, invoice and the production order form ([#222](https://github.com/mrwuss/p21-api-documentation/issues/222)).

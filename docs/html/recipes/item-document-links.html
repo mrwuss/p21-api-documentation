@@ -663,6 +663,12 @@
 <li><a href="#where-an-assemblys-document-lives">Where an assembly's document lives</a></li>
 <li><a href="#call-sequence">Call sequence</a></li>
 <li><a href="#complete-example">Complete example</a></li>
+<li><a href="#printing-the-document-with-a-form">Printing the document with a form</a><ul>
+<li><a href="#what-has-to-be-true">What has to be true</a></li>
+<li><a href="#assemblies-and-kits">Assemblies and kits</a></li>
+<li><a href="#what-the-client-and-the-api-return">What the client and the API return</a></li>
+</ul>
+</li>
 <li><a href="#gotchas-verified-on-play-26159500-2026-10-17">Gotchas (verified on play 26.1.5950.0, 2026-10-17)</a></li>
 <li><a href="#verify">Verify</a></li>
 </ul>
@@ -762,7 +768,7 @@
 </tr>
 </tbody>
 </table></div>
-<p>The Add Link dialog lists the rest in its <strong>Available Area</strong> list (26 areas on 26.1.5950.0). A document reaches a printed form only through that form's area — for the sales-order pick ticket, <code>3453</code>.</p>
+<p>The Add Link dialog lists the rest in its <strong>Available Area</strong> list (26 areas on 26.1.5950.0). A document reaches a printed form only through that form's area — for the sales-order pick ticket, <code>3453</code> — and only when the link is <strong>Outside Use</strong> and the location sends outside-use documents to print. See <a href="#printing-the-document-with-a-form">Printing the document with a form</a>.</p>
 <h2 id="call-sequence">Call sequence</h2>
 <ol>
 <li><strong>Upload</strong> the file into the folder the client's own Add Link dialog uses — the <code>item_maintenance_doc_link_upload_folder_path</code> system setting: <code>POST /api/filehandler/file/path?fileName={name}&amp;path={folder}</code> with the raw bytes as the body.</li>
@@ -824,7 +830,7 @@
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
 <span class="n">ITEM_ID</span> <span class="o">=</span> <span class="s2">&quot;WIDGET-001&quot;</span>                    <span class="c1"># the item to attach to</span>
 <span class="n">FILE_PATH</span> <span class="o">=</span> <span class="s2">&quot;WIDGET-001 drawing.pdf&quot;</span>      <span class="c1"># the local file to attach</span>
-<span class="n">OUTSIDE_USE</span> <span class="o">=</span> <span class="s2">&quot;N&quot;</span>                         <span class="c1"># &quot;Y&quot; lets the document leave the company</span>
+<span class="n">OUTSIDE_USE</span> <span class="o">=</span> <span class="s2">&quot;Y&quot;</span>                         <span class="c1"># Outside Use: required to print with a form; &quot;N&quot; = internal only</span>
 <span class="n">AREAS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Assembly Maintenance&quot;</span><span class="p">,</span> <span class="s2">&quot;Sales Order Pick Ticket&quot;</span><span class="p">]</span>  <span class="c1"># extra display areas, by name;</span>
                                           <span class="c1"># [] = the dialog&#39;s defaults, &quot;ALL&quot; = every area</span>
 <span class="n">SAVE_PROMPT_ANSWER</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>                   <span class="c1"># e.g. &quot;cb_1&quot; -- the button for a prompt the save raises</span>
@@ -1086,7 +1092,7 @@
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ItemId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;WIDGET-001&quot;</span><span class="p">;</span><span class="w">                   </span><span class="c1">// the item to attach to</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">FilePath</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;WIDGET-001 drawing.pdf&quot;</span><span class="p">;</span><span class="w">     </span><span class="c1">// the local file to attach</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">OutsideUse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;N&quot;</span><span class="p">;</span><span class="w">                        </span><span class="c1">// &quot;Y&quot; lets the document leave the company</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">OutsideUse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Y&quot;</span><span class="p">;</span><span class="w">                        </span><span class="c1">// Outside Use: required to print with a form; &quot;N&quot; = internal only</span>
 <span class="kt">string</span><span class="p">[]</span><span class="w"> </span><span class="n">Areas</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;Assembly Maintenance&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Sales Order Pick Ticket&quot;</span><span class="w"> </span><span class="p">};</span><span class="w">  </span><span class="c1">// extra display areas, by name;</span>
 <span class="w">                                                      </span><span class="c1">// { } = the dialog&#39;s defaults, { &quot;ALL&quot; } = every area</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">SavePromptAnswer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">;</span><span class="w">                   </span><span class="c1">// e.g. &quot;cb_1&quot; -- the button for a prompt the save raises</span>
@@ -1364,6 +1370,78 @@
 </code></pre></div>
 </div>
 </div>
+<h2 id="printing-the-document-with-a-form">Printing the document with a form</h2>
+<p>P21 never merges a linked document into a form's PDF. When a form prints, P21 renders the form by itself and names each linked file beside it. The client then prints each file as its own job, on the same printer.</p>
+<h3 id="what-has-to-be-true">What has to be true</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Condition</th>
+<th>Where it is set</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>The link is on an item that appears on the form, and it has the form's display area: <code>3453</code> sales-order pick ticket, <code>999</code> packing list, <code>2750</code> production order form</td>
+<td>The link's areas (this recipe)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The link is <strong>Outside Use</strong> (<code>document_link.outside_use_flag</code> = <code>Y</code>)</td>
+<td>The link (<code>OUTSIDE_USE</code> / <code>OutsideUse</code> in the example)</td>
+</tr>
+<tr>
+<td>3</td>
+<td>The entity the form prints for sends outside-use documents to print. That is the <strong>location</strong> for the sales-order pick ticket and the production order form, and the <strong>ship-to</strong> for the packing list</td>
+<td><code>document_link_entity_req</code>: <code>send_outside_use_docs_flag</code> = <code>Y</code> and <code>send_outside_use_print_flag</code> = <code>Y</code> (Location Maintenance or Ship To: <em>Send Outside Use Documents</em> and its <em>Print</em> box)</td>
+</tr>
+<tr>
+<td>4</td>
+<td><em>Transmit Document Links</em> (<code>process_doclinks</code>) is on when the form prints</td>
+<td>The print window. It defaults off in Pick Tickets, Reprint Pick Tickets, Production Order Report and Packing Lists. The <code>Order</code> service's <code>print_tix</code> sent the links without it</td>
+</tr>
+</tbody>
+</table></div>
+<p>A link that misses any one of these prints nothing. Neither the client nor the API reports an error, and the form prints alone.</p>
+<ul>
+<li><strong>Outside Use off.</strong> A link with area <code>3453</code> and Outside Use off didn't print, while the Outside Use links on the same ticket did.</li>
+<li><strong>Location off.</strong> With only the ship-to's requirements on, the pick ticket sent nothing. With only the location's on, the pick ticket sent its links, and the packing list sent nothing until the ship-to's were on.</li>
+<li><strong>The other boxes in the panel.</strong> The requirements panel's own <strong>Print</strong>, <strong>Fax</strong> and <strong>Email</strong> boxes are for lot documentation. Setting <code>print_flag</code> without <em>Require Lot Documentation</em> is refused with <em>"Print, Email or Fax may not be checked unless Require Lot Documentation is set to Yes."</em></li>
+</ul>
+<p>In the test the location was the sales, source and pick location at once, so which of the three counts was not separated.</p>
+<p>Turn the location requirement on with the Transaction API <code>Location</code> service:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Location&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;IgnoreDisabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">    </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;company_id&quot;</span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10&quot;</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;company_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;send_outside_use_docs_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Yes&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;send_outside_use_print_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ON&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;outside_use_number_of_copies&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+
+<p><code>send_outside_use_docs_flag</code> takes the label <code>Yes</code> or <code>No</code>; <code>ON</code> is refused with <em>"Invalid send_outside_use_docs_flag value: ON"</em>. Read the row back from <code>document_link_entity_req</code> (<code>entity_type</code> <code>1370</code> = location, <code>entity_id</code> = the location ID). The <code>ShipTo</code> service sets the same fields on <code>TABPAGE_7.tp_7_dw_7</code> (<code>entity_type</code> <code>1328</code>).</p>
+<h3 id="assemblies-and-kits">Assemblies and kits</h3>
+<ul>
+<li><strong>Kit.</strong> The pick ticket lists the kit and its components, and each item's own <code>3453</code> links print: the kit item's and each component's.</li>
+<li><strong>Production-order assembly sold on a sales order.</strong> Only the assembly item's <code>3453</code> link prints with the sales-order pick ticket; the components are not on it. The component links print with the <strong>Production Order Form</strong> (<code>2750</code>), together with the assembly's own <code>2750</code> link. The production pick ticket has no display area, and it printed no links.</li>
+</ul>
+<h3 id="what-the-client-and-the-api-return">What the client and the API return</h3>
+<p><strong>Web client</strong> (<code>ui/full</code>, the Print, Print Immediately or Print Preview tool). The tool answers with a <code>formdatastreamready</code> event for the form and one <code>filerequested</code> event per linked file:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;filerequested&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;EventData&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;print&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;\\\\fileserver\\share\\P21\\Files\\ItemMaint\\DRAWING.pdf&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;link_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;DRAWING.pdf&quot;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+
+<p>The client renders the form with <code>POST /api/document/generate/form</code>, asks <em>"Do you want to print the associated document links?"</em>, downloads each file with <code>GET /api/filehandler/file/path?fileName=…&amp;path=…</code>, and sends it to the current printer. <code>formdatastreamready.EventData.documentLinks</code> repeats the list as <code>ticket|name|path|…</code>.</p>
+<p><strong>Report API and Transaction print flags.</strong> <code>POST /api/v2/process/pdfreport</code> (<code>m_reprintpicktickets</code> with <code>process_doclinks</code> <code>ON</code>) and the <code>Order</code> service's <code>print_tix</code> return the form PDF alone. Each document carries the links in <code>DocumentAssociations</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;DocumentAssociations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;AssociationType&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DocumentId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2840476&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;DRAWING.pdf&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Uri&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;\\\\fileserver\\share\\P21\\Files\\ItemMaint\\DRAWING.pdf&quot;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">]</span>
+</code></pre></div>
+
+<p><code>DocumentId</code> is the pick-ticket number. To print what the client prints, fetch each <code>Uri</code> through the file handler and send it after the form. With <code>process_doclinks</code> <code>OFF</code> on <code>pdfreport</code>, or with the location requirement off, the list is <code>[]</code>.</p>
 <h2 id="gotchas-verified-on-play-26159500-2026-10-17">Gotchas (verified on play 26.1.5950.0, 2026-10-17)</h2>
 <ul>
 <li><strong>Only the window save writes.</strong> <code>cb_ok</code> closes the dialog and adds a grid row; closing the window without saving writes nothing.</li>
@@ -1373,7 +1451,7 @@
 <li><strong>A business rule can stop the save.</strong> On a tenant with an Item rule, the save returns Status 3 and opens a rule-callback window — on play, <em>Item Issues Detected</em> with <code>cb_1</code> = <em>Yes, Proceed Anyway</em> and <code>cb_2</code> = <em>No, Cancel</em>. The example names the prompt and its buttons and stops; set <code>SAVE_PROMPT_ANSWER</code> / <code>SavePromptAnswer</code> to answer it. Read the rule's message before you choose: <a href="../04-Interactive-API.html#worked-example-item-issues-detected-rule-callback">04 § Worked Example: Item Issues Detected</a>.</li>
 <li><strong>The link path must be a real UNC path.</strong> A path that reaches the server with one leading backslash (<code>\fileserver\share\...</code>, typically an escaping slip) is refused on the <code>link_path</code> change: <em>The path '…' is not valid - this path needs to point to a valid FileHandler location.</em> With link-in-place allowed, a well-formed UNC path outside the upload folder is accepted as well — the upload is only needed when the file is not already on a share the server reads.</li>
 <li><strong>The upload does not overwrite.</strong> <code>POST /api/filehandler/file/path</code> to a file name that already exists in the folder returns an HTTP 500. The example checks for an existing link first; a file left by a run that failed after the upload has to be removed or renamed before the next run.</li>
-<li><strong>Pick tickets returned by the API do not carry the document.</strong> A sales-order pick ticket printed through the API comes back as one PDF of the ticket alone — from the <code>Order</code> service's <code>print_tix</code> and from <code>m_reprintpicktickets</code> with <code>process_doclinks</code> (<em>Transmit Document Links</em>) <code>ON</code> or <code>OFF</code> alike, for a kit whose links include area <code>3453</code>: same page count, same size. Generating a new sales-order ticket with <code>m_picktickets</code> and <code>process_doclinks</code> <code>ON</code> gave the same result: the flag is accepted and the PDF holds the ticket alone (2026-10-17; see <a href="generate-pick-ticket-pdf.html#sales-order-pick-ticket">generate-pick-ticket-pdf § Sales-order pick ticket</a>). <em>Transmit Document Links</em> is a print-time option of the client's pick-ticket windows (<code>process_doclinks</code>, default <code>OFF</code> on play); whether the client then prints the linked file alongside the ticket was not tested here.</li>
+<li><strong>The document is never inside the ticket's PDF.</strong> It prints as a separate job. The API returns it as a <code>DocumentAssociations</code> entry beside the PDF, and only when the location's requirements send outside-use documents. Without that setting the entry list is empty. That is why the 10/17 test saw <em>the ticket alone</em> with <em>Transmit Document Links</em> on and off. See <a href="#printing-the-document-with-a-form">Printing the document with a form</a>.</li>
 </ul>
 <h2 id="verify">Verify</h2>
 <div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">dl</span><span class="p">.</span><span class="n">document_link_uid</span><span class="p">,</span><span class="w"> </span><span class="n">dl</span><span class="p">.</span><span class="n">link_name</span><span class="p">,</span><span class="w"> </span><span class="n">dl</span><span class="p">.</span><span class="n">link_path</span><span class="p">,</span><span class="w"> </span><span class="n">dl</span><span class="p">.</span><span class="n">outside_use_flag</span><span class="p">,</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="n">display_area_cd</span>
@@ -1386,7 +1464,7 @@
 
 <p>Over OData the example reads the same two tables (<code>document_link</code>, then <code>document_link_area</code> by <code>document_link_uid</code>). Expected after a run with <code>AREAS = ["Assembly Maintenance", "Sales Order Pick Ticket"]</code>: one link and four area rows — <code>1302</code>, <code>1314</code>, <code>1445</code>, <code>3453</code>. With the defaults, two rows (<code>1314</code>, <code>1445</code>); with <code>"ALL"</code>, 26 rows. Then open the assembly in Assembly Maintenance: the link is on the header Document Links tab only when <code>1302</code> is among its areas.</p>
 <blockquote>
-<p><strong>Credit:</strong> <em>@mrwuss</em> — Item-window flow and file-handler upload found and verified on play 26.1 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/200">#200</a>); display areas (single-area selection through <code>ui/full/v2/data/select</code> included), assemblies and kits, and the pick-ticket check verified on play 26.1.5950.0, 2026-10-17.</p>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — Item-window flow and file-handler upload found and verified on play 26.1 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/200">#200</a>); display areas (single-area selection through <code>ui/full/v2/data/select</code> included), assemblies and kits, and the pick-ticket check verified on play 26.1.5950.0, 2026-10-17. Printing with a form (the location and Outside Use conditions, <code>DocumentAssociations</code>, and the client's <code>filerequested</code> jobs) verified on play 26.1.5950.0, 2026-10-21, with a kit, a production-order assembly and two components through ship, invoice and the production order form (<a href="https://github.com/mrwuss/p21-api-documentation/issues/222">#222</a>).</p>
 </blockquote>
     </main>
 
@@ -1399,6 +1477,12 @@
 <li><a href="#where-an-assemblys-document-lives">Where an assembly's document lives</a></li>
 <li><a href="#call-sequence">Call sequence</a></li>
 <li><a href="#complete-example">Complete example</a></li>
+<li><a href="#printing-the-document-with-a-form">Printing the document with a form</a><ul>
+<li><a href="#what-has-to-be-true">What has to be true</a></li>
+<li><a href="#assemblies-and-kits">Assemblies and kits</a></li>
+<li><a href="#what-the-client-and-the-api-return">What the client and the API return</a></li>
+</ul>
+</li>
 <li><a href="#gotchas-verified-on-play-26159500-2026-10-17">Gotchas (verified on play 26.1.5950.0, 2026-10-17)</a></li>
 <li><a href="#verify">Verify</a></li>
 </ul>

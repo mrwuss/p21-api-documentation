@@ -566,7 +566,7 @@ POST {ui_server}/api/v2/process/pdfreport
 - `dt_beg_date2`/`dt_end_date2` is the **Sales Order Required Date** range, `beg_order_date`/`end_order_date` the **Order Date** range and `beg_pick_date`/`end_pick_date` the **Pick Date** range. Send all three — see [the date-range trap](#an-omitted-date-range-takes-a-default-that-can-end-in-the-past).
 - **`UseCodeValues: false` with the label `Sales Order`.** `UseCodeValues: true` with the code `S` or `O` returned an empty HTTP 500. That is the opposite of the production-order case, which needs `true` and the code `P`.
 - The response is one document: a base64 PDF whose `FileName` is `PT<nnn> PICK_TICKET.pdf`. `<nnn>` is a document counter, **not** the pick-ticket number; read the ticket number from `oe_pick_ticket` by `order_no`.
-- `process_doclinks` (*Transmit Document Links*) is accepted, but linked documents are not added to the returned PDF — see [item-document-links § Gotchas](item-document-links.md#gotchas-verified-on-play-26159500-2026-10-17).
+- `process_doclinks` (*Transmit Document Links*) never adds a linked document to the returned PDF. When the location sends outside-use documents to print, the document's `DocumentAssociations` names each linked file to print after the ticket — see [item-document-links § Printing the document with a form](item-document-links.md#printing-the-document-with-a-form).
 
 ### Eligibility traps
 

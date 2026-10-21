@@ -18,6 +18,10 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-10-21
+
+- **fix:** **[A linked document prints with a form only when the location sends outside-use documents](recipes/item-document-links.md#printing-the-document-with-a-form)**, verified on play 26.1.5950.0 with a kit, a production-order assembly and two components, from sales order through ship and invoice, plus a production order. The 10/17 gotcha said an API pick ticket does not carry the linked document. The PDF is the ticket alone, but P21 names each linked file beside it: in `DocumentAssociations` on `pdfreport` and on `print_tix`, and as `filerequested` events on the web client, which prints each file as its own job after *"Print Document Links?"*. It does so only when the link is **Outside Use** and the location's document link requirements have *Send Outside Use Documents* and *Print* on (`document_link_entity_req`, `entity_type` `1370`); the packing list uses the ship-to's instead. With the location off, nothing is sent, which is what 10/17 saw. Kit component links with `3453` print with the order's pick ticket. A production-order assembly's component links print on the Production Order Form (`2750`), not on either pick ticket. The recipe example now defaults Outside Use to `Y`. Closes [#222](https://github.com/mrwuss/p21-api-documentation/issues/222) — *@mrwuss*
+
 ## 2026-10-17
 
 - **fix:** **[`customer.job_pricing` is `Column is disabled`](03-Transaction-API.md#customer-service-turning-on-jobcontract-pricing)** has a cause: the field is disabled while `customer.use_vendor_contracts_flag` is `Y`, and a customer created through the API takes `Y` from the defaults. Send `use_vendor_contracts_flag = N` before `job_pricing = Y` in the same create or edit. Verified on play 26.1.5950.0 on new test customers through a Transaction create, a Transaction edit and the Interactive `Customer` window; the reverse order fails. A customer created through the API can now be put on a job contract. Closes [#220](https://github.com/mrwuss/p21-api-documentation/issues/220) — *@mrwuss*
