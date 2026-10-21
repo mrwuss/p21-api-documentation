@@ -660,6 +660,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-10-21">2026-10-21</a></li>
 <li><a href="#2026-10-17">2026-10-17</a></li>
 <li><a href="#2026-10-11-v1293">2026-10-11 — v1.29.3</a></li>
 <li><a href="#2026-10-11-v1292">2026-10-11 — v1.29.2</a></li>
@@ -764,6 +765,10 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-10-21">2026-10-21</h2>
+<ul>
+<li><strong>fix:</strong> <strong><a href="recipes/item-document-links.html#printing-the-document-with-a-form">A linked document prints with a form only when the location sends outside-use documents</a></strong>, verified on play 26.1.5950.0 with a kit, a production-order assembly and two components, from sales order through ship and invoice, plus a production order. The 10/17 gotcha said an API pick ticket does not carry the linked document. The PDF is the ticket alone, but P21 names each linked file beside it: in <code>DocumentAssociations</code> on <code>pdfreport</code> and on <code>print_tix</code>, and as <code>filerequested</code> events on the web client, which prints each file as its own job after <em>"Print Document Links?"</em>. It does so only when the link is <strong>Outside Use</strong> and the location's document link requirements have <em>Send Outside Use Documents</em> and <em>Print</em> on (<code>document_link_entity_req</code>, <code>entity_type</code> <code>1370</code>); the packing list uses the ship-to's instead. With the location off, nothing is sent, which is what 10/17 saw. Kit component links with <code>3453</code> print with the order's pick ticket. A production-order assembly's component links print on the Production Order Form (<code>2750</code>), not on either pick ticket. The recipe example now defaults Outside Use to <code>Y</code>. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/222">#222</a> — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-10-17">2026-10-17</h2>
 <ul>
 <li><strong>fix:</strong> <strong><a href="03-Transaction-API.html#customer-service-turning-on-jobcontract-pricing"><code>customer.job_pricing</code> is <code>Column is disabled</code></a></strong> has a cause: the field is disabled while <code>customer.use_vendor_contracts_flag</code> is <code>Y</code>, and a customer created through the API takes <code>Y</code> from the defaults. Send <code>use_vendor_contracts_flag = N</code> before <code>job_pricing = Y</code> in the same create or edit. Verified on play 26.1.5950.0 on new test customers through a Transaction create, a Transaction edit and the Interactive <code>Customer</code> window; the reverse order fails. A customer created through the API can now be put on a job contract. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/220">#220</a> — <em>@mrwuss</em></li>
@@ -1735,6 +1740,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-10-21">2026-10-21</a></li>
 <li><a href="#2026-10-17">2026-10-17</a></li>
 <li><a href="#2026-10-11-v1293">2026-10-11 — v1.29.3</a></li>
 <li><a href="#2026-10-11-v1292">2026-10-11 — v1.29.2</a></li>

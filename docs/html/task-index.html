@@ -1640,8 +1640,8 @@
 <td><a href="03-Transaction-API.html#merging-several-report-pdfs-into-one-file">03 § Merging Several Report PDFs into One File</a> — rename the font-subset tags</td>
 </tr>
 <tr>
-<td><strong>Put an assembly's drawing on its pick ticket</strong> · does an API pick-ticket PDF include linked documents?</td>
-<td><a href="recipes/item-document-links.html">recipe: item-document-links</a> — display area <code>3453</code> Sales Order Pick Ticket; in the tests (<code>print_tix</code>, <code>m_reprintpicktickets</code>, <code>m_picktickets</code>) the API's pick-ticket PDF did not include the linked file, with <em>Transmit Document Links</em> on or off; what the client prints was not tested</td>
+<td><strong>Put an assembly's drawing on its pick ticket</strong> · does an API pick-ticket PDF include linked documents? · a linked document never prints</td>
+<td><a href="recipes/item-document-links.html">recipe: item-document-links</a> — display area <code>3453</code> Sales Order Pick Ticket · <a href="recipes/item-document-links.html#printing-the-document-with-a-form">§ Printing the document with a form</a> — the link must be Outside Use and the <strong>location</strong> must send outside-use documents to print (ship-to for the packing list); the PDF is the form alone, and the files come back as <code>DocumentAssociations</code> / <code>filerequested</code> jobs</td>
 </tr>
 </tbody>
 </table></div>
