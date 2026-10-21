@@ -105,7 +105,7 @@ PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
 ITEM_ID = "WIDGET-001"                    # the item to attach to
 FILE_PATH = "WIDGET-001 drawing.pdf"      # the local file to attach
-OUTSIDE_USE = "Y"                         # Outside Use: "N" keeps the document off every printed form
+OUTSIDE_USE = "Y"                         # Outside Use: required to print with a form; "N" = internal only
 AREAS = ["Assembly Maintenance", "Sales Order Pick Ticket"]  # extra display areas, by name;
                                           # [] = the dialog's defaults, "ALL" = every area
 SAVE_PROMPT_ANSWER = ""                   # e.g. "cb_1" -- the button for a prompt the save raises
@@ -367,7 +367,7 @@ const string Username = "apiuser";
 const string Password = "your-password";
 const string ItemId = "WIDGET-001";                   // the item to attach to
 const string FilePath = "WIDGET-001 drawing.pdf";     // the local file to attach
-const string OutsideUse = "Y";                        // Outside Use: "N" keeps the document off every printed form
+const string OutsideUse = "Y";                        // Outside Use: required to print with a form; "N" = internal only
 string[] Areas = { "Assembly Maintenance", "Sales Order Pick Ticket" };  // extra display areas, by name;
                                                       // { } = the dialog's defaults, { "ALL" } = every area
 const string SavePromptAnswer = "";                   // e.g. "cb_1" -- the button for a prompt the save raises
@@ -688,23 +688,24 @@ Turn the location requirement on with the Transaction API `Location` service:
 
 ### What the client and the API return
 
-- **Web client** (`ui/full`, the Print, Print Immediately or Print Preview tool). The tool answers with a `formdatastreamready` event for the form and one `filerequested` event per linked file:
+**Web client** (`ui/full`, the Print, Print Immediately or Print Preview tool). The tool answers with a `formdatastreamready` event for the form and one `filerequested` event per linked file:
 
-  ```json
-  { "Name": "filerequested", "EventData": {
-      "print": "\\\\fileserver\\share\\P21\\Files\\ItemMaint\\DRAWING.pdf", "link_name": "DRAWING.pdf" } }
-  ```
+```json
+{ "Name": "filerequested", "EventData": {
+    "print": "\\\\fileserver\\share\\P21\\Files\\ItemMaint\\DRAWING.pdf", "link_name": "DRAWING.pdf" } }
+```
 
-  The client renders the form with `POST /api/document/generate/form`, asks *"Do you want to print the associated document links?"*, downloads each file with `GET /api/filehandler/file/path?fileName=…&path=…`, and sends it to the current printer. `formdatastreamready.EventData.documentLinks` repeats the list as `ticket|name|path|…`.
-- **Report API and Transaction print flags.** `POST /api/v2/process/pdfreport` (`m_reprintpicktickets` with `process_doclinks` `ON`) and the `Order` service's `print_tix` return the form PDF alone. Each document carries the links in `DocumentAssociations`:
+The client renders the form with `POST /api/document/generate/form`, asks *"Do you want to print the associated document links?"*, downloads each file with `GET /api/filehandler/file/path?fileName=…&path=…`, and sends it to the current printer. `formdatastreamready.EventData.documentLinks` repeats the list as `ticket|name|path|…`.
 
-  ```json
-  "DocumentAssociations": [
-    { "AssociationType": 0, "DocumentId": "2840476", "Name": "DRAWING.pdf",
-      "Uri": "\\\\fileserver\\share\\P21\\Files\\ItemMaint\\DRAWING.pdf" } ]
-  ```
+**Report API and Transaction print flags.** `POST /api/v2/process/pdfreport` (`m_reprintpicktickets` with `process_doclinks` `ON`) and the `Order` service's `print_tix` return the form PDF alone. Each document carries the links in `DocumentAssociations`:
 
-  `DocumentId` is the pick-ticket number. To print what the client prints, fetch each `Uri` through the file handler and send it after the form. With `process_doclinks` `OFF` on `pdfreport`, or with the location requirement off, the list is `[]`.
+```json
+"DocumentAssociations": [
+  { "AssociationType": 0, "DocumentId": "2840476", "Name": "DRAWING.pdf",
+    "Uri": "\\\\fileserver\\share\\P21\\Files\\ItemMaint\\DRAWING.pdf" } ]
+```
+
+`DocumentId` is the pick-ticket number. To print what the client prints, fetch each `Uri` through the file handler and send it after the form. With `process_doclinks` `OFF` on `pdfreport`, or with the location requirement off, the list is `[]`.
 
 ## Gotchas (verified on play 26.1.5950.0, 2026-10-17)
 
