@@ -4291,6 +4291,35 @@ Field mappings, each confirmed by read-back:
 - The PO landed **`approved='Y'`** immediately (config-dependent), so it is receivable straight away.
 - **`po_type` is not settable here** — ours defaulted to `'B'`. Direct-ship (`'D'`) POs cannot be built by this service at all; they come from the Order-window wizard.
 
+### PurchaseOrder Service — Editing a Completed PO
+
+A header edit on a completed PO (`po_hdr.complete = 'Y'`) fails with `Failed: 1` and *"Save is not enabled."*: the window's Save is greyed out, as it is in the client. The client's workaround works through the API too. Add one blank row to the lines grid in the same transaction, and the header edit saves; the blank row is thrown away.
+
+```json
+{
+  "Name": "PurchaseOrder",
+  "UseCodeValues": false,
+  "Transactions": [{
+    "Status": "New",
+    "DataElements": [
+      {"Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": ["po_no"],
+       "Rows": [{"Edits": [{"Name": "po_no", "Value": "500100"}]}]},
+      {"Name": "TABPAGE_3.tp_3_dw_3", "Type": "Form", "Keys": [],
+       "Rows": [{"Edits": [{"Name": "po_desc", "Value": "Revised description"}]}]},
+      {"Name": "TABPAGE_17.tp_17_dw_17", "Type": "List", "Keys": [],
+       "Rows": [{"Edits": [{"Name": "line_no", "Value": ""}, {"Name": "item_id", "Value": ""}]}]}
+    ]
+  }]
+}
+```
+
+| Payload | Result |
+|---|---|
+| `po_no` + `po_desc` only | `Failed: 1`, *"Save is not enabled."*, nothing written |
+| The same + the blank `TABPAGE_17.tp_17_dw_17` row | `Succeeded: 1`; `po_hdr.po_desc` updated, `po_line` count unchanged |
+
+*(Verified on play 26.1.5950.0, 2026-10-29, on a completed test PO. Community lead: John Kennedy and Spencer Smith, P21WWUG forum.)*
+
 ### PurchaseOrderReceipt Service — Receiving a PO
 
 **The Transaction API can receive a PO** — verified on 26.1 (August 2026), receipt **7000100** against PO 500101, with nothing but a header:

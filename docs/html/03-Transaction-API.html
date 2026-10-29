@@ -752,6 +752,7 @@
 <li><a href="#shipping-service-carrier-tracking-number">Shipping Service -- Carrier Tracking Number</a></li>
 <li><a href="#shipping-service-deleting-a-pick-ticket">Shipping Service — Deleting a Pick Ticket</a></li>
 <li><a href="#purchaseorder-service-creating-a-po">PurchaseOrder Service — Creating a PO</a></li>
+<li><a href="#purchaseorder-service-editing-a-completed-po">PurchaseOrder Service — Editing a Completed PO</a></li>
 <li><a href="#purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt Service — Receiving a PO</a></li>
 <li><a href="#convertpotovoucher-service-vouching-a-receipt">ConvertPOToVoucher Service — Vouching a Receipt</a></li>
 <li><a href="#vendor-service-creating-a-vendor-and-its-supplier">Vendor Service — Creating a Vendor (and Its Supplier)</a></li>
@@ -6134,6 +6135,44 @@ General Exception: This pick ticket has already been invoiced.
 <li>The PO landed <strong><code>approved='Y'</code></strong> immediately (config-dependent), so it is receivable straight away.</li>
 <li><strong><code>po_type</code> is not settable here</strong> — ours defaulted to <code>'B'</code>. Direct-ship (<code>'D'</code>) POs cannot be built by this service at all; they come from the Order-window wizard.</li>
 </ul>
+<h3 id="purchaseorder-service-editing-a-completed-po">PurchaseOrder Service — Editing a Completed PO</h3>
+<p>A header edit on a completed PO (<code>po_hdr.complete = 'Y'</code>) fails with <code>Failed: 1</code> and <em>"Save is not enabled."</em>: the window's Save is greyed out, as it is in the client. The client's workaround works through the API too. Add one blank row to the lines grid in the same transaction, and the header edit saves; the blank row is thrown away.</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PurchaseOrder&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;po_no&quot;</span><span class="p">],</span>
+<span class="w">       </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;po_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;500100&quot;</span><span class="p">}]}]},</span>
+<span class="w">      </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_3.tp_3_dw_3&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">       </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;po_desc&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Revised description&quot;</span><span class="p">}]}]},</span>
+<span class="w">      </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_17.tp_17_dw_17&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">       </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;line_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">}]}]}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Payload</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>po_no</code> + <code>po_desc</code> only</td>
+<td><code>Failed: 1</code>, <em>"Save is not enabled."</em>, nothing written</td>
+</tr>
+<tr>
+<td>The same + the blank <code>TABPAGE_17.tp_17_dw_17</code> row</td>
+<td><code>Succeeded: 1</code>; <code>po_hdr.po_desc</code> updated, <code>po_line</code> count unchanged</td>
+</tr>
+</tbody>
+</table></div>
+<p><em>(Verified on play 26.1.5950.0, 2026-10-29, on a completed test PO. Community lead: John Kennedy and Spencer Smith, P21WWUG forum.)</em></p>
 <h3 id="purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt Service — Receiving a PO</h3>
 <p><strong>The Transaction API can receive a PO</strong> — verified on 26.1 (August 2026), receipt <strong>7000100</strong> against PO 500101, with nothing but a header:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.tp_1_dw_po&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
@@ -8349,6 +8388,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li><a href="#shipping-service-carrier-tracking-number">Shipping Service -- Carrier Tracking Number</a></li>
 <li><a href="#shipping-service-deleting-a-pick-ticket">Shipping Service — Deleting a Pick Ticket</a></li>
 <li><a href="#purchaseorder-service-creating-a-po">PurchaseOrder Service — Creating a PO</a></li>
+<li><a href="#purchaseorder-service-editing-a-completed-po">PurchaseOrder Service — Editing a Completed PO</a></li>
 <li><a href="#purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt Service — Receiving a PO</a></li>
 <li><a href="#convertpotovoucher-service-vouching-a-receipt">ConvertPOToVoucher Service — Vouching a Receipt</a></li>
 <li><a href="#vendor-service-creating-a-vendor-and-its-supplier">Vendor Service — Creating a Vendor (and Its Supplier)</a></li>
