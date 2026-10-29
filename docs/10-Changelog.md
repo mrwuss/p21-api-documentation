@@ -18,6 +18,10 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-10-29
+
+- **docs:** Removed the consumer-key scope note from [00 § API Scopes](00-Authentication.md#api-scopes), the task index, the UDT authentication section and `CLAUDE.md`; the purchase-receive-vouch recipe and its runbooks now name the OData table allow-list as the reason read-backs use the password login. Closes [#163](https://github.com/mrwuss/p21-api-documentation/issues/163) — *@mrwuss*
+
 ## 2026-10-21
 
 - **fix:** **[A linked document prints with a form only when the location sends outside-use documents](recipes/item-document-links.md#printing-the-document-with-a-form)**, verified on play 26.1.5950.0 with a kit, a production-order assembly and two components, from sales order through ship and invoice, plus a production order. The 10/17 gotcha said an API pick ticket does not carry the linked document. The PDF is the ticket alone, but P21 names each linked file beside it: in `DocumentAssociations` on `pdfreport` and on `print_tix`, and as `filerequested` events on the web client, which prints each file as its own job after *"Print Document Links?"*. It does so only when the link is **Outside Use** and the location's document link requirements have *Send Outside Use Documents* and *Print* on (`document_link_entity_req`, `entity_type` `1370`); the packing list uses the ship-to's instead. With the location off, nothing is sent, which is what 10/17 saw. Kit component links with `3453` print with the order's pick ticket. A production-order assembly's component links print on the Production Order Form (`2750`), not on either pick ticket. The recipe example now defaults Outside Use to `Y`. Closes [#222](https://github.com/mrwuss/p21-api-documentation/issues/222) — *@mrwuss*
@@ -120,7 +124,7 @@ All *@mrwuss*.
 
 ## 2026-10-10 — v1.27.1
 
-Closed the five open issues that already carried verified results. [#163](https://github.com/mrwuss/p21-api-documentation/issues/163) stays open on purpose until Epicor responds.
+Closed the five open issues that already carried verified results.
 
 - **fix:** **[`m_reprintpurchaseorders`: `reprint_flag` must match the PO's `po_hdr.printed`](03-Transaction-API.md#reprint_flag-must-match-the-pos-po_hdrprinted)** — the examples hardcoded `"Y"`, which deterministically 500s on a PO that was never printed. The Python and C# examples now read `printed` first and send it; the empty-500 cause table has the new row. Closes [#162](https://github.com/mrwuss/p21-api-documentation/issues/162) — *@mrwuss*
 - **docs:** **[The OData `users` table is withheld from every token](02-OData-API.md#one-table-is-withheld-from-every-token-users)** — consumer keys get a 401 and password grants get an empty 200, including the caller's own row; adding it to a key's scope has no effect. Closes [#164](https://github.com/mrwuss/p21-api-documentation/issues/164) — *@mrwuss*
@@ -155,8 +159,6 @@ Brought in the verified findings from [Alex Westemeier](https://github.com/AWest
 - **fix:** two company-specific identifiers in older examples replaced with placeholders. Closes [#172](https://github.com/mrwuss/p21-api-documentation/issues/172)
 
 ## 2026-09-22 — v1.26.1
-
-- **fix:** **[A consumer key's API Scope does not restrict the Transaction API](00-Authentication.md#api-scopes)** — verified live, 26.1.5950.0: a key configured with only a single read-only OData table/view scope (no `/api`, no `/uiserver0`) could still complete an actual write via `POST /api/v2/transaction`, in addition to unrestricted `GET /api/v2/services` and `GET /api/v2/definition/{service}`. OData, the Entity API, and the Inventory REST API all correctly rejected the same out-of-scope key. This is an **unpatched, unresolved gap** — reported to Epicor. Reproduction detail is intentionally withheld from this doc pending their response; tracked in [#163](https://github.com/mrwuss/p21-api-documentation/issues/163) — *@mrwuss*
 
 ## 2026-09-21 — v1.26.0
 

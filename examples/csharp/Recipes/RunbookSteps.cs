@@ -45,8 +45,8 @@ internal sealed class Runbook : IDisposable
     /// Authenticate and resolve the UI server. consumer = true writes as
     /// P21_CONSUMER_KEY acting for P21_CONSUMER_USERNAME (use the account
     /// whose P21 user has what a step needs, such as a Buyer ID). A consumer
-    /// key's API Scope can withhold OData tables (401) while it still writes,
-    /// so read-backs use the password login when one is configured.
+    /// key's OData table allow-list can leave out a table a read-back needs
+    /// (401), so read-backs use the password login when one is configured.
     /// </summary>
     public static async Task<Runbook> CreateAsync(bool consumer = false)
     {

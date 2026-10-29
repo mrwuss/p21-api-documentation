@@ -72,7 +72,7 @@ Example: `https://play.example.com/udtservice/api/udtdata/`
 
 ## Authentication
 
-The UDT Service API uses the same Bearer token authentication as all other P21 APIs. Both **consumer key** and **user/password** authentication work. API scope does not affect access.
+The UDT Service API uses the same Bearer token authentication as all other P21 APIs. Both **consumer key** and **user/password** authentication work.
 
 See [Authentication](00-Authentication.md) for token generation.
 
