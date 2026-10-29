@@ -205,7 +205,7 @@ Each **Edit** object supports:
 | `Value` | Yes | Field value |
 | `IgnoreIfEmpty` | No | If `true`, skip this edit when Value is empty instead of sending a blank |
 
-> **You cannot write NULL, and some fields will not take a blank.** On `oe_hdr.delivery_instructions`, a `Value` of `""`, `null` or a single space each stored an **empty string**, never NULL, with or without `IgnoreIfEmpty: false`; an OData `eq null` filter does not find the row afterwards. On `oe_hdr.po_no` the same three values returned `Succeeded: 1` and **left the old value in place**. A blank is not a reliable way to clear a field: read the field back, and filter with `eq ''` as well as `eq null` when you look for empty values. *(Verified on play 26.1.5950.0, 2026-10-29, through the `Order` service on a test order.)*
+> **On the two fields tested, NULL was never stored, and one of them would not take a blank.** On `oe_hdr.delivery_instructions`, a `Value` of `""`, `null` or a single space each stored an **empty string**, never NULL, with or without `IgnoreIfEmpty: false`; an OData `eq null` filter does not find the row afterwards. On `oe_hdr.po_no` the same three values returned `Succeeded: 1` and **left the old value in place**. A blank is not a reliable way to clear a field: read the field back, and filter with `eq ''` as well as `eq null` when you look for empty values. *(Verified on play 26.1.5950.0, 2026-10-29, through the `Order` service on a test order; other fields and services not checked.)*
 
 ---
 
@@ -4995,7 +4995,7 @@ On `m_unvoucheredpos` the name was matched without regard to case: `criteria.cri
 
 #### `m_invoices` needs the API print flag, and a date range that covers the invoice
 
-The invoice print window has a criteria field just for API callers, `allow_api_to_print_and_reprint_invoice`, whose default is `N`. Without `Y` the call is an **empty HTTP 500**. With it, an invoice inside the window's default date range prints from three fields:
+The invoice print window has a criteria field just for API callers, `allow_api_to_print_and_reprint_invoice`, whose default is `N`. Without `Y` the call is an **empty HTTP 500**. With it, an invoice inside the window's default date range prints from three fields (`invoice_no`, `reprint_flag` and the flag). The example also sends the date pair, which a recent invoice needs:
 
 ```json
 {
