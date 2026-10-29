@@ -160,6 +160,8 @@ Brought in the verified findings from [Alex Westemeier](https://github.com/AWest
 
 ## 2026-09-22 — v1.26.1
 
+- **docs:** A consumer-key note in [00 § API Scopes](00-Authentication.md#api-scopes), removed on 2026-10-29 — *@mrwuss*
+
 ## 2026-09-21 — v1.26.0
 
 Closed the three open issues (#159, #160, #161) with live verification on play, 26.1 — a consistency question, a correction to a filed finding's stated cause, and a previously-unsolved create path.
