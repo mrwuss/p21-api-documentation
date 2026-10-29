@@ -102,7 +102,7 @@ GET /api/sales/tasks/{activity_trans_no}
 
 ### Child collections are `null` until you ask for them
 
-Every one of these families publishes child collections in its contract and populates **none** of them on a plain keyed GET. On `purchasing/purchaseorders`, `POLines`, `POSales`, `POHdrNotes` and `POLineNotes` all come back `null`; on `inventory/inventoryadjustments`, `Lines` does.
+Every one of these families publishes child collections in its contract and populates **none** of them on a plain keyed GET. On `purchasing/purchaseorders`, `POLines`, `POSales`, `POHdrNotes` and `POLineNotes` all come back `null`, and so does `Lines` on `inventory/inventoryadjustments`.
 
 **`extendedproperties` fills them.** `GET /api/purchasing/purchaseorders/{poNo}?extendedproperties=POLines` returns the lines under `POLines.list`, and `GET /api/inventory/inventoryadjustments/{adjustmentNo}?extendedproperties=Lines` returns the adjustment lines. `extendedproperties=*` fills every child collection, including the nested ones (an adjustment line's `Bins`, `Lots`, `Serials`). It is the same parameter the [`/api/entity/` endpoints](05-Entity-API.md) use. *(play 26.1.5950.0, 2026-10-29.)*
 
