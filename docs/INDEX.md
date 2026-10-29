@@ -61,6 +61,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Payload anatomy (TransactionSet / DataElements / Edits) | [03 § Request Structure](03-Transaction-API.md#request-structure) |
 | Payload rejected / values not landing (shape & type mistakes) | [03 § Payload Anatomy](03-Transaction-API.md#payload-anatomy-types-nesting-and-common-mistakes) |
 | **HTTP 200 with `Summary` 0/0/0** and nothing written | [03 § Common mistakes](03-Transaction-API.md#common-mistakes-and-their-symptoms) — the body is wrapped in `"TransactionSet"` or starts at the transaction |
+| Edit the header of a **completed PO** (`Save is not enabled.`) | [03 § Editing a Completed PO](03-Transaction-API.md#purchaseorder-service-editing-a-completed-po) |
 | Clear a field, or write NULL | [03 § Edit fields](03-Transaction-API.md#transactionset-fields) — NULL was not stored on the fields tested; a blank may be ignored |
 | Add a price book to a pricing library at a position | [03 § StrategicPricingLibrary Service](03-Transaction-API.md#strategicpricinglibrary-service-adding-a-price-book-at-a-position) |
 | Validate a payload offline before posting (JSON or XML) | [`scripts/validate_payload.py`](../scripts/validate_payload.py) · [03 § Payload Anatomy](03-Transaction-API.md#payload-anatomy-types-nesting-and-common-mistakes) |

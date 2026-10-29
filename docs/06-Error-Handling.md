@@ -1427,6 +1427,7 @@ void CheckTokenExpiry(string token)
 | `users` returns 401 (consumer key) or 200 with an empty `value` (password grant) | OData | Withheld from every token by design; no OData workaround — [details](02-OData-API.md#one-table-is-withheld-from-every-token-users) |
 | 404 `Edm.Decimal` / `Edm.String` operand types | OData | Numeric key column — drop the quotes: `customer_id eq 100198` — [details](#404-incompatible-operand-types-a-quoted-numeric-key) |
 | `Invalid column name: delete_flag` on a grid | Transaction | That grid may delete another way — check `ValidValues` for `row_status_flag` — [details](03-Transaction-API.md#customer-service-removing-a-salesrep-grid-row) |
+| `Save is not enabled.` on a header edit | Transaction | The window will not save as it stands (for example a completed PO) — add a blank lines-grid row — [details](03-Transaction-API.md#purchaseorder-service-editing-a-completed-po) |
 | `Invalid {field} value: 700` on an enum | Transaction | Send the label, not the `code_p21` integer — [details](03-Transaction-API.md#usecodevalues) |
 | `may currently be edited by <your API user>` | Transaction | A killed client's request is still running server-side — wait, don't retry — [details](#locks-and-orphaned-sessions) |
 | `Item ID X has been saved; therefore, the Item ID cannot be edited` on a payload that used to work | Transaction | An Interactive session for the same user is still open — end it — [details](#locks-and-orphaned-sessions) |
