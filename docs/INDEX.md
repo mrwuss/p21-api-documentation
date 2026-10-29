@@ -14,7 +14,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 |------|-------|
 | Get a bearer token (v2, credentials in body) | [00 § Method 1: User Credentials](00-Authentication.md#method-1-user-credentials) |
 | Authenticate with a consumer key | [00 § Method 2: Consumer Key](00-Authentication.md#method-2-consumer-key) |
-| **Limit a consumer key to OData-only / read-only** | [00 § API Scopes](00-Authentication.md#api-scopes) — scoping works for OData/Entity/Inventory REST, but **not** for the Transaction API; a "restricted" key is still a full TAPI read/write credential |
+| Configure a consumer key's API Scope (URL scopes, OData table allow-list) | [00 § API Scopes](00-Authentication.md#api-scopes) |
 | Get the UI server URL (Transaction/Interactive base) — 307 redirect gotcha | [00 § UI Server URL](00-Authentication.md#ui-server-url) |
 | Token TTL / reuse across APIs | [00 § Token Lifetime and Reuse](00-Authentication.md#token-lifetime-and-reuse) |
 | Detect P21 server version / production flag (undocumented endpoint) | [00 § Server Info Endpoint](00-Authentication.md#server-info-endpoint-version-environment-detection) |
@@ -244,6 +244,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Generate any `m_*` report as PDF | [recipe: generate-pick-ticket-pdf](recipes/generate-pick-ticket-pdf.md) · [03 § PDF Report Generation](03-Transaction-API.md#pdf-report-generation) |
 | **Print or reprint a PO PDF** — empty 500 on every attempt | [03 § `reprint_flag` must match the PO's `po_hdr.printed`](03-Transaction-API.md#reprint_flag-must-match-the-pos-po_hdrprinted) — read `printed` over OData and send it; never hardcode `Y` |
 | Discover callable report names (hidden from /services) | [03 § PDF Report Generation](03-Transaction-API.md#pdf-report-generation) (Discovery note — includes the right-click *SQL Help* path) |
+| Empty HTTP 500 from `pdfreport` on a Crystal report window (`TABPAGE_1.tp_1_dw_1` vs `CRITERIA.criteria`) | [03 § The DataElement name comes from the definition](03-Transaction-API.md#the-dataelement-name-comes-from-the-definition-not-from-tabpage_1) |
 | Report returns nothing / runs forever / works for one user only | [03 § Report windows are still windows](03-Transaction-API.md#pdf-report-generation) — permissions, DynaChange date caps, **cancelling the request does not stop the run** |
 | Production pick ticket at a specific location | [03 § m_picktickets example](03-Transaction-API.md#example-generate-a-production-order-pick-ticket-m_picktickets) |
 | **Generate a sales-order pick ticket** with `m_picktickets` — HTTP 200 `[]`, no ticket | [recipe § Sales-order pick ticket](recipes/generate-pick-ticket-pdf.md#sales-order-pick-ticket) — `"Sales Order"` with `UseCodeValues: false`, all three date ranges sent wide, read `pick_ticket_no` from `oe_pick_ticket` · [§ Eligibility traps](recipes/generate-pick-ticket-pdf.md#eligibility-traps) |

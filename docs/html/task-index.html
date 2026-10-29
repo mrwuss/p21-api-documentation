@@ -700,8 +700,8 @@
 <td><a href="00-Authentication.html#method-2-consumer-key">00 § Method 2: Consumer Key</a></td>
 </tr>
 <tr>
-<td><strong>Limit a consumer key to OData-only / read-only</strong></td>
-<td><a href="00-Authentication.html#api-scopes">00 § API Scopes</a> — scoping works for OData/Entity/Inventory REST, but <strong>not</strong> for the Transaction API; a "restricted" key is still a full TAPI read/write credential</td>
+<td>Configure a consumer key's API Scope (URL scopes, OData table allow-list)</td>
+<td><a href="00-Authentication.html#api-scopes">00 § API Scopes</a></td>
 </tr>
 <tr>
 <td>Get the UI server URL (Transaction/Interactive base) — 307 redirect gotcha</td>
@@ -1630,6 +1630,10 @@
 <tr>
 <td>Discover callable report names (hidden from /services)</td>
 <td><a href="03-Transaction-API.html#pdf-report-generation">03 § PDF Report Generation</a> (Discovery note — includes the right-click <em>SQL Help</em> path)</td>
+</tr>
+<tr>
+<td>Empty HTTP 500 from <code>pdfreport</code> on a Crystal report window (<code>TABPAGE_1.tp_1_dw_1</code> vs <code>CRITERIA.criteria</code>)</td>
+<td><a href="03-Transaction-API.html#the-dataelement-name-comes-from-the-definition-not-from-tabpage_1">03 § The DataElement name comes from the definition</a></td>
 </tr>
 <tr>
 <td>Report returns nothing / runs forever / works for one user only</td>

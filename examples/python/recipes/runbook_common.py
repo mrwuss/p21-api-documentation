@@ -199,9 +199,9 @@ class P21Runbook:
         else:
             token = get_token(self.config)["AccessToken"]
         self.headers = get_auth_headers(token)
-        # A consumer key's API Scope can withhold OData tables (401) while it
-        # still writes through the Transaction and Interactive APIs -- read
-        # back with the password login when there is one.
+        # A consumer key's OData table allow-list can leave out a table a
+        # read-back needs (401) -- read back with the password login when
+        # there is one.
         self.read_headers = (get_auth_headers(get_token(self.config)["AccessToken"])
                              if auth == "consumer" and has_password else self.headers)
         self.base_url = self.config.base_url
