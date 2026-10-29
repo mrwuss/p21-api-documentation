@@ -693,6 +693,7 @@
 <li><a href="#string-functions">String Functions</a></li>
 <li><a href="#null-checks">Null Checks</a></li>
 <li><a href="#the-right-hand-side-is-always-a-literal-you-cannot-compare-two-columns">The right-hand side is always a literal — you cannot compare two columns</a></li>
+<li><a href="#long-filters-and-post-query">Long filters and POST /$query</a></li>
 </ul>
 </li>
 <li><a href="#common-patterns">Common Patterns</a><ul>
@@ -700,10 +701,12 @@
 <li><a href="#company-scoping-company_id-vs-company_no">Company Scoping — company_id vs company_no</a></li>
 <li><a href="#non-expired-records">Non-Expired Records</a></li>
 <li><a href="#no-joins-chain-queries-by-uid">No Joins — Chain Queries by UID</a></li>
+<li><a href="#order-lines-carry-no-header-status-read-the-headers-first">Order lines carry no header status: read the headers first</a></li>
 <li><a href="#columns-that-dont-mean-what-their-name-says">Columns that don't mean what their name says</a></li>
 </ul>
 </li>
 <li><a href="#data-type-formatting">Data Type Formatting</a><ul>
+<li><a href="#decimals-arrive-as-json-numbers">Decimals arrive as JSON numbers</a></li>
 <li><a href="#string-escaping">String Escaping</a></li>
 <li><a href="#item-ids-with-special-characters">Item IDs with Special Characters</a></li>
 </ul>
@@ -837,9 +840,21 @@
 <td><code>$expand</code> (navigation properties)</td>
 <td>Not exposed — there are no relationships to expand; join client-side</td>
 </tr>
+<tr>
+<td><code>in</code> operator</td>
+<td><strong>Accepted and silently ignored</strong> — returns every row; use an <code>or</code> chain (see <a href="#logical-operators">Logical Operators</a>)</td>
+</tr>
+<tr>
+<td><code>$apply</code> (<code>aggregate</code>, <code>groupby</code>)</td>
+<td><strong>Accepted and silently ignored</strong> — returns plain rows; aggregate client-side</td>
+</tr>
+<tr>
+<td><code>POST {collection}/$query</code></td>
+<td>Yes — the query options go in a <code>text/plain</code> body (see <a href="#long-filters-and-post-query">Long filters and <code>POST /$query</code></a>)</td>
+</tr>
 </tbody>
 </table></div>
-<p><em>(Source: Prophet 21 SDK, Data Services reference guide, served from your own middleware at <code>{middleware}/docs/p21sdk/index.html#/data/reference-guide</code>.)</em></p>
+<p><em>(Source: Prophet 21 SDK, Data Services reference guide, served from your own middleware at <code>{middleware}/docs/p21sdk/index.html#/data/reference-guide</code>. The <code>in</code>, <code>$apply</code> and <code>$query</code> rows are from testing on play 26.1.5950.0, 2026-10-29: <code>$apply=aggregate($count as n)</code>, <code>$apply=groupby((company_id))</code> and a <code>groupby</code> with an <code>aggregate</code> each returned HTTP 200 and ordinary <code>oe_hdr</code> rows.)</em></p>
 <hr />
 <h2 id="endpoints">Endpoints</h2>
 <div class="table-wrap"><table>
@@ -1069,6 +1084,7 @@
 <div class="highlight"><pre><span></span><code><span class="err">/odata/table/supplier?$filter=supplier_id eq 10050</span>
 </code></pre></div>
 
+<p>Dates are bare <code>yyyy-MM-dd</code> literals, and <code>now()</code> is not supported — see <a href="#non-expired-records">Non-Expired Records</a>.</p>
 <h3 id="orderby-sort-results">$orderby - Sort Results</h3>
 <p>Sort by one or more fields:</p>
 <div class="highlight"><pre><span></span><code><span class="err">/odata/table/supplier?$orderby=supplier_name asc</span>
@@ -1154,11 +1170,14 @@
 <td><code>or</code></td>
 <td><code>$filter=status eq 'A' or status eq 'B'</code></td>
 </tr>
+<tr>
+<td><code>not</code></td>
+<td><code>$filter=not endswith(name,'Inc')</code></td>
+</tr>
 </tbody>
 </table></div>
 <blockquote>
-<p>⚠️ <strong><code>in</code> is accepted and silently ignored.</strong> <code>$filter=id in (2,3,4)</code> returns HTTP 200 with <strong>every row in the table</strong> — the filter is discarded without a warning, unlike a genuine syntax error, which 404s. Match multiple values with an <code>or</code> chain instead. Verified on 26.1.5910.3 — see <a href="#avoiding-n1-query-patterns">Avoiding N+1 Query Patterns</a>.
-| <code>not</code> | <code>$filter=not endswith(name,'Inc')</code> |</p>
+<p>⚠️ <strong><code>in</code> is accepted and silently ignored.</strong> <code>$filter=id in (2,3,4)</code> returns HTTP 200 with <strong>every row in the table</strong> — the filter is discarded without a warning, unlike a genuine syntax error, which 404s. Match multiple values with an <code>or</code> chain instead, and keep it inside the <a href="#long-filters-and-post-query">length limits</a>. Verified on 26.1.5910.3 and again on 26.1.5950.0 — see <a href="#avoiding-n1-query-patterns">Avoiding N+1 Query Patterns</a>.</p>
 </blockquote>
 <h3 id="string-functions">String Functions</h3>
 <div class="table-wrap"><table>
@@ -1231,6 +1250,42 @@
 </code></pre></div>
 
 <p>Where a derived comparison has to happen in the database — an aging report, a reconciliation — that is a reason to reach for SQL or a purpose-built view rather than OData.</p>
+<h3 id="long-filters-and-post-query">Long filters and <code>POST /$query</code></h3>
+<p>A long <code>or</code> chain runs into two separate limits. Neither one returns an OData error, so a client that only checks for an OData error body misreads both.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Limit</th>
+<th>Value</th>
+<th>What you get past it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Query string on a <code>GET</code></td>
+<td><strong>8,192 characters</strong>, URL-encoded</td>
+<td>HTTP <strong>404</strong> with an IIS HTML page, <em>"404 - File or directory not found."</em> At about 16 KB, HTTP 400 <em>"The size of the request headers is too long"</em>, then HTTP 414.</td>
+</tr>
+<tr>
+<td>Terms in one flat <code>or</code> chain</td>
+<td><strong>799</strong></td>
+<td>HTTP <strong>404</strong>, <code>Recursion depth exceeded allowed limit.</code> The limit holds for <code>GET</code> and <code>POST</code> alike.</td>
+</tr>
+</tbody>
+</table></div>
+<p>The first limit binds first on a <code>GET</code>: 220 terms of the form <code>order_no eq 'NNNNNNN'</code> (seven-digit order numbers) fit in 8,167 characters, and 221 do not. The count depends on how long each term is, so measure the encoded query string, not the term count.</p>
+<p><strong><code>POST {collection}/$query</code> removes the query-string limit.</strong> Send the same options you would put after the <code>?</code> as the request body, with <code>Content-Type: text/plain</code>. The body can be plain or URL-encoded. <code>application/json</code> and <code>application/x-www-form-urlencoded</code> bodies return HTTP 500.</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST /odataservice/odata/table/oe_line/$query</span>
+<span class="err">Content-Type: text/plain</span>
+<span class="err">Accept: application/json</span>
+
+<span class="err">$select=order_no,line_no&amp;$orderby=order_no,line_no&amp;$top=10000&amp;$skip=0&amp;$filter=order_no eq &#39;500100&#39; or order_no eq &#39;500101&#39;</span>
+</code></pre></div>
+
+<p>It works on both the <code>table</code> and <code>view</code> surfaces, and <code>$select</code>, <code>$orderby</code>, <code>$top</code>, <code>$skip</code> and <code>$count</code> behave as they do on a <code>GET</code>.</p>
+<p><strong>The term limit still applies.</strong> Keep each flat chain under 800 terms, or group the terms in parentheses: <code>(a or b or ... ) or (c or d or ...)</code> with 50 terms in each group returned HTTP 200 and 1,969 <code>oe_hdr</code> rows for 2,000 consecutive order numbers in one call.</p>
+<p><em>(Verified on play 26.1.5950.0, 2026-10-29, against <code>oe_hdr</code>, <code>oe_line</code> and <code>p21_view_oe_line</code>. Both limits are server configuration, so a different tenant can have different values.)</em></p>
+<p>For a worked example that batches order numbers through <code>$query</code>, see <a href="#order-lines-carry-no-header-status-read-the-headers-first">Order lines carry no header status</a>.</p>
 <hr />
 <h2 id="common-patterns">Common Patterns</h2>
 <h3 id="active-record-filter">Active Record Filter</h3>
@@ -1347,6 +1402,210 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <li><strong>Check for a pre-joined view first.</strong> Many <code>p21_view_*</code> views already join the common paths (e.g. <code>p21_view_bin</code>) — query <code>/odataservice/odata/view/{viewname}</code> instead of chaining tables.</li>
 <li><strong>Batch the lookups</strong> — collect the uids from one query and fetch the next level with an <code>or</code>-combined filter rather than one call per row (see <a href="#avoiding-n1-query-patterns">Avoiding N+1 Query Patterns</a>).</li>
 </ul>
+<h3 id="order-lines-carry-no-header-status-read-the-headers-first">Order lines carry no header status: read the headers first</h3>
+<p><code>completed</code>, <code>approved</code> and <code>projected_order</code> (the quote flag) exist only on <code>oe_hdr</code>. Neither <code>oe_line</code> nor the <code>p21_view_oe_line</code> view has them; the lines carry their own <code>complete</code>, <code>cancel_flag</code> and <code>delete_flag</code>, which describe the line, not the order. To work on the lines of open orders, filter the headers, then fetch the lines for those order numbers in batches. Filtering the lines by order-number range or by line <code>complete</code> alone pulls in lines from completed orders and quotes.</p>
+<p>This program totals <code>extended_price</code> across the lines of open orders. It sends both queries through <a href="#long-filters-and-post-query"><code>POST /$query</code></a>, so one request carries 500 order numbers, and it parses the prices as decimals (see <a href="#decimals-arrive-as-json-numbers">Decimals arrive as JSON numbers</a>):</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Total the open order lines: read the headers, then their lines through POST /$query.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">decimal</span><span class="w"> </span><span class="kn">import</span> <span class="n">Decimal</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
+<span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
+<span class="n">COMPANY_ID</span> <span class="o">=</span> <span class="s2">&quot;ACME&quot;</span>                       <span class="c1"># oe_hdr.company_id to total</span>
+<span class="n">MAX_ORDERS</span> <span class="o">=</span> <span class="mi">2000</span>                         <span class="c1"># stop after this many open orders</span>
+<span class="n">BATCH</span> <span class="o">=</span> <span class="mi">500</span>                               <span class="c1"># order numbers per request; a flat or-chain fails at 800 terms</span>
+<span class="n">PAGE</span> <span class="o">=</span> <span class="mi">10000</span>                              <span class="c1"># rows per page</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;v2 token endpoint — credentials go in the body, never in headers.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">PASSWORD</span><span class="p">},</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>  <span class="c1"># some middleware answers in XML</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;AccessToken&gt;([^&lt;]+)&lt;/AccessToken&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No AccessToken in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">query</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">,</span> <span class="n">headers</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;POST the query options as text/plain; parse decimals as Decimal, not float.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">/$query&quot;</span><span class="p">,</span>
+        <span class="n">content</span><span class="o">=</span><span class="n">options</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="o">**</span><span class="n">headers</span><span class="p">,</span> <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;text/plain&quot;</span><span class="p">},</span>  <span class="c1"># JSON or form bodies return 500</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">,</span> <span class="n">parse_float</span><span class="o">=</span><span class="n">Decimal</span><span class="p">)[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span>
+
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">VERIFY_SSL</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># without this you get XML, not JSON</span>
+    <span class="p">}</span>
+
+    <span class="c1"># 1. The status flags live on oe_hdr only; oe_line has none of them.</span>
+    <span class="n">header_filter</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;company_id eq &#39;</span><span class="si">{</span><span class="n">COMPANY_ID</span><span class="si">}</span><span class="s2">&#39; and completed eq &#39;N&#39; and projected_order eq &#39;N&#39; &quot;</span>
+        <span class="s2">&quot;and cancel_flag eq &#39;N&#39; and delete_flag eq &#39;N&#39;&quot;</span>
+    <span class="p">)</span>
+    <span class="n">order_nos</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">order_nos</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">MAX_ORDERS</span><span class="p">:</span>
+        <span class="n">page</span> <span class="o">=</span> <span class="n">query</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="s2">&quot;table/oe_hdr&quot;</span><span class="p">,</span>
+                     <span class="sa">f</span><span class="s2">&quot;$select=order_no&amp;$orderby=order_no&amp;$top=</span><span class="si">{</span><span class="n">PAGE</span><span class="si">}</span><span class="s2">&quot;</span>
+                     <span class="sa">f</span><span class="s2">&quot;&amp;$skip=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">order_nos</span><span class="p">)</span><span class="si">}</span><span class="s2">&amp;$filter=</span><span class="si">{</span><span class="n">header_filter</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">order_nos</span> <span class="o">+=</span> <span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;order_no&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">page</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">page</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">PAGE</span><span class="p">:</span>
+            <span class="k">break</span>
+    <span class="n">order_nos</span> <span class="o">=</span> <span class="n">order_nos</span><span class="p">[:</span><span class="n">MAX_ORDERS</span><span class="p">]</span>
+
+    <span class="c1"># 2. The lines for those orders, BATCH order numbers per request.</span>
+    <span class="n">total</span> <span class="o">=</span> <span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;0&quot;</span><span class="p">)</span>
+    <span class="n">line_count</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">order_nos</span><span class="p">),</span> <span class="n">BATCH</span><span class="p">):</span>
+        <span class="n">chain</span> <span class="o">=</span> <span class="s2">&quot; or &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;order_no eq &#39;</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">&#39;&quot;</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">order_nos</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="n">BATCH</span><span class="p">])</span>
+        <span class="n">skip</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">rows</span> <span class="o">=</span> <span class="n">query</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="s2">&quot;table/oe_line&quot;</span><span class="p">,</span>
+                         <span class="sa">f</span><span class="s2">&quot;$select=order_no,line_no,extended_price&amp;$orderby=order_no,line_no&quot;</span>
+                         <span class="sa">f</span><span class="s2">&quot;&amp;$top=</span><span class="si">{</span><span class="n">PAGE</span><span class="si">}</span><span class="s2">&amp;$skip=</span><span class="si">{</span><span class="n">skip</span><span class="si">}</span><span class="s2">&quot;</span>
+                         <span class="sa">f</span><span class="s2">&quot;&amp;$filter=(</span><span class="si">{</span><span class="n">chain</span><span class="si">}</span><span class="s2">) and cancel_flag eq &#39;N&#39; and delete_flag eq &#39;N&#39;&quot;</span><span class="p">)</span>
+            <span class="n">total</span> <span class="o">+=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;extended_price&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">),</span> <span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;0&quot;</span><span class="p">))</span>
+            <span class="n">line_count</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+            <span class="n">skip</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">PAGE</span><span class="p">:</span>
+                <span class="k">break</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">order_nos</span><span class="p">)</span><span class="si">}</span><span class="s2"> open orders, </span><span class="si">{</span><span class="n">line_count</span><span class="si">}</span><span class="s2"> lines, extended price </span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
+
+<span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="p">;</span><span class="w">                      </span><span class="c1">// oe_hdr.company_id to total</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">MaxOrders</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2000</span><span class="p">;</span><span class="w">                           </span><span class="c1">// stop after this many open orders</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">Batch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">500</span><span class="p">;</span><span class="w">                                </span><span class="c1">// order numbers per request; a flat or-chain fails at 800 terms</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">Page</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10000</span><span class="p">;</span><span class="w">                               </span><span class="c1">// rows per page</span>
+<span class="c1">// ---------------------------------------------------------------------------</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// Test tenants often present a self-signed cert. Delete this line in production.</span>
+<span class="w">    </span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="n">HttpClientHandler</span><span class="p">.</span><span class="n">DangerousAcceptAnyServerCertificateValidator</span><span class="p">,</span>
+<span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromMinutes</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">MediaTypeWithQualityHeaderValue</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+
+<span class="c1">// 1. The status flags live on oe_hdr only; oe_line has none of them.</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">headerFilter</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;company_id eq &#39;{CompanyId}&#39; and completed eq &#39;N&#39; and projected_order eq &#39;N&#39; &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">                   </span><span class="s">&quot;and cancel_flag eq &#39;N&#39; and delete_flag eq &#39;N&#39;&quot;</span><span class="p">;</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">orderNos</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">orderNos</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">MaxOrders</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">page</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">QueryAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;table/oe_hdr&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s">$&quot;$select=order_no&amp;$orderby=order_no&amp;$top={Page}&amp;$skip={orderNos.Count}&amp;$filter={headerFilter}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">orderNos</span><span class="p">.</span><span class="n">AddRange</span><span class="p">(</span><span class="n">page</span><span class="p">.</span><span class="n">Select</span><span class="p">(</span><span class="n">row</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">row</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;order_no&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">()</span><span class="o">!</span><span class="p">));</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">page</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">Page</span><span class="p">)</span><span class="w"> </span><span class="k">break</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="n">orderNos</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">orderNos</span><span class="p">.</span><span class="n">Take</span><span class="p">(</span><span class="n">MaxOrders</span><span class="p">).</span><span class="n">ToList</span><span class="p">();</span>
+
+<span class="c1">// 2. The lines for those orders, Batch order numbers per request.</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">total</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0m</span><span class="p">;</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">lineCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">orderNos</span><span class="p">.</span><span class="n">Count</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">Batch</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">chain</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kt">string</span><span class="p">.</span><span class="n">Join</span><span class="p">(</span><span class="s">&quot; or &quot;</span><span class="p">,</span><span class="w"> </span><span class="n">orderNos</span><span class="p">.</span><span class="n">Skip</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">Take</span><span class="p">(</span><span class="n">Batch</span><span class="p">).</span><span class="n">Select</span><span class="p">(</span><span class="n">n</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s">$&quot;order_no eq &#39;{n}&#39;&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">skip</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="k">true</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">QueryAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;table/oe_line&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="s">$&quot;$select=order_no,line_no,extended_price&amp;$orderby=order_no,line_no&amp;$top={Page}&amp;$skip={skip}&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">            </span><span class="s">$&quot;&amp;$filter=({chain}) and cancel_flag eq &#39;N&#39; and delete_flag eq &#39;N&#39;&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="c1">// GetDecimal reads the JSON number text exactly; GetDouble would round it.</span>
+<span class="w">        </span><span class="n">total</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">rows</span><span class="p">.</span><span class="n">Sum</span><span class="p">(</span><span class="n">row</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">row</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;extended_price&quot;</span><span class="p">).</span><span class="n">GetDecimal</span><span class="p">());</span>
+<span class="w">        </span><span class="n">lineCount</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">rows</span><span class="p">.</span><span class="n">Count</span><span class="p">;</span>
+<span class="w">        </span><span class="n">skip</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">rows</span><span class="p">.</span><span class="n">Count</span><span class="p">;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rows</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">Page</span><span class="p">)</span><span class="w"> </span><span class="k">break</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;{orderNos.Count} open orders, {lineCount} lines, extended price {total}&quot;</span><span class="p">);</span>
+
+<span class="c1">// --- helpers ---------------------------------------------------------------</span>
+
+<span class="c1">// POST the query options as text/plain; JSON or form bodies return 500.</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">JsonElement</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">QueryAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">options</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/{path}/$query&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">options</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;text/plain&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">doc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">doc</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;value&quot;</span><span class="p">).</span><span class="n">EnumerateArray</span><span class="p">().</span><span class="n">Select</span><span class="p">(</span><span class="n">e</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">Clone</span><span class="p">()).</span><span class="n">ToList</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="c1">// v2 token endpoint — credentials go in the body, never in headers.</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">client</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Username</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/api/security/token/v2&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;AccessToken&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Some middleware answers this endpoint in XML even when asked for JSON.</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">field</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">payload</span><span class="p">).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="n">field</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="k">value</span><span class="p">))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="k">value</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="n">ex</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">JsonException</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="n">KeyNotFoundException</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">Text</span><span class="p">.</span><span class="n">RegularExpressions</span><span class="p">.</span><span class="n">Regex</span><span class="p">.</span><span class="n">Match</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;&lt;{field}&gt;([^&lt;]+)&lt;/{field}&gt;&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">match</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;No {field} in response: {payload[..Math.Min(200, payload.Length)]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">match</span><span class="p">.</span><span class="n">Groups</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<p><em>(Verified on play 26.1.5950.0, 2026-10-29: both programs returned 1,200 open orders, 10,320 lines and the same total in three line requests. The same lines fetched with <code>GET</code> in batches of 50 order numbers took 24 requests and returned the same total.)</em></p>
 <hr />
 <h3 id="columns-that-dont-mean-what-their-name-says">Columns that don't mean what their name says</h3>
 <p>A column name is a claim about intent, and P21 has a few where the stored value stops matching the intent once a downstream process touches the row. These are read hazards specifically: the value is present, well-typed and plausible, so nothing in the response tells you it is no longer the thing you asked for.</p>
@@ -1596,6 +1855,28 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 </tr>
 </tbody>
 </table></div>
+<h3 id="decimals-arrive-as-json-numbers">Decimals arrive as JSON numbers</h3>
+<p><code>Edm.Decimal</code> columns come back as JSON numbers written at the column's full scale: <code>"unit_price":235.000000000</code>, <code>"extended_price":940.0000</code>. The wire value is exact. Precision is lost in the client, when a JSON parser turns the number into a binary float. Summing 10,320 <code>oe_line.extended_price</code> values as Python floats gave a total ending in <code>.020000003</code>; the same values parsed as decimals gave one ending in <code>.0200</code>.</p>
+<p>Many key-looking columns are <code>Edm.Decimal</code> too, written without a fraction: <code>oe_hdr.customer_id</code> arrives as <code>100198</code>, and <code>oe_line.line_no</code> as <code>1</code>. The <code>*_uid</code> columns are <code>Edm.Int32</code>.</p>
+<p>Parse money and quantities as decimals:</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">decimal</span><span class="w"> </span><span class="kn">import</span> <span class="n">Decimal</span>
+
+<span class="n">rows</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="p">,</span> <span class="n">parse_float</span><span class="o">=</span><span class="n">Decimal</span><span class="p">)[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span>   <span class="c1"># not response.json()</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="kt">var</span><span class="w"> </span><span class="n">price</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">row</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;extended_price&quot;</span><span class="p">).</span><span class="n">GetDecimal</span><span class="p">();</span><span class="w">   </span><span class="c1">// GetDouble() rounds</span>
+</code></pre></div>
+</div>
+</div>
+<p>For a client that cannot change its parser, send <code>Accept: application/json;IEEE754Compatible=true</code>. The service then writes every <code>Edm.Decimal</code> value as a JSON string (<code>"extended_price":"940.0000"</code>, <code>"customer_id":"100198"</code>, <code>"line_no":"1"</code>) and leaves <code>Edm.Int32</code> values as numbers. <em>(Verified on play 26.1.5950.0, 2026-10-29.)</em></p>
 <h3 id="string-escaping">String Escaping</h3>
 <p>Single quotes in values must be escaped by doubling:</p>
 <div class="highlight"><pre><span></span><code><span class="err">$filter=supplier_name eq &#39;O&#39;&#39;Brien Supply&#39;</span>
@@ -2923,7 +3204,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 </tbody>
 </table></div>
 <p>The service <em>does</em> validate filter syntax — garbage is rejected loudly. <code>in</code> parses and is then discarded, so you get a successful-looking response, no warning, and every row in the table. On a large view that is a silent full-table scan feeding whatever you do next. <strong>Use an <code>or</code> chain.</strong></p>
-<p>Keep the chain to a sane length — URLs have limits. Batch ids in groups of ~50 and issue one request per group; that is still an enormous improvement over one request per id.</p>
+<p>Keep the chain inside the <a href="#long-filters-and-post-query">length limits</a>: a <code>GET</code> query string stops at 8,192 characters, and a flat chain stops at 799 terms. Batches of about 50 ids per <code>GET</code> stay well inside both; <code>POST /$query</code> takes several hundred per call.</p>
 </blockquote>
 <div class="code-tabs">
   <div class="tab-buttons">
@@ -3144,6 +3425,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <li><a href="#string-functions">String Functions</a></li>
 <li><a href="#null-checks">Null Checks</a></li>
 <li><a href="#the-right-hand-side-is-always-a-literal-you-cannot-compare-two-columns">The right-hand side is always a literal — you cannot compare two columns</a></li>
+<li><a href="#long-filters-and-post-query">Long filters and POST /$query</a></li>
 </ul>
 </li>
 <li><a href="#common-patterns">Common Patterns</a><ul>
@@ -3151,10 +3433,12 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <li><a href="#company-scoping-company_id-vs-company_no">Company Scoping — company_id vs company_no</a></li>
 <li><a href="#non-expired-records">Non-Expired Records</a></li>
 <li><a href="#no-joins-chain-queries-by-uid">No Joins — Chain Queries by UID</a></li>
+<li><a href="#order-lines-carry-no-header-status-read-the-headers-first">Order lines carry no header status: read the headers first</a></li>
 <li><a href="#columns-that-dont-mean-what-their-name-says">Columns that don't mean what their name says</a></li>
 </ul>
 </li>
 <li><a href="#data-type-formatting">Data Type Formatting</a><ul>
+<li><a href="#decimals-arrive-as-json-numbers">Decimals arrive as JSON numbers</a></li>
 <li><a href="#string-escaping">String Escaping</a></li>
 <li><a href="#item-ids-with-special-characters">Item IDs with Special Characters</a></li>
 </ul>

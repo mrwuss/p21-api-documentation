@@ -52,8 +52,11 @@ Epicor publishes an explicit capability list for this implementation. The negati
 | **Server-driven paging** | **No** — page yourself with `$top` + `$skip` (see [Page Size Guidance](#page-size-guidance)) |
 | `substringof` | No — removed in OData 4.0; use `contains` |
 | `$expand` (navigation properties) | Not exposed — there are no relationships to expand; join client-side |
+| `in` operator | **Accepted and silently ignored** — returns every row; use an `or` chain (see [Logical Operators](#logical-operators)) |
+| `$apply` (`aggregate`, `groupby`) | **Accepted and silently ignored** — returns plain rows; aggregate client-side |
+| `POST {collection}/$query` | Yes — the query options go in a `text/plain` body (see [Long filters and `POST /$query`](#long-filters-and-post-query)) |
 
-*(Source: Prophet 21 SDK, Data Services reference guide, served from your own middleware at `{middleware}/docs/p21sdk/index.html#/data/reference-guide`.)*
+*(Source: Prophet 21 SDK, Data Services reference guide, served from your own middleware at `{middleware}/docs/p21sdk/index.html#/data/reference-guide`. The `in`, `$apply` and `$query` rows are from testing on play 26.1.5950.0, 2026-10-29: `$apply=aggregate($count as n)`, `$apply=groupby((company_id))` and a `groupby` with an `aggregate` each returned HTTP 200 and ordinary `oe_hdr` rows.)*
 
 ---
 
@@ -262,6 +265,8 @@ Filter records based on conditions:
 /odata/table/supplier?$filter=supplier_id eq 10050
 ```
 
+Dates are bare `yyyy-MM-dd` literals, and `now()` is not supported — see [Non-Expired Records](#non-expired-records).
+
 ### $orderby - Sort Results
 
 Sort by one or more fields:
@@ -319,9 +324,9 @@ Include total count in response:
 |----------|---------|
 | `and` | `$filter=supplier_id eq 10050 and row_status_flag eq 704` |
 | `or` | `$filter=status eq 'A' or status eq 'B'` |
-
-> ⚠️ **`in` is accepted and silently ignored.** `$filter=id in (2,3,4)` returns HTTP 200 with **every row in the table** — the filter is discarded without a warning, unlike a genuine syntax error, which 404s. Match multiple values with an `or` chain instead. Verified on 26.1.5910.3 — see [Avoiding N+1 Query Patterns](#avoiding-n1-query-patterns).
 | `not` | `$filter=not endswith(name,'Inc')` |
+
+> ⚠️ **`in` is accepted and silently ignored.** `$filter=id in (2,3,4)` returns HTTP 200 with **every row in the table** — the filter is discarded without a warning, unlike a genuine syntax error, which 404s. Match multiple values with an `or` chain instead, and keep it inside the [length limits](#long-filters-and-post-query). Verified on 26.1.5910.3 and again on 26.1.5950.0 — see [Avoiding N+1 Query Patterns](#avoiding-n1-query-patterns).
 
 ### String Functions
 
@@ -364,6 +369,35 @@ $filter=paid_in_full_flag eq 'N' and invoice_type eq 'IN'
 ```
 
 Where a derived comparison has to happen in the database — an aging report, a reconciliation — that is a reason to reach for SQL or a purpose-built view rather than OData.
+
+### Long filters and `POST /$query`
+
+A long `or` chain runs into two separate limits. Neither one returns an OData error, so a client that only checks for an OData error body misreads both.
+
+| Limit | Value | What you get past it |
+|---|---|---|
+| Query string on a `GET` | **8,192 characters**, URL-encoded | HTTP **404** with an IIS HTML page, *"404 - File or directory not found."* At about 16 KB, HTTP 400 *"The size of the request headers is too long"*, then HTTP 414. |
+| Terms in one flat `or` chain | **799** | HTTP **404**, `Recursion depth exceeded allowed limit.` The limit holds for `GET` and `POST` alike. |
+
+The first limit binds first on a `GET`: 220 terms of the form `order_no eq 'NNNNNNN'` (seven-digit order numbers) fit in 8,167 characters, and 221 do not. The count depends on how long each term is, so measure the encoded query string, not the term count.
+
+**`POST {collection}/$query` removes the query-string limit.** Send the same options you would put after the `?` as the request body, with `Content-Type: text/plain`. The body can be plain or URL-encoded. `application/json` and `application/x-www-form-urlencoded` bodies return HTTP 500.
+
+```http
+POST /odataservice/odata/table/oe_line/$query
+Content-Type: text/plain
+Accept: application/json
+
+$select=order_no,line_no&$orderby=order_no,line_no&$top=10000&$skip=0&$filter=order_no eq '500100' or order_no eq '500101'
+```
+
+It works on both the `table` and `view` surfaces, and `$select`, `$orderby`, `$top`, `$skip` and `$count` behave as they do on a `GET`.
+
+**The term limit still applies.** Keep each flat chain under 800 terms, or group the terms in parentheses: `(a or b or ... ) or (c or d or ...)` with 50 terms in each group returned HTTP 200 and 1,969 `oe_hdr` rows for 2,000 consecutive order numbers in one call.
+
+*(Verified on play 26.1.5950.0, 2026-10-29, against `oe_hdr`, `oe_line` and `p21_view_oe_line`. Both limits are server configuration, so a different tenant can have different values.)*
+
+For a worked example that batches order numbers through `$query`, see [Order lines carry no header status](#order-lines-carry-no-header-status-read-the-headers-first).
 
 ---
 
@@ -470,6 +504,216 @@ Two ways to avoid long chains:
 
 - **Check for a pre-joined view first.** Many `p21_view_*` views already join the common paths (e.g. `p21_view_bin`) — query `/odataservice/odata/view/{viewname}` instead of chaining tables.
 - **Batch the lookups** — collect the uids from one query and fetch the next level with an `or`-combined filter rather than one call per row (see [Avoiding N+1 Query Patterns](#avoiding-n1-query-patterns)).
+
+### Order lines carry no header status: read the headers first
+
+`completed`, `approved` and `projected_order` (the quote flag) exist only on `oe_hdr`. Neither `oe_line` nor the `p21_view_oe_line` view has them; the lines carry their own `complete`, `cancel_flag` and `delete_flag`, which describe the line, not the order. To work on the lines of open orders, filter the headers, then fetch the lines for those order numbers in batches. Filtering the lines by order-number range or by line `complete` alone pulls in lines from completed orders and quotes.
+
+This program totals `extended_price` across the lines of open orders. It sends both queries through [`POST /$query`](#long-filters-and-post-query), so one request carries 500 order numbers, and it parses the prices as decimals (see [Decimals arrive as JSON numbers](#decimals-arrive-as-json-numbers)):
+
+<!-- tabs -->
+
+**Python**
+
+```python
+"""Total the open order lines: read the headers, then their lines through POST /$query."""
+import json
+import re
+from decimal import Decimal
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+COMPANY_ID = "ACME"                       # oe_hdr.company_id to total
+MAX_ORDERS = 2000                         # stop after this many open orders
+BATCH = 500                               # order numbers per request; a flat or-chain fails at 800 terms
+PAGE = 10000                              # rows per page
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def query(client: httpx.Client, headers: dict, path: str, options: str) -> list:
+    """POST the query options as text/plain; parse decimals as Decimal, not float."""
+    r = client.post(
+        f"{BASE_URL}/odataservice/odata/{path}/$query",
+        content=options,
+        headers={**headers, "Content-Type": "text/plain"},  # JSON or form bodies return 500
+    )
+    r.raise_for_status()
+    return json.loads(r.text, parse_float=Decimal)["value"]
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # without this you get XML, not JSON
+    }
+
+    # 1. The status flags live on oe_hdr only; oe_line has none of them.
+    header_filter = (
+        f"company_id eq '{COMPANY_ID}' and completed eq 'N' and projected_order eq 'N' "
+        "and cancel_flag eq 'N' and delete_flag eq 'N'"
+    )
+    order_nos: list[str] = []
+    while len(order_nos) < MAX_ORDERS:
+        page = query(client, headers, "table/oe_hdr",
+                     f"$select=order_no&$orderby=order_no&$top={PAGE}"
+                     f"&$skip={len(order_nos)}&$filter={header_filter}")
+        order_nos += [row["order_no"] for row in page]
+        if len(page) < PAGE:
+            break
+    order_nos = order_nos[:MAX_ORDERS]
+
+    # 2. The lines for those orders, BATCH order numbers per request.
+    total = Decimal("0")
+    line_count = 0
+    for i in range(0, len(order_nos), BATCH):
+        chain = " or ".join(f"order_no eq '{n}'" for n in order_nos[i:i + BATCH])
+        skip = 0
+        while True:
+            rows = query(client, headers, "table/oe_line",
+                         f"$select=order_no,line_no,extended_price&$orderby=order_no,line_no"
+                         f"&$top={PAGE}&$skip={skip}"
+                         f"&$filter=({chain}) and cancel_flag eq 'N' and delete_flag eq 'N'")
+            total += sum((row["extended_price"] for row in rows), Decimal("0"))
+            line_count += len(rows)
+            skip += len(rows)
+            if len(rows) < PAGE:
+                break
+
+    print(f"{len(order_nos)} open orders, {line_count} lines, extended price {total}")
+```
+
+**C#**
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CompanyId = "ACME";                      // oe_hdr.company_id to total
+const int MaxOrders = 2000;                           // stop after this many open orders
+const int Batch = 500;                                // order numbers per request; a flat or-chain fails at 800 terms
+const int Page = 10000;                               // rows per page
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// 1. The status flags live on oe_hdr only; oe_line has none of them.
+var headerFilter = $"company_id eq '{CompanyId}' and completed eq 'N' and projected_order eq 'N' " +
+                   "and cancel_flag eq 'N' and delete_flag eq 'N'";
+var orderNos = new List<string>();
+while (orderNos.Count < MaxOrders)
+{
+    var page = await QueryAsync(client, "table/oe_hdr",
+        $"$select=order_no&$orderby=order_no&$top={Page}&$skip={orderNos.Count}&$filter={headerFilter}");
+    orderNos.AddRange(page.Select(row => row.GetProperty("order_no").GetString()!));
+    if (page.Count < Page) break;
+}
+orderNos = orderNos.Take(MaxOrders).ToList();
+
+// 2. The lines for those orders, Batch order numbers per request.
+var total = 0m;
+var lineCount = 0;
+for (var i = 0; i < orderNos.Count; i += Batch)
+{
+    var chain = string.Join(" or ", orderNos.Skip(i).Take(Batch).Select(n => $"order_no eq '{n}'"));
+    var skip = 0;
+    while (true)
+    {
+        var rows = await QueryAsync(client, "table/oe_line",
+            $"$select=order_no,line_no,extended_price&$orderby=order_no,line_no&$top={Page}&$skip={skip}" +
+            $"&$filter=({chain}) and cancel_flag eq 'N' and delete_flag eq 'N'");
+        // GetDecimal reads the JSON number text exactly; GetDouble would round it.
+        total += rows.Sum(row => row.GetProperty("extended_price").GetDecimal());
+        lineCount += rows.Count;
+        skip += rows.Count;
+        if (rows.Count < Page) break;
+    }
+}
+
+Console.WriteLine($"{orderNos.Count} open orders, {lineCount} lines, extended price {total}");
+
+// --- helpers ---------------------------------------------------------------
+
+// POST the query options as text/plain; JSON or form bodies return 500.
+static async Task<List<JsonElement>> QueryAsync(HttpClient client, string path, string options)
+{
+    var response = await client.PostAsync(
+        $"{BaseUrl}/odataservice/odata/{path}/$query",
+        new StringContent(options, Encoding.UTF8, "text/plain"));
+    response.EnsureSuccessStatusCode();
+    using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+    return doc.RootElement.GetProperty("value").EnumerateArray().Select(e => e.Clone()).ToList();
+}
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+*(Verified on play 26.1.5950.0, 2026-10-29: both programs returned 1,200 open orders, 10,320 lines and the same total in three line requests. The same lines fetched with `GET` in batches of 50 order numbers took 24 requests and returned the same total.)*
 
 ---
 
@@ -630,6 +874,35 @@ The obvious guess is wrong for these, and a wrong name in `$select` or `$filter`
 | DateTime | ISO format | `2025-01-01T00:00:00.000Z` |
 | Boolean | No quotes | `true` or `false` |
 | GUID | No quotes | `5BC2E4CE-0C0A-4394-A066-29B5835424DA` |
+
+### Decimals arrive as JSON numbers
+
+`Edm.Decimal` columns come back as JSON numbers written at the column's full scale: `"unit_price":235.000000000`, `"extended_price":940.0000`. The wire value is exact. Precision is lost in the client, when a JSON parser turns the number into a binary float. Summing 10,320 `oe_line.extended_price` values as Python floats gave a total ending in `.020000003`; the same values parsed as decimals gave one ending in `.0200`.
+
+Many key-looking columns are `Edm.Decimal` too, written without a fraction: `oe_hdr.customer_id` arrives as `100198`, and `oe_line.line_no` as `1`. The `*_uid` columns are `Edm.Int32`.
+
+Parse money and quantities as decimals:
+
+<!-- tabs -->
+
+**Python**
+
+```python
+import json
+from decimal import Decimal
+
+rows = json.loads(response.text, parse_float=Decimal)["value"]   # not response.json()
+```
+
+**C#**
+
+```csharp
+var price = row.GetProperty("extended_price").GetDecimal();   // GetDouble() rounds
+```
+
+<!-- /tabs -->
+
+For a client that cannot change its parser, send `Accept: application/json;IEEE754Compatible=true`. The service then writes every `Edm.Decimal` value as a JSON string (`"extended_price":"940.0000"`, `"customer_id":"100198"`, `"line_no":"1"`) and leaves `Edm.Int32` values as numbers. *(Verified on play 26.1.5950.0, 2026-10-29.)*
 
 ### String Escaping
 
@@ -1752,7 +2025,7 @@ Collapse the N follow-up queries into one by joining the ids with `or`. This is 
 >
 > The service *does* validate filter syntax — garbage is rejected loudly. `in` parses and is then discarded, so you get a successful-looking response, no warning, and every row in the table. On a large view that is a silent full-table scan feeding whatever you do next. **Use an `or` chain.**
 >
-> Keep the chain to a sane length — URLs have limits. Batch ids in groups of ~50 and issue one request per group; that is still an enormous improvement over one request per id.
+> Keep the chain inside the [length limits](#long-filters-and-post-query): a `GET` query string stops at 8,192 characters, and a flat chain stops at 799 terms. Batches of about 50 ids per `GET` stay well inside both; `POST /$query` takes several hundred per call.
 
 <!-- tabs -->
 

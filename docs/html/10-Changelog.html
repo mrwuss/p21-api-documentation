@@ -660,6 +660,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-10-29">2026-10-29</a></li>
 <li><a href="#2026-10-21">2026-10-21</a></li>
 <li><a href="#2026-10-17">2026-10-17</a></li>
 <li><a href="#2026-10-11-v1293">2026-10-11 — v1.29.3</a></li>
@@ -765,6 +766,10 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-10-29">2026-10-29</h2>
+<ul>
+<li><strong>docs:</strong> <strong><a href="02-OData-API.html#long-filters-and-post-query">OData request limits and <code>POST /$query</code></a></strong>, verified on play 26.1.5950.0. A <code>GET</code> query string stops at 8,192 characters (8,193 returns an IIS HTML 404, not an OData error), and a flat <code>or</code> chain stops at 799 terms (<code>Recursion depth exceeded allowed limit.</code>). <code>POST {collection}/$query</code> with a <code>text/plain</code> body lifts the first limit; parenthesized groups get past the second. <code>$apply</code> is accepted and silently ignored, like <code>in</code>, which was re-verified. <strong><a href="02-OData-API.html#decimals-arrive-as-json-numbers">Decimals arrive as JSON numbers</a></strong> at full scale, so parse them as decimals or send <code>IEEE754Compatible=true</code>. <strong><a href="02-OData-API.html#order-lines-carry-no-header-status-read-the-headers-first">Order lines carry no header status</a></strong>, with a Python and C# program that reads open-order headers and then their lines in <code>$query</code> batches (3 line requests against 24 <code>GET</code>s, same total). Testing corrected one detail: <code>customer_id</code> is <code>Edm.Decimal</code>, not an integer type. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/224">#224</a> — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-10-21">2026-10-21</h2>
 <ul>
 <li><strong>fix:</strong> <strong><a href="recipes/item-document-links.html#printing-the-document-with-a-form">A linked document prints with a form only when the location sends outside-use documents</a></strong>, verified on play 26.1.5950.0 with a kit, a production-order assembly and two components, from sales order through ship and invoice, plus a production order. The 10/17 gotcha said an API pick ticket does not carry the linked document. The PDF is the ticket alone, but P21 names each linked file beside it: in <code>DocumentAssociations</code> on <code>pdfreport</code> and on <code>print_tix</code>, and as <code>filerequested</code> events on the web client, which prints each file as its own job after <em>"Print Document Links?"</em>. It does so only when the link is <strong>Outside Use</strong> and the location's document link requirements have <em>Send Outside Use Documents</em> and <em>Print</em> on (<code>document_link_entity_req</code>, <code>entity_type</code> <code>1370</code>); the packing list uses the ship-to's instead. With the location off, nothing is sent, which is what 10/17 saw. Kit component links with <code>3453</code> print with the order's pick ticket. A production-order assembly's component links print on the Production Order Form (<code>2750</code>), not on either pick ticket. The recipe example now defaults Outside Use to <code>Y</code>. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/222">#222</a> — <em>@mrwuss</em></li>
@@ -1740,6 +1745,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-10-29">2026-10-29</a></li>
 <li><a href="#2026-10-21">2026-10-21</a></li>
 <li><a href="#2026-10-17">2026-10-17</a></li>
 <li><a href="#2026-10-11-v1293">2026-10-11 — v1.29.3</a></li>
