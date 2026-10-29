@@ -1495,7 +1495,7 @@ static string ReadField(string payload, string field)
 | **Tested endpoints** | `insertudtdata`, `updateudtdata`, `deleteudtdata` |
 | **Workaround** | Check `errorNo == 0` for success, not the field name |
 
-The API returns success messages in the `errorMessage` field (e.g., `"[1] row inserted in [udt_custom_orders] table successfully..!"`). Always check `errorNo == 0` for success, not the field name. Credit: Jon Christie.
+The API returns success messages in the `errorMessage` field (e.g., `"[1] row inserted in [udt_custom_orders] table successfully..!"`). Always check `errorNo == 0` for success, not the field name. Credit: Jon Christie; also reported by Bryce Byker in [this P21WWUG topic](https://forums.p21ww.org/Topic243033.aspx).
 
 ### 2. SQL Keyword False Positives
 

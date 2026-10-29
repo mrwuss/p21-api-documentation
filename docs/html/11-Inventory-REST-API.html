@@ -3322,7 +3322,7 @@
 <tr>
 <td><code>/</code></td>
 <td><code>%2F</code></td>
-<td><strong>Broken</strong> — returns 404 "Endpoint not found"</td>
+<td><strong>Route-dependent</strong> — <code>/api/inventory/parts/{ItemId}...</code> returns 404; two other routes work (below)</td>
 </tr>
 <tr>
 <td><code>&amp;</code></td>
@@ -3337,8 +3337,32 @@
 </tbody>
 </table></div>
 <blockquote>
-<p><strong>Known Issue</strong>: Forward slash (<code>/</code>) in item IDs cannot be URL-encoded for the pricing endpoints. The API (or IIS) interprets <code>%2F</code> as a literal path separator, returning 404. There is no known workaround for items containing <code>/</code> in their ID. (Credit: John Kennedy, confirmed by Felipe Maurer)</p>
-<p><strong>It is not only the pricing endpoints.</strong> <code>GET /api/inventory/parts/{ItemId}</code> also returns 404 for an item ID containing <code>/</code> (sent as <code>%2F</code>), so the GET → modify → PUT update path cannot reach such items either. For supplier cost and other item edits on them, use the Interactive <code>Item</code> window. <em>(@mrwuss, production 26.1, October 2026 — <a href="https://github.com/mrwuss/p21-api-documentation/issues/171">#171</a>.)</em></p>
+<p><strong>Known Issue</strong>: Forward slash (<code>/</code>) in item IDs cannot be URL-encoded on the <code>/api/inventory/parts/{ItemId}</code> routes. <code>%2F</code> is read as a path separator, and the request returns an HTML 404. (Credit: John Kennedy, confirmed by Felipe Maurer)</p>
+<p><strong>Two routes do reach such items</strong> (play 26.1.5950.0, 2026-10-29, with an item ID of the form <code>ABC123/X0950</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/inventory/v2/parts/v2/price/{ItemId}</code> with <code>%2F</code></td>
+<td>200, the item's price. Needs <code>companyId</code>, <code>customerId</code>, <code>salesLocId</code> <strong>and <code>sourceLocId</code></strong>; without <code>sourceLocId</code> it is HTTP 500 <em>"Please provide a value for required parameter sourceLocId."</em> Double-encoding (<code>%252F</code>) is HTTP 500 <em>"Item is not valid or not defined at this location"</em></td>
+</tr>
+<tr>
+<td><code>GET /api/inventory/v2/parts/availability?itemId={ItemId}</code></td>
+<td>200, the item's availability rows; the ID is a query value, so <code>%2F</code> is safe</td>
+</tr>
+<tr>
+<td><code>GET /api/inventory/parts/{ItemId}</code>, <code>.../{ItemId}/v2/price</code>, <code>.../{ItemId}/availability</code> with <code>%2F</code></td>
+<td>404</td>
+</tr>
+</tbody>
+</table></div>
+<p><em>(Community lead: Felipe Maurer, <a href="https://forums.p21ww.org/Topic241059.aspx">P21WWUG topic</a>; verified here.)</em></p>
+<p><strong>The update path is blocked too.</strong> <code>GET /api/inventory/parts/{ItemId}</code> returns 404 for an item ID containing <code>/</code> (sent as <code>%2F</code>), so the GET → modify → PUT update path cannot reach such items; the two routes above only read. For supplier cost and other item edits on them, use the Interactive <code>Item</code> window. <em>(@mrwuss, production 26.1, October 2026 — <a href="https://github.com/mrwuss/p21-api-documentation/issues/171">#171</a>.)</em></p>
 </blockquote>
 <hr />
 <h3 id="batch-pricing">Batch Pricing</h3>
@@ -3376,7 +3400,10 @@
 
 <p>That help page is also where the XML request/response schemas come from, and it is per-tenant — prefer it over this table if the two ever disagree.</p>
 <p><strong>Request body</strong> — a JSON array or an XML <code>ArrayOfItemPriceInfo</code> of per-item objects. Verified minimum: <code>ItemId</code> + <code>SourceLocId</code>. Also accepted per item: <code>CustomerPartNo</code>, <code>UnitQuantity</code>, <code>UnitSize</code>, <code>UOM</code>, <code>PriceUom</code> (all optional — P21 defaults <code>UOM</code>/<code>PriceUom</code> to the item's base unit when omitted).</p>
-<p><strong>Response</strong> — a JSON array or an XML <code>ArrayOfItemPrice</code>, one entry per requested item, in the same shape as <a href="#verified-pricing-response">single-item pricing</a> (pricing <strong>and</strong> availability fields together).</p>
+<p><strong>Response</strong> — a JSON array or an XML <code>ArrayOfItemPrice</code>, one entry per <strong>valid</strong> requested item, in the same shape as <a href="#verified-pricing-response">single-item pricing</a> (pricing <strong>and</strong> availability fields together).</p>
+<blockquote>
+<p><strong>Unknown item IDs are dropped without a word.</strong> Three items sent, one of them nonexistent: HTTP 200 and two entries. One nonexistent item alone: HTTP 200 and <code>[]</code>. Match the response to the request by <code>ItemId</code>, never by position. <em>(play 26.1.5950.0, 2026-10-29.)</em></p>
+</blockquote>
 <h4 id="content-type-must-match-the-body-this-is-not-xml-only-verified">Content-Type must match the body — this is not "XML only" (verified)</h4>
 <p>This endpoint is often mistaken for XML-only. <strong>It is not</strong> — both JSON and XML request/response bodies work. It's a WCF REST endpoint that selects its (de)serializer from the <code>Content-Type</code> header, not by inspecting the body, so sending a body that doesn't match <code>Content-Type</code> produces a confusing failure that looks like a format rejection:</p>
 <div class="table-wrap"><table>
@@ -3568,7 +3595,7 @@
 </code></pre></div>
 </div>
 </div>
-<p><strong>Sample response</strong> (one entry per requested item, same fields as <a href="#verified-pricing-response">single-item pricing</a>):</p>
+<p><strong>Sample response</strong> (one entry per valid requested item, same fields as <a href="#verified-pricing-response">single-item pricing</a>):</p>
 <div class="highlight"><pre><span></span><code><span class="p">[</span>
 <span class="w">    </span><span class="p">{</span>
 <span class="w">        </span><span class="nt">&quot;UnitPrice&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">10.780000000</span><span class="p">,</span>

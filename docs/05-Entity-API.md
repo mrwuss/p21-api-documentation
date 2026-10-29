@@ -1914,10 +1914,13 @@ The REST API exposes more than `/api/entity/` and `/api/inventory/parts`. Verifi
 | `GET /api/sales/orders/new` | 200 — full order template (Lines, Notes, Salesreps, BuilderSelectionSheets, Samples, …) |
 | `GET /api/sales/orders/{order_no}` | 200 — ~70 top-level fields |
 | `GET /api/sales/orders/{order_no}/approve` | 405 — route exists; the middleware documents PUT for this action (PUT untested) |
-| `GET /api/sales/orders/?$query=...` | 500 with an unrecognized field name — list query syntax not yet discovered |
+| `GET /api/sales/orders/?$query=OrderNo eq '1001234'` | 200 — a list. Name fields as the REST object does (`OrderNo`, PascalCase); `and` ranges work. A database column name (`order_no`) returns **500** with a SQL error |
+| `GET /api/sales/orders/{order_no}?extendedproperties=Lines` | 200 — `Lines.list` populated; `extendedproperties=*` also fills each line's `Serials`, `Lots`, `Bins` and `Notes` |
 | `POST /api/sales/orders/` | Creates an order — **trailing slash required**, lines nest under `Lines.list`. See [Creating an Order](#creating-an-order-post-apisalesorders) (community-verified on 25.2) |
 
 The approve action and every other write on this family remain **untested**; order creation is the one write with a reported working payload, below.
+
+**Filtering and lines** (play 26.1.5950.0, 2026-10-29). `$query` takes the REST object's own property names: `OrderNo eq '1001234'` returned one order, and `OrderNo ge '1001230' and OrderNo le '1001234'` returned five. The same filter written with the column name `order_no` returned HTTP 500 whose message is a SQL error (*"Ambiguous column name 'order_no'"*), so a 500 here usually means a wrong field name, not a broken route. `Lines` is `null` on a plain read; add `extendedproperties=Lines` to a keyed or `$query` GET to get the lines, or `extendedproperties=*` for every child collection. *(Community lead: Felipe Maurer, [P21WWUG topic](https://forums.p21ww.org/Topic237048.aspx); verified here.)*
 
 ### Creating an Order (`POST /api/sales/orders/`)
 
@@ -2315,6 +2318,38 @@ Verified on 26.1.5950.0 (September 2026). The page also prints the middleware ve
 Five of these now have their own page — **`accounting/gl`**, **`extensibility/userdefinedfields`**, **`inventory/inventoryadjustments`**, **`sales/tasks`** and **`purchasing/purchaseorders`** are documented in [Other REST Endpoint Families](15-Other-REST-Families.md), including the [unbounded collection-GET hazard](15-Other-REST-Families.md#the-bare-collection-get-is-an-unbounded-full-table-dump) they all share.
 
 > **`inventory/v2/parts` is not a different API.** It pings 200 and a single-item GET returns a **byte-identical** response to `inventory/parts` (1,396 bytes for the same item on the tested tenant). Treat it as an alias unless you find a divergence on a write path; [11 Inventory REST API](11-Inventory-REST-API.md) documents the v1 path and applies to both.
+
+#### `api/ecommerce`: XBG messages, one route
+
+`api/ecommerce` has one operation, `POST {base}/api/ecommerce/` (trailing slash; the bare path 307s). The body is an XBG (B2B Seller) message whose root names the call, and the reply is the same message with a `Reply` and a `ReplyStatus` filled in. The request layouts are stored in the `xml_document` table: `document_template` for the rows whose `root_element` is `GetItemPrice`, `GetPriceBreaks`, `GetPDFDocument` and so on.
+
+`GetItemPrice` prices several items in one call, as XML or JSON:
+
+```http
+POST {base}/api/ecommerce/
+Content-Type: application/json
+Accept: application/json
+
+{"GetItemPrice": {"Request": {
+    "StoreName": "ACME",
+    "CustomerCode": "100198",
+    "LocationID": "10",
+    "WebReferenceNumber": "WEB-0001",
+    "ListOfItems": {"Item": [
+        {"ItemID": "WIDGET-001", "Quantity": "1", "UnitName": "EA", "UnitSize": "1"},
+        {"ItemID": "WIDGET-002", "Quantity": "1", "UnitName": "EA", "UnitSize": "1"}
+    ]}
+}}}
+```
+
+- `StoreName` is the **company ID**. Every value is a string.
+- Each `Reply.ListOfItems.Item` carries `NetPrice`, `LeadTimeDays`, `FreeQuantity`, `LocationName` and the unit. Adding a `B2BSellerVersion` block (`MajorVersion` 5, `MinorVersion` 9) returned more fields per item, such as `QuantityInTransit`, `PricedByContract` and `UnitCost`.
+- An XML body (`Content-Type: application/xml`) works the same way; the reply format follows `Accept`.
+- **An unknown item ID is not an error.** It comes back with empty `LocationName` and `LeadTimeDays`, `NetPrice` `0`, and `ReplyStatus.Result` `0`, the same result code as a real item. Check `LocationName` before trusting a price.
+
+`GetPDFDocument` (`DocumentType` `Invoice`, invoice number in `ReferenceID`) did **not** work on the tested tenant: HTTP 200 after 196 seconds, with `ReplyStatus.Result` `40` and *"Unable to get invoice pdf file"*. The HTTP status says nothing; read `ReplyStatus`. For invoice PDFs, use [`m_invoices` through `pdfreport`](03-Transaction-API.md#pdf-report-generation).
+
+*(Verified on play 26.1.5950.0, 2026-10-29. Community leads: Kevin St Laurent, Chris Goetz and David Levine (GetItemPrice), Daniel Arteaga (GetPDFDocument), P21WWUG forum.)*
 
 #### Probe with `/help`, not `/ping` — a `/ping` 404 proves nothing
 
