@@ -866,6 +866,18 @@
 <td><a href="03-Transaction-API.html#payload-anatomy-types-nesting-and-common-mistakes">03 § Payload Anatomy</a></td>
 </tr>
 <tr>
+<td><strong>HTTP 200 with <code>Summary</code> 0/0/0</strong> and nothing written</td>
+<td><a href="03-Transaction-API.html#common-mistakes-and-their-symptoms">03 § Common mistakes</a> — the body is wrapped in <code>"TransactionSet"</code> or starts at the transaction</td>
+</tr>
+<tr>
+<td>Clear a field, or write NULL</td>
+<td><a href="03-Transaction-API.html#transactionset-fields">03 § Edit fields</a> — NULL is never stored; a blank may be ignored</td>
+</tr>
+<tr>
+<td>Add a price book to a pricing library at a position</td>
+<td><a href="03-Transaction-API.html#strategicpricinglibrary-service-adding-a-price-book-at-a-position">03 § StrategicPricingLibrary Service</a></td>
+</tr>
+<tr>
 <td>Validate a payload offline before posting (JSON or XML)</td>
 <td><a href="https://github.com/mrwuss/p21-api-documentation/blob/master/scripts/validate_payload.py"><code>scripts/validate_payload.py</code></a> · <a href="03-Transaction-API.html#payload-anatomy-types-nesting-and-common-mistakes">03 § Payload Anatomy</a></td>
 </tr>
@@ -1659,6 +1671,10 @@
 <tr>
 <td>Generate any <code>m_*</code> report as PDF</td>
 <td><a href="recipes/generate-pick-ticket-pdf.html">recipe: generate-pick-ticket-pdf</a> · <a href="03-Transaction-API.html#pdf-report-generation">03 § PDF Report Generation</a></td>
+</tr>
+<tr>
+<td><strong>Invoice PDF</strong> (<code>m_invoices</code>) returns an empty HTTP 500</td>
+<td><a href="03-Transaction-API.html#m_invoices-needs-the-api-print-flag-and-a-date-range-that-covers-the-invoice">03 § <code>m_invoices</code> needs the API print flag</a></td>
 </tr>
 <tr>
 <td><strong>Print or reprint a PO PDF</strong> — empty 500 on every attempt</td>

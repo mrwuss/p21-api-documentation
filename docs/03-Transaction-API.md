@@ -205,6 +205,8 @@ Each **Edit** object supports:
 | `Value` | Yes | Field value |
 | `IgnoreIfEmpty` | No | If `true`, skip this edit when Value is empty instead of sending a blank |
 
+> **You cannot write NULL, and some fields will not take a blank.** On `oe_hdr.delivery_instructions`, a `Value` of `""`, `null` or a single space each stored an **empty string**, never NULL, with or without `IgnoreIfEmpty: false`; an OData `eq null` filter does not find the row afterwards. On `oe_hdr.po_no` the same three values returned `Succeeded: 1` and **left the old value in place**. A blank is not a reliable way to clear a field: read the field back, and filter with `eq ''` as well as `eq null` when you look for empty values. *(Verified on play 26.1.5950.0, 2026-10-29, through the `Order` service on a test order.)*
+
 ---
 
 ## Payload Anatomy -- Types, Nesting, and Common Mistakes
@@ -251,11 +253,14 @@ Most first-integration failures are payload **shape** mistakes, not wrong endpoi
 | `Status: "Existing"` | — | `"Status": "New"` | Rejected — HTTP 400 on 26.1.5940.0 and later, HTTP 500 `NullReferenceException` on earlier builds. [`"New"` is the only accepted value](#status-new-is-the-only-value-the-enum-accepts) |
 | Report payload to `/transaction` | — | `POST /api/v2/process/pdfreport` | Returns `Succeeded`, emits **nothing** ([details](#pdf-report-generation)) |
 | Wrong property case | `"transactions": [...]` | `"Transactions": [...]` | Property silently unbound — behaves like it was never sent |
+| Body wrapped in its template key | `{"TransactionSet": {"Name": ..., "Transactions": [...]}}` | `{"Name": ..., "Transactions": [...]}` | **HTTP 200, no messages, `Summary` 0/0/0 — nothing written.** An all-zero `Summary` means the body was not parsed |
+| Body starts at the transaction | `{"Status": "New", "DataElements": [...]}` | Wrap it in `Name` + `Transactions` | Same: HTTP 200, 0/0/0, nothing written |
+| No `Name` | `{"Transactions": [...]}` | `"Name": "Order"` | HTTP 500, empty body |
 | Fields in UI-cascade-breaking order | `price` before `pricing_method` | Match the UI order | Value silently cleared while reporting Succeeded ([details](#field-order-matters)) |
 
 Two tools take the guesswork out:
 
-- **Start from the service's `Template`** — `GET /api/v2/definition/{Service}` (or the committed [`definitions/{Service}.json`](../definitions/README.md)) contains a `Template.TransactionSet` skeleton with every element and field already correctly shaped. Copy it, fill the `Edits` you need, delete the rest.
+- **Start from the service's `Template`** — `GET /api/v2/definition/{Service}` (or the committed [`definitions/{Service}.json`](../definitions/README.md)) contains a `Template.TransactionSet` skeleton with every element and field already correctly shaped. Copy the **object inside** `TransactionSet`, not the key itself: a body that still starts with `"TransactionSet":` is accepted and does nothing (see the table above). Fill the `Edits` you need, delete the rest.
 - **Validate before you POST** — [`scripts/validate_payload.py`](../scripts/validate_payload.py) checks a payload file (JSON **or** XML) offline against these rules and the `definitions/` schema, with exact paths to each problem:
 
   ```bash
@@ -4648,6 +4653,36 @@ A `Contact` create takes an `address_id`. Set it to an existing address and the 
 
 *(Verified on play 26.1.5950.0, 2026-10-29, with two throwaway contacts read back over OData. Only `first_name`, `last_name` and `address_id` were sent; no address-validation popup or message came back. Community lead: Pat Merlino and Felipe Maurer, P21WWUG forum.)*
 
+### StrategicPricingLibrary Service — Adding a Price Book at a Position
+
+A price library's books are the `LIST_DETAIL.list_detail` grid, and `sequence_number` sets each book's place. Send the grid as a `List` keyed on `price_book_id`, with `price_book_description` as well as the ID and the position:
+
+```json
+{
+  "Name": "StrategicPricingLibrary",
+  "UseCodeValues": false,
+  "Transactions": [{
+    "Status": "New",
+    "DataElements": [
+      {"Name": "FORM.form", "Type": "Form", "Keys": ["price_library_id"],
+       "Rows": [{"Edits": [{"Name": "price_library_id", "Value": "ACME_OEM"}]}]},
+      {"Name": "LIST_DETAIL.list_detail", "Type": "List", "Keys": ["price_book_id"],
+       "Rows": [{"Edits": [
+         {"Name": "price_book_id",          "Value": "BOOK-OEM"},
+         {"Name": "price_book_description", "Value": "OEM book"},
+         {"Name": "sequence_number",        "Value": "0"}
+       ]}]}
+    ]
+  }]
+}
+```
+
+- **`sequence_number` `0` puts the book first.** It is stored as `1`, and the books already in the library move down by one (`price_book_x_library`, read back over OData).
+- **Without `price_book_description` the row fails** with *"This column is required."*, even though the description belongs to the book.
+- A new library needs `type_cd` (a label such as `First Of`; `Column is disabled: company_id` if you send `company_id`) and `description`, and can take its first book in the same transaction.
+
+*(Verified on play 26.1.5950.0, 2026-10-29, on a throwaway library. Community lead: P21WWUG forum.)*
+
 ### ItemDefaults Service — Per-Location Item Defaults
 
 The `ItemDefaults` service is the **Item Defaults Maintenance** window (Inventory > Inventory Management > System), business object `inventory_defaults`, keyed on `company_id` + `location_id`. `Status: "New"` creates the per-company/location defaults record that new `inv_loc` rows inherit — GL accounts, replenishment location/method, discount groups, tax group, units, stockable/buy/make flags. Verified in Play and production (2026-08-14).
@@ -4957,6 +4992,42 @@ On `m_unvoucheredpos` the name was matched without regard to case: `criteria.cri
 *(User feedback, sender not named; verified on play 26.1.5950.0, 2026-10-29. The report said a one-tab report window repeats its tab name. `m_unvoucheredpos` has two tabs, so the element name follows the kind of report window, not the number of tabs.)*
 
 > **`UseCodeValues` requirements vary per report service.** `m_reprintpurchaseorders` works with `UseCodeValues: false` (as above), but a production-order `m_picktickets` run **requires `UseCodeValues: true` with code values** — e.g. `create_pick_ticket_type` must be the code `"P"`; the display label `"Production Order"` is rejected, and `UseCodeValues: false` returns HTTP 500. A sales-order run of the same service is the reverse: the label `"Sales Order"` with `UseCodeValues: false` works, and `true` with `"S"` or `"O"` returned an empty HTTP 500 (play 26.1.5950.0, 2026-10-17). When a report errors on seemingly-correct criteria, try the other setting: `UseCodeValues: true` with the code values from the service's definition (`ValidValues`), or `false` with the labels.
+
+#### `m_invoices` needs the API print flag, and a date range that covers the invoice
+
+The invoice print window has a criteria field just for API callers, `allow_api_to_print_and_reprint_invoice`, whose default is `N`. Without `Y` the call is an **empty HTTP 500**. With it, an invoice inside the window's default date range prints from three fields:
+
+```json
+{
+    "Name": "m_invoices",
+    "UseCodeValues": false,
+    "Transactions": [{
+        "Status": "New",
+        "DataElements": [{
+            "Keys": [],
+            "Name": "TABPAGE_1.tp_1_dw_1",
+            "Type": "Form",
+            "Rows": [{"Edits": [
+                {"Name": "invoice_no", "Value": "2001234"},
+                {"Name": "reprint_flag", "Value": "ON"},
+                {"Name": "allow_api_to_print_and_reprint_invoice", "Value": "Y"},
+                {"Name": "dt_beg_date2", "Value": "01/01/2000"},
+                {"Name": "dt_end_date2", "Value": "12/31/2030"}
+            ]}]
+        }]
+    }]
+}
+```
+
+The date pair matters for recent invoices. The window defaults `dt_end_date2` to a date that can be days old (`GET /api/v2/defaults/m_invoices` returned 2026-10-23 on 2026-10-29), so an invoice dated after it is outside the run. That also fails as an empty HTTP 500, not as an empty result. Send `dt_beg_date2` and `dt_end_date2` wide enough to cover the invoice date.
+
+| Criteria sent | Invoice dated inside the default range | Invoice dated after it |
+|---|---|---|
+| `invoice_no`, `reprint_flag` | empty 500 | empty 500 |
+| + `allow_api_to_print_and_reprint_invoice` `Y` | PDF (`IN… INVOICE.pdf`, about 139 KB) | empty 500 |
+| + a wide `dt_beg_date2` / `dt_end_date2` | — | PDF |
+
+*(Verified on play 26.1.5950.0, 2026-10-29, with two invoices. Community lead: P21WWUG forum, which reported `[]` rather than a 500 for the date case on an older build.)*
 
 #### `reprint_flag` must match the PO's `po_hdr.printed`
 
