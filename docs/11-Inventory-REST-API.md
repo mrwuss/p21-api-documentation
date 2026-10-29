@@ -2336,7 +2336,7 @@ When item IDs contain special characters, URL encoding is required:
 >
 > *(Community lead: Felipe Maurer, [P21WWUG topic](https://forums.p21ww.org/Topic241059.aspx); verified here.)*
 >
-> **It is not only the pricing endpoints.** `GET /api/inventory/parts/{ItemId}` also returns 404 for an item ID containing `/` (sent as `%2F`), so the GET → modify → PUT update path cannot reach such items either. For supplier cost and other item edits on them, use the Interactive `Item` window. *(@mrwuss, production 26.1, October 2026 — [#171](https://github.com/mrwuss/p21-api-documentation/issues/171).)*
+> **The update path is blocked too.** `GET /api/inventory/parts/{ItemId}` returns 404 for an item ID containing `/` (sent as `%2F`), so the GET → modify → PUT update path cannot reach such items; the two routes above only read. For supplier cost and other item edits on them, use the Interactive `Item` window. *(@mrwuss, production 26.1, October 2026 — [#171](https://github.com/mrwuss/p21-api-documentation/issues/171).)*
 
 ---
 

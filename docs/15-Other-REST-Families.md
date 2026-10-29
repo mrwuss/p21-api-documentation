@@ -506,10 +506,10 @@ The PUT returns the updated object, and a follow-up GET confirmed both changed f
  "BuyerId": "812", "PoType": "X", "OrderDate": "2026-08-27T10:17:20.887",
  "DateDue": "2026-08-27T00:00:00", "Approved": "Y", "Terms": "1", "CarrierId": "100",
  "Printed": "N", "Delete": "N", "PoHdrUid": 100003, "Complete": "N", "CurrencyId": 1,
- "UserDefinedFields": {}, ...}
+ "UserDefinedFields": {"PoHdrUdUid": 0, "PoNo": 500100.0, ...}, ...}
 ```
 
-742 bytes, header only. `DirectShipTo` is an inline object rather than a child collection, so it *is* populated (with empty strings on a non-direct-ship PO). For lines, see [child collections are `null` until you ask for them](#child-collections-are-null-until-you-ask-for-them) — that section is about *reads*; see below for what a *create* actually returns.
+742 bytes in the original capture, header only (`UserDefinedFields` as re-tested on 2026-10-29; see [`UserDefinedFields` carries the `*_ud` row](#userdefinedfields-carries-the-_ud-row)). `DirectShipTo` is an inline object rather than a child collection, so it *is* populated (with empty strings on a non-direct-ship PO). For lines, see [child collections are `null` until you ask for them](#child-collections-are-null-until-you-ask-for-them) — that section is about *reads*; see below for what a *create* actually returns.
 
 ### Creating a PO (verified)
 
@@ -535,7 +535,7 @@ Two things worth knowing about that error, both confirmed by re-running with a r
 
 The successful response is the one place this family's child collections are *not* null — `POLines.list` comes back with the real, server-assigned `PoLineUid`, `LineNo`, and pricing-lookup fields (`ExtendedDesc`, `CalcType`, `UnitSize` filled in from the item master). **But `UnitPrice` is not one of the fields honored from your request**: a line sent with `"UnitPrice": 5.00` came back — and was actually stored, confirmed over OData on `po_line.unit_price` — as `0.00`. `PriceEdit: "N"` on the template line suggests price is meant to come from a pricing lookup rather than the caller; sending a price does not override it on this path. If the PO needs a specific price, set it after creation through a surface that supports a manual override, and verify with a read-back either way.
 
-A `GET` on the newly-created PO immediately afterward still returned `POLines: null` — confirming [the null-on-read behavior](#child-collections-are-null-until-you-ask-for-them) is a genuine property of a plain GET, not a caching artifact of an older record.
+A plain `GET` on the newly-created PO immediately afterward still returned `POLines: null`; [`extendedproperties=POLines`](#child-collections-are-null-until-you-ask-for-them) is what returns the lines on a read.
 
 ### Updating a PO (verified)
 

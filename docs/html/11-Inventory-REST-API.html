@@ -3362,7 +3362,7 @@
 </tbody>
 </table></div>
 <p><em>(Community lead: Felipe Maurer, <a href="https://forums.p21ww.org/Topic241059.aspx">P21WWUG topic</a>; verified here.)</em></p>
-<p><strong>It is not only the pricing endpoints.</strong> <code>GET /api/inventory/parts/{ItemId}</code> also returns 404 for an item ID containing <code>/</code> (sent as <code>%2F</code>), so the GET → modify → PUT update path cannot reach such items either. For supplier cost and other item edits on them, use the Interactive <code>Item</code> window. <em>(@mrwuss, production 26.1, October 2026 — <a href="https://github.com/mrwuss/p21-api-documentation/issues/171">#171</a>.)</em></p>
+<p><strong>The update path is blocked too.</strong> <code>GET /api/inventory/parts/{ItemId}</code> returns 404 for an item ID containing <code>/</code> (sent as <code>%2F</code>), so the GET → modify → PUT update path cannot reach such items; the two routes above only read. For supplier cost and other item edits on them, use the Interactive <code>Item</code> window. <em>(@mrwuss, production 26.1, October 2026 — <a href="https://github.com/mrwuss/p21-api-documentation/issues/171">#171</a>.)</em></p>
 </blockquote>
 <hr />
 <h3 id="batch-pricing">Batch Pricing</h3>
