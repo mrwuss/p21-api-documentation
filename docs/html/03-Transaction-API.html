@@ -760,6 +760,7 @@
 <li><a href="#customer-service-removing-a-salesrep-grid-row">Customer Service — Removing a Salesrep Grid Row</a></li>
 <li><a href="#shipto-service-creating-a-ship-to">ShipTo Service — Creating a Ship-To</a></li>
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
+<li><a href="#contact-service-linking-a-new-contact-to-an-existing-address">Contact Service — Linking a New Contact to an Existing Address</a></li>
 <li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
 <li><a href="#inventorycostedit-service-changing-an-items-average-cost">InventoryCostEdit Service — Changing an Item's Average Cost</a></li>
 <li><a href="#item-merge-and-customer-merge-m_itemmerge-m_customermerge">Item Merge and Customer Merge (m_itemmerge, m_customermerge)</a></li>
@@ -6541,6 +6542,50 @@ You cannot delete it. DataElement: customersalesrep, Column: row_status_flag, Va
 <li>Writes land with <code>last_maintained_by</code> = the API user and are captured in the window's audit trail (<code>TIMESTAMP.timestamp_dw_audittrail</code>).</li>
 </ul>
 <p><em>(From <a href="https://github.com/mrwuss/p21-api-documentation/issues/109">issue #109</a>, verified in production 2026-08-11.)</em></p>
+<h3 id="contact-service-linking-a-new-contact-to-an-existing-address">Contact Service — Linking a New Contact to an Existing Address</h3>
+<p>A <code>Contact</code> create takes an <code>address_id</code>. Set it to an existing address and the new contact belongs to it: no new <code>address</code> row. For the customer tested, whose own address is also its ship-to, P21 added the ship-to link itself. Leave it out and P21 creates a new <code>address</code> row for the contact alone.</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Contact&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">      </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FORM.contact&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;contact_id&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;first_name&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Jane&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;last_name&quot;</span><span class="p">,</span><span class="w">  </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Smith&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;address_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;100198&quot;</span><span class="p">}</span>
+<span class="w">      </span><span class="p">]}]</span>
+<span class="w">    </span><span class="p">}]</span>
+<span class="w">  </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><code>contact_id</code> is keyed but not sent; the new ID comes back in the <code>FORM.contact</code> result row.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Create</th>
+<th><code>contacts.address_id</code></th>
+<th>Other rows written</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>With <code>address_id</code> = a customer's address (also its ship-to)</td>
+<td>That address</td>
+<td>A <code>contacts_x_ship_to</code> row linking the contact to that ship-to (<code>row_status_flag</code> <code>704</code>)</td>
+</tr>
+<tr>
+<td>Without <code>address_id</code></td>
+<td>A <strong>new</strong> <code>address</code> row, named after the contact</td>
+<td>None</td>
+</tr>
+</tbody>
+</table></div>
+<p><em>(Verified on play 26.1.5950.0, 2026-10-29, with two throwaway contacts read back over OData. Only <code>first_name</code>, <code>last_name</code> and <code>address_id</code> were sent; no address-validation popup or message came back. Community lead: Pat Merlino and Felipe Maurer, P21WWUG forum.)</em></p>
 <h3 id="itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</h3>
 <p>The <code>ItemDefaults</code> service is the <strong>Item Defaults Maintenance</strong> window (Inventory &gt; Inventory Management &gt; System), business object <code>inventory_defaults</code>, keyed on <code>company_id</code> + <code>location_id</code>. <code>Status: "New"</code> creates the per-company/location defaults record that new <code>inv_loc</code> rows inherit — GL accounts, replenishment location/method, discount groups, tax group, units, stockable/buy/make flags. Verified in Play and production (2026-08-14).</p>
 <p><strong>Why you care:</strong> a location without an <code>inventory_defaults</code> row breaks downstream flows — Inventory REST location-appends demand explicit GL (<code>Required value missing for Revenue Account</code>, see <a href="11-Inventory-REST-API.html#location-append-update-gotchas-verified-at-scale">11 § Location-Append &amp; Update Gotchas</a>), and new <code>inv_loc</code> rows land with <code>replenishment_location = NULL</code>. Creating a brand-new item at such a location fails the same way — see <a href="11-Inventory-REST-API.html#gl-accounts-when-the-location-has-no-defaults">11 § GL accounts when the location has no defaults</a>. Create the defaults row first and these problems disappear. The row's discount groups also matter: a location appended to an existing item takes its discount groups from these defaults, not from the item's other locations (<a href="11-Inventory-REST-API.html#location-append-update-gotchas-verified-at-scale">11 § Location-Append &amp; Update Gotchas</a>, item 7).</p>
@@ -8212,6 +8257,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li><a href="#customer-service-removing-a-salesrep-grid-row">Customer Service — Removing a Salesrep Grid Row</a></li>
 <li><a href="#shipto-service-creating-a-ship-to">ShipTo Service — Creating a Ship-To</a></li>
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
+<li><a href="#contact-service-linking-a-new-contact-to-an-existing-address">Contact Service — Linking a New Contact to an Existing Address</a></li>
 <li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
 <li><a href="#inventorycostedit-service-changing-an-items-average-cost">InventoryCostEdit Service — Changing an Item's Average Cost</a></li>
 <li><a href="#item-merge-and-customer-merge-m_itemmerge-m_customermerge">Item Merge and Customer Merge (m_itemmerge, m_customermerge)</a></li>
