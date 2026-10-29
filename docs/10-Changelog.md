@@ -18,6 +18,10 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-10-29
+
+- **docs:** **[The `pdfreport` DataElement name comes from the definition](03-Transaction-API.md#the-dataelement-name-comes-from-the-definition-not-from-tabpage_1)**, verified on play 26.1.5950.0. Crystal report windows such as `m_unvoucheredpos` and `m_vendorinvoicereport` name their criteria element `CRITERIA.criteria`, not `TABPAGE_1.*`; the copied `TABPAGE_1.tp_1_dw_1` returns an empty HTTP 500. The name is not case-sensitive. A table compares seven report services. From user feedback; testing corrected the "one-tab window" framing. Closes [#226](https://github.com/mrwuss/p21-api-documentation/issues/226) — *user feedback, verified @mrwuss*
+
 ## 2026-10-21
 
 - **fix:** **[A linked document prints with a form only when the location sends outside-use documents](recipes/item-document-links.md#printing-the-document-with-a-form)**, verified on play 26.1.5950.0 with a kit, a production-order assembly and two components, from sales order through ship and invoice, plus a production order. The 10/17 gotcha said an API pick ticket does not carry the linked document. The PDF is the ticket alone, but P21 names each linked file beside it: in `DocumentAssociations` on `pdfreport` and on `print_tix`, and as `filerequested` events on the web client, which prints each file as its own job after *"Print Document Links?"*. It does so only when the link is **Outside Use** and the location's document link requirements have *Send Outside Use Documents* and *Print* on (`document_link_entity_req`, `entity_type` `1370`); the packing list uses the ship-to's instead. With the location off, nothing is sent, which is what 10/17 saw. Kit component links with `3453` print with the order's pick ticket. A production-order assembly's component links print on the Production Order Form (`2750`), not on either pick ticket. The recipe example now defaults Outside Use to `Y`. Closes [#222](https://github.com/mrwuss/p21-api-documentation/issues/222) — *@mrwuss*

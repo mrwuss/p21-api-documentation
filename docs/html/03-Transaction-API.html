@@ -6888,6 +6888,69 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 </code></pre></div>
 
 <p>Constants that apply to every report payload: <code>Status</code> is <code>"New"</code> — the <a href="#status-new-is-the-only-value-the-enum-accepts">same rule as every Transaction API payload</a> — <code>Type</code> is <code>"Form"</code>, and the DataElement carries <code>Keys: []</code>. Get the criteria field names from <code>GET /api/v2/definition/{service_name}</code> and default values from <code>GET /api/v2/defaults/{service_name}</code>.</p>
+<h4 id="the-dataelement-name-comes-from-the-definition-not-from-tabpage_1">The DataElement name comes from the definition, not from <code>TABPAGE_1</code></h4>
+<p>The DataElement <code>Name</code> is the window's tab page and datawindow control joined by a dot, and report windows do not share one. The print-a-form windows use a <code>TABPAGE_1.*</code> name, but the report windows that render a Crystal report name their criteria element <code>CRITERIA.criteria</code> and add a <code>REPORT.report</code> list. A copied <code>TABPAGE_1.tp_1_dw_1</code> sent to one of those returns an <strong>empty HTTP 500 at once</strong>, with nothing that names the element. Read the name from <code>DataElementDefinitions[].Name</code> in <code>GET /api/v2/definition/{service_name}</code>, or copy it from the <code>Template</code> in the same response.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Criteria DataElement</th>
+<th>Other elements in the definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>m_unvoucheredpos</code></td>
+<td><code>CRITERIA.criteria</code></td>
+<td><code>REPORT.report</code> (List)</td>
+</tr>
+<tr>
+<td><code>m_vendorinvoicereport</code></td>
+<td><code>CRITERIA.criteria</code></td>
+<td><code>REPORT.report</code> (List)</td>
+</tr>
+<tr>
+<td><code>m_reprintpurchaseorders</code></td>
+<td><code>TABPAGE_1.poreportcriteriadw</code></td>
+<td><code>TIMESTAMP.timestamp</code></td>
+</tr>
+<tr>
+<td><code>m_reprintpicktickets</code>, <code>m_orderacknowledgements</code>, <code>m_productionorders</code></td>
+<td><code>TABPAGE_1.tp_1_dw_1</code></td>
+<td><code>TIMESTAMP.timestamp</code></td>
+</tr>
+<tr>
+<td><code>m_invoices</code>, <code>m_packinglists</code></td>
+<td><code>TABPAGE_1.tp_1_dw_1</code></td>
+<td><code>TABPAGE_2.*</code> (errors), <code>REPRINTINVOICESELECTIONTABPG.reprintinvoiceselection</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>The name is matched without regard to case: <code>criteria.criteria</code> and <code>CRITERIA.criteria</code> returned the same report. Only the criteria element is needed. This payload returned an <code>UnvoucheredPOReport_*.pdf</code> for one PO:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;m_unvoucheredpos&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">        </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">            </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">            </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CRITERIA.criteria&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">                </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;include&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;All POs&quot;</span><span class="p">},</span>
+<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;include_unvouched_returns&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Yes&quot;</span><span class="p">},</span>
+<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;beg_po_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;500100&quot;</span><span class="p">},</span>
+<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;end_po_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;500100&quot;</span><span class="p">}</span>
+<span class="w">                </span><span class="p">]</span>
+<span class="w">            </span><span class="p">}]</span>
+<span class="w">        </span><span class="p">}]</span>
+<span class="w">    </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><code>include</code> (<em>All POs</em>, <em>Inventory POs Only</em>, <em>Requisition POs Only</em>) and <code>include_unvouched_returns</code> (<em>Yes</em>, <em>No</em>, <em>Only</em>) are labels, so the payload keeps <code>UseCodeValues: false</code>. The window's <code>company_id</code> came from its defaults and was not sent. Bound the PO or receipt-date range, as the <a href="#pdf-report-generation">wide-open report warning</a> above advises; the verification run used a single PO.</p>
+<p><em>(User feedback, sender not named; verified on play 26.1.5950.0, 2026-10-29. Testing corrected one detail: <code>m_unvoucheredpos</code> has two tabs, not one, so the rule is the report type, not the tab count.)</em></p>
 <blockquote>
 <p><strong><code>UseCodeValues</code> requirements vary per report service.</strong> <code>m_reprintpurchaseorders</code> works with <code>UseCodeValues: false</code> (as above), but a production-order <code>m_picktickets</code> run <strong>requires <code>UseCodeValues: true</code> with code values</strong> — e.g. <code>create_pick_ticket_type</code> must be the code <code>"P"</code>; the display label <code>"Production Order"</code> is rejected, and <code>UseCodeValues: false</code> returns HTTP 500. A sales-order run of the same service is the reverse: the label <code>"Sales Order"</code> with <code>UseCodeValues: false</code> works, and <code>true</code> with <code>"S"</code> or <code>"O"</code> returned an empty HTTP 500 (play 26.1.5950.0, 2026-10-17). When a report errors on seemingly-correct criteria, try the other setting: <code>UseCodeValues: true</code> with the code values from the service's definition (<code>ValidValues</code>), or <code>false</code> with the labels.</p>
 </blockquote>

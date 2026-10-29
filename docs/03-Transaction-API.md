@@ -4880,6 +4880,47 @@ The payload follows the standard TransactionSet format. Report-specific criteria
 
 Constants that apply to every report payload: `Status` is `"New"` — the [same rule as every Transaction API payload](#status-new-is-the-only-value-the-enum-accepts) — `Type` is `"Form"`, and the DataElement carries `Keys: []`. Get the criteria field names from `GET /api/v2/definition/{service_name}` and default values from `GET /api/v2/defaults/{service_name}`.
 
+#### The DataElement name comes from the definition, not from `TABPAGE_1`
+
+The DataElement `Name` is the window's tab page and datawindow control joined by a dot, and report windows do not share one. The print-a-form windows use a `TABPAGE_1.*` name, but the report windows that render a Crystal report name their criteria element `CRITERIA.criteria` and add a `REPORT.report` list. A copied `TABPAGE_1.tp_1_dw_1` sent to one of those returns an **empty HTTP 500 at once**, with nothing that names the element. Read the name from `DataElementDefinitions[].Name` in `GET /api/v2/definition/{service_name}`, or copy it from the `Template` in the same response.
+
+| Service | Criteria DataElement | Other elements in the definition |
+|---|---|---|
+| `m_unvoucheredpos` | `CRITERIA.criteria` | `REPORT.report` (List) |
+| `m_vendorinvoicereport` | `CRITERIA.criteria` | `REPORT.report` (List) |
+| `m_reprintpurchaseorders` | `TABPAGE_1.poreportcriteriadw` | `TIMESTAMP.timestamp` |
+| `m_reprintpicktickets`, `m_orderacknowledgements`, `m_productionorders` | `TABPAGE_1.tp_1_dw_1` | `TIMESTAMP.timestamp` |
+| `m_invoices`, `m_packinglists` | `TABPAGE_1.tp_1_dw_1` | `TABPAGE_2.*` (errors), `REPRINTINVOICESELECTIONTABPG.reprintinvoiceselection` |
+
+The name is matched without regard to case: `criteria.criteria` and `CRITERIA.criteria` returned the same report. Only the criteria element is needed. This payload returned an `UnvoucheredPOReport_*.pdf` for one PO:
+
+```json
+{
+    "Name": "m_unvoucheredpos",
+    "UseCodeValues": false,
+    "Transactions": [{
+        "Status": "New",
+        "DataElements": [{
+            "Keys": [],
+            "Name": "CRITERIA.criteria",
+            "Type": "Form",
+            "Rows": [{
+                "Edits": [
+                    {"Name": "include", "Value": "All POs"},
+                    {"Name": "include_unvouched_returns", "Value": "Yes"},
+                    {"Name": "beg_po_no", "Value": "500100"},
+                    {"Name": "end_po_no", "Value": "500100"}
+                ]
+            }]
+        }]
+    }]
+}
+```
+
+`include` (*All POs*, *Inventory POs Only*, *Requisition POs Only*) and `include_unvouched_returns` (*Yes*, *No*, *Only*) are labels, so the payload keeps `UseCodeValues: false`. The window's `company_id` came from its defaults and was not sent. Bound the PO or receipt-date range, as the [wide-open report warning](#pdf-report-generation) above advises; the verification run used a single PO.
+
+*(User feedback, sender not named; verified on play 26.1.5950.0, 2026-10-29. Testing corrected one detail: `m_unvoucheredpos` has two tabs, not one, so the rule is the report type, not the tab count.)*
+
 > **`UseCodeValues` requirements vary per report service.** `m_reprintpurchaseorders` works with `UseCodeValues: false` (as above), but a production-order `m_picktickets` run **requires `UseCodeValues: true` with code values** — e.g. `create_pick_ticket_type` must be the code `"P"`; the display label `"Production Order"` is rejected, and `UseCodeValues: false` returns HTTP 500. A sales-order run of the same service is the reverse: the label `"Sales Order"` with `UseCodeValues: false` works, and `true` with `"S"` or `"O"` returned an empty HTTP 500 (play 26.1.5950.0, 2026-10-17). When a report errors on seemingly-correct criteria, try the other setting: `UseCodeValues: true` with the code values from the service's definition (`ValidValues`), or `false` with the labels.
 
 #### `reprint_flag` must match the PO's `po_hdr.printed`
