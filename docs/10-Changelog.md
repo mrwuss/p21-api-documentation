@@ -20,6 +20,7 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ## 2026-10-29
 
+- **docs:** **[The `pdfreport` DataElement name comes from the definition](03-Transaction-API.md#the-dataelement-name-comes-from-the-definition-not-from-tabpage_1)**, verified on play 26.1.5950.0. Crystal report windows such as `m_unvoucheredpos` and `m_vendorinvoicereport` name their criteria element `CRITERIA.criteria`, not `TABPAGE_1.*`; the copied `TABPAGE_1.tp_1_dw_1` returns an empty HTTP 500. On `m_unvoucheredpos` the name is not case-sensitive. A table compares the definitions of eight report services. From user feedback, which said a one-tab window repeats its tab name; `m_unvoucheredpos` has two tabs. Closes [#226](https://github.com/mrwuss/p21-api-documentation/issues/226) — *user feedback, verified @mrwuss*
 - **docs:** Removed the consumer-key scope note from [00 § API Scopes](00-Authentication.md#api-scopes), the task index, the UDT authentication section and `CLAUDE.md`; the purchase-receive-vouch recipe and its runbooks now name the OData table allow-list as the reason read-backs use the password login. Closes [#163](https://github.com/mrwuss/p21-api-documentation/issues/163) — *@mrwuss*
 
 ## 2026-10-21
