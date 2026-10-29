@@ -4615,6 +4615,39 @@ Gotchas:
 
 *(From [issue #109](https://github.com/mrwuss/p21-api-documentation/issues/109), verified in production 2026-08-11.)*
 
+### Contact Service — Linking a New Contact to an Existing Address
+
+A `Contact` create takes an `address_id`. Set it to an existing customer's or ship-to's address and the new contact belongs to that address: no new `address` row, and P21 adds the ship-to link itself. Leave it out and P21 creates a new `address` row for the contact alone.
+
+```json
+{
+  "Name": "Contact",
+  "UseCodeValues": false,
+  "Transactions": [{
+    "Status": "New",
+    "DataElements": [{
+      "Name": "FORM.contact",
+      "Type": "Form",
+      "Keys": ["contact_id"],
+      "Rows": [{"Edits": [
+        {"Name": "first_name", "Value": "Jane"},
+        {"Name": "last_name",  "Value": "Smith"},
+        {"Name": "address_id", "Value": "100198"}
+      ]}]
+    }]
+  }]
+}
+```
+
+`contact_id` is keyed but not sent; the new ID comes back in the `FORM.contact` result row.
+
+| Create | `contacts.address_id` | Other rows written |
+|---|---|---|
+| With `address_id` = a customer's address | That address | A `contacts_x_ship_to` row linking the contact to that ship-to (`row_status_flag` `704`) |
+| Without `address_id` | A **new** `address` row, named after the contact | None |
+
+*(Verified on play 26.1.5950.0, 2026-10-29, with two throwaway contacts read back over OData. Only `first_name`, `last_name` and `address_id` were sent; no address-validation popup or message came back. Community lead: Pat Merlino and Felipe Maurer, P21WWUG forum.)*
+
 ### ItemDefaults Service — Per-Location Item Defaults
 
 The `ItemDefaults` service is the **Item Defaults Maintenance** window (Inventory > Inventory Management > System), business object `inventory_defaults`, keyed on `company_id` + `location_id`. `Status: "New"` creates the per-company/location defaults record that new `inv_loc` rows inherit — GL accounts, replenishment location/method, discount groups, tax group, units, stockable/buy/make flags. Verified in Play and production (2026-08-14).

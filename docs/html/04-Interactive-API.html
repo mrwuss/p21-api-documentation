@@ -856,8 +856,31 @@
 <td>DELETE</td>
 <td>End session</td>
 </tr>
+<tr>
+<td><code>/ui/common/v1/sessions/state?level=0</code></td>
+<td>GET</td>
+<td>The session ID, user, start time and every open window (<code>Windows[]</code>: <code>ID</code>, <code>Class</code>, <code>MenuID</code>)</td>
+</tr>
+<tr>
+<td><code>/ui/common/v1/sessions/favorites</code></td>
+<td>GET</td>
+<td>The user's favorite windows: menu name (<code>m_*</code>), <code>MenuId</code> and menu text</td>
+</tr>
+<tr>
+<td><code>/ui/common/v1/sessions/ping</code></td>
+<td>POST</td>
+<td>Keep-alive; empty body, HTTP 200</td>
+</tr>
+<tr>
+<td><code>/api/ui/admin/session/{sessionId}</code></td>
+<td>DELETE</td>
+<td>End a session by ID</td>
+</tr>
 </tbody>
 </table></div>
+<blockquote>
+<p><strong>The <code>/ui/common/v1/sessions/*</code> routes need an open Interactive session.</strong> With only a bearer token they return HTTP 400 <code>{"ErrorMessage":"Invalid session"}</code>; after <code>POST /api/ui/interactive/sessions</code> they answer. <code>sessions/state</code> is the quickest way to see which windows a session still holds while debugging. <code>DELETE /api/ui/admin/session/{id}</code> returned HTTP 200, after which <code>GET /api/ui/interactive/sessions</code> was empty and <code>sessions/state</code> was back to <em>"Invalid session"</em>. All paths are relative to the UI server. <em>(Verified on play 26.1.5950.0, 2026-10-29, on the caller's own session only. Community lead: Felipe Maurer, P21WWUG forum.)</em></p>
+</blockquote>
 <h3 id="window-operations-v2">Window Operations (v2)</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -1042,6 +1065,9 @@
 </tr>
 </tbody>
 </table></div>
+<blockquote>
+<p>⚠️ <strong>On 26.1.5950.0 the v1 paths and shape in this table did not work.</strong> <code>PUT /api/ui/interactive/v1/change</code> returned <strong>404</strong> with either body. Without the <code>/api</code> prefix, <code>PUT {ui}/ui/interactive/v1/change</code> answered, but only to the <strong>v2 body</strong>: a <code>List</code> of <code>TabName</code> + <code>DatawindowName</code> + <code>FieldName</code> + <code>Value</code> loaded an order (<code>Status: 1</code>, <code>order_no</code> read back in the window), while the documented <code>ChangeRequests</code> + <code>DataWindowName</code> body returned HTTP 200, <code>Status: 0</code>, and changed nothing. <code>POST</code> to the same path is 405. Use the v2 endpoints; if you maintain v1 code, send it the v2 body and check <code>Status</code>. <em>(Verified on play 26.1.5950.0, 2026-10-29. Community lead: Felipe Maurer, P21WWUG forum.)</em></p>
+</blockquote>
 <hr />
 <h2 id="authentication">Authentication</h2>
 <p>Include the Bearer token in the Authorization header:</p>
@@ -5763,7 +5789,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <tbody>
 <tr>
 <td><strong>Change</strong></td>
-<td><code>ChangeRequests</code> array</td>
+<td><code>ChangeRequests</code> array (a silent no-op on 26.1.5950.0; <a href="#data-operations-v1-legacy">see above</a>)</td>
 <td><code>List</code> array</td>
 </tr>
 <tr>

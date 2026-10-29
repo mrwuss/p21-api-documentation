@@ -44,6 +44,12 @@ Then use the returned URL as base:
 | `/api/ui/interactive/sessions` | POST | Create new session |
 | `/api/ui/interactive/sessions` | GET | List open sessions |
 | `/api/ui/interactive/sessions` | DELETE | End session |
+| `/ui/common/v1/sessions/state?level=0` | GET | The session ID, user, start time and every open window (`Windows[]`: `ID`, `Class`, `MenuID`) |
+| `/ui/common/v1/sessions/favorites` | GET | The user's favorite windows: menu name (`m_*`), `MenuId` and menu text |
+| `/ui/common/v1/sessions/ping` | POST | Keep-alive; empty body, HTTP 200 |
+| `/api/ui/admin/session/{sessionId}` | DELETE | End a session by ID |
+
+> **The `/ui/common/v1/sessions/*` routes need an open Interactive session.** With only a bearer token they return HTTP 400 `{"ErrorMessage":"Invalid session"}`; after `POST /api/ui/interactive/sessions` they answer. `sessions/state` is the quickest way to see which windows a session still holds while debugging. `DELETE /api/ui/admin/session/{id}` returned HTTP 200, after which `GET /api/ui/interactive/sessions` was empty and `sessions/state` was back to *"Invalid session"*. All paths are relative to the UI server. *(Verified on play 26.1.5950.0, 2026-10-29, on the caller's own session only. Community lead: Felipe Maurer, P21WWUG forum.)*
 
 ### Window Operations (v2)
 
@@ -94,6 +100,8 @@ Then use the returned URL as base:
 | `/api/ui/interactive/v1/row` | PUT | Change current row |
 | `/api/ui/interactive/v1/tools` | GET | Get available tools |
 | `/api/ui/interactive/v1/tools` | POST | Run a tool |
+
+> ⚠️ **On 26.1.5950.0 the v1 paths and shape in this table did not work.** `PUT /api/ui/interactive/v1/change` returned **404** with either body. Without the `/api` prefix, `PUT {ui}/ui/interactive/v1/change` answered, but only to the **v2 body**: a `List` of `TabName` + `DatawindowName` + `FieldName` + `Value` loaded an order (`Status: 1`, `order_no` read back in the window), while the documented `ChangeRequests` + `DataWindowName` body returned HTTP 200, `Status: 0`, and changed nothing. `POST` to the same path is 405. Use the v2 endpoints; if you maintain v1 code, send it the v2 body and check `Status`. *(Verified on play 26.1.5950.0, 2026-10-29. Community lead: Felipe Maurer, P21WWUG forum.)*
 
 ---
 
@@ -4107,7 +4115,7 @@ When setting numeric fields, send whole numbers as integer strings (`"30"`), not
 
 | Operation | v1 | v2 |
 |-----------|----|----|
-| **Change** | `ChangeRequests` array | `List` array |
+| **Change** | `ChangeRequests` array (a silent no-op on 26.1.5950.0; [see above](#data-operations-v1-legacy)) | `List` array |
 | **Change field ref** | `DataWindowName` (capital W) | `TabName` + `DatawindowName` (lowercase w) — **required in 25.2+** |
 | **Save** | `{"WindowId": "..."}` | `"..."` (just GUID string) |
 | **Tab change** | `PagePath: {PageName: "..."}` | `PageName: "..."` (direct) |
