@@ -755,6 +755,22 @@
 <td><a href="02-OData-API.html#the-right-hand-side-is-always-a-literal-you-cannot-compare-two-columns">02 § The right-hand side is always a literal</a> — 404 on typed columns, <strong>silently zero rows</strong> on strings</td>
 </tr>
 <tr>
+<td><strong>Long <code>or</code> chain 404s with an HTML page</strong>, or you need hundreds of ids in one filter</td>
+<td><a href="02-OData-API.html#long-filters-and-post-query">02 § Long filters and <code>POST /$query</code></a> — 8,192-character query string, 799-term flat chain; <code>POST {collection}/$query</code> with a <code>text/plain</code> body</td>
+</tr>
+<tr>
+<td><code>in (...)</code> or <code>$apply</code> (aggregate, groupby) returns rows but ignores the clause</td>
+<td><a href="02-OData-API.html#what-the-service-supports">02 § What the service supports</a> — both are accepted and silently ignored</td>
+</tr>
+<tr>
+<td>Money or quantity sums are off by a fraction</td>
+<td><a href="02-OData-API.html#decimals-arrive-as-json-numbers">02 § Decimals arrive as JSON numbers</a> — parse as decimal, or send <code>IEEE754Compatible=true</code></td>
+</tr>
+<tr>
+<td>Order lines for <strong>open orders only</strong> (lines carry no <code>completed</code> / <code>approved</code> / <code>projected_order</code>)</td>
+<td><a href="02-OData-API.html#order-lines-carry-no-header-status-read-the-headers-first">02 § Order lines carry no header status</a></td>
+</tr>
+<tr>
 <td><strong>Age open AR / build a receivables aging</strong></td>
 <td><a href="recipes/ar-aging.html">recipes/ar-aging</a> — runnable, pages <code>invoice_hdr</code>, buckets on each invoice's own <code>net_due_date</code></td>
 </tr>
