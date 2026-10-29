@@ -21,6 +21,7 @@ All notable changes to this documentation project are listed below, grouped by d
 ## 2026-10-29
 
 - **docs:** **[The `pdfreport` DataElement name comes from the definition](03-Transaction-API.md#the-dataelement-name-comes-from-the-definition-not-from-tabpage_1)**, verified on play 26.1.5950.0. Crystal report windows such as `m_unvoucheredpos` and `m_vendorinvoicereport` name their criteria element `CRITERIA.criteria`, not `TABPAGE_1.*`; the copied `TABPAGE_1.tp_1_dw_1` returns an empty HTTP 500. On `m_unvoucheredpos` the name is not case-sensitive. A table compares the definitions of eight report services. From user feedback, which said a one-tab window repeats its tab name; `m_unvoucheredpos` has two tabs. Closes [#226](https://github.com/mrwuss/p21-api-documentation/issues/226) — *user feedback, verified @mrwuss*
+- **docs:** Removed the consumer-key scope note from [00 § API Scopes](00-Authentication.md#api-scopes), the task index, the UDT authentication section and `CLAUDE.md`; the purchase-receive-vouch recipe and its runbooks now name the OData table allow-list as the reason read-backs use the password login. Closes [#163](https://github.com/mrwuss/p21-api-documentation/issues/163) — *@mrwuss*
 
 ## 2026-10-21
 
@@ -124,7 +125,7 @@ All *@mrwuss*.
 
 ## 2026-10-10 — v1.27.1
 
-Closed the five open issues that already carried verified results. [#163](https://github.com/mrwuss/p21-api-documentation/issues/163) stays open on purpose until Epicor responds.
+Closed the five open issues that already carried verified results.
 
 - **fix:** **[`m_reprintpurchaseorders`: `reprint_flag` must match the PO's `po_hdr.printed`](03-Transaction-API.md#reprint_flag-must-match-the-pos-po_hdrprinted)** — the examples hardcoded `"Y"`, which deterministically 500s on a PO that was never printed. The Python and C# examples now read `printed` first and send it; the empty-500 cause table has the new row. Closes [#162](https://github.com/mrwuss/p21-api-documentation/issues/162) — *@mrwuss*
 - **docs:** **[The OData `users` table is withheld from every token](02-OData-API.md#one-table-is-withheld-from-every-token-users)** — consumer keys get a 401 and password grants get an empty 200, including the caller's own row; adding it to a key's scope has no effect. Closes [#164](https://github.com/mrwuss/p21-api-documentation/issues/164) — *@mrwuss*
@@ -160,7 +161,7 @@ Brought in the verified findings from [Alex Westemeier](https://github.com/AWest
 
 ## 2026-09-22 — v1.26.1
 
-- **fix:** **[A consumer key's API Scope does not restrict the Transaction API](00-Authentication.md#api-scopes)** — verified live, 26.1.5950.0: a key configured with only a single read-only OData table/view scope (no `/api`, no `/uiserver0`) could still complete an actual write via `POST /api/v2/transaction`, in addition to unrestricted `GET /api/v2/services` and `GET /api/v2/definition/{service}`. OData, the Entity API, and the Inventory REST API all correctly rejected the same out-of-scope key. This is an **unpatched, unresolved gap** — reported to Epicor. Reproduction detail is intentionally withheld from this doc pending their response; tracked in [#163](https://github.com/mrwuss/p21-api-documentation/issues/163) — *@mrwuss*
+- **docs:** A consumer-key note in [00 § API Scopes](00-Authentication.md#api-scopes), removed on 2026-10-29 — *@mrwuss*
 
 ## 2026-09-21 — v1.26.0
 

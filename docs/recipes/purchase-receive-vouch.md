@@ -19,7 +19,7 @@ python examples/python/recipes/purchase_receive_vouch.py --path B --auth consume
     --ds-item ITEM-002 --ds-qty 3 --ds-price 4.00 --ds-po-cost 2.50 --execute
 ```
 
-Path B needs an API user with a **Buyer ID**. `--auth consumer` (C#: answer `y` at the consumer-key prompt) writes as `P21_CONSUMER_USERNAME` through `P21_CONSUMER_KEY` — use it when that is the user with the Buyer ID. A consumer key's [API Scope](../00-Authentication.md#api-scopes) can withhold OData tables: in the verification run `inventory_receipts_hdr` answered `401` to the consumer-key token while its Transaction and Interactive writes went through, so the runbooks read back with the password login when one is configured.
+Path B needs an API user with a **Buyer ID**. `--auth consumer` (C#: answer `y` at the consumer-key prompt) writes as `P21_CONSUMER_USERNAME` through `P21_CONSUMER_KEY` — use it when that is the user with the Buyer ID. A consumer key's [OData table allow-list](../00-Authentication.md#odata-table-scopes) can leave out a table the read-back needs (in the verification run `inventory_receipts_hdr` answered `401` to the consumer-key token), so the runbooks read back with the password login when one is configured.
 
 ## Path A — bring items into stock
 
