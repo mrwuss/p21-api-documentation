@@ -2134,7 +2134,7 @@ Verified on a 26.1 tenant, August 2026.
 | **User Defined Fields** | Queryable | **Not queryable** (documented limitation) |
 | **Writes / joins** | Neither | Neither |
 
-Both are read-only, both need the same token, and neither can join — you assemble related data client-side.
+Both are read-only, both need the same token, and neither can join — you assemble related data client-side. A third Data Services root, [`/data/manifest/v1`](#a-data-services-root-that-writes-datamanifestv1), does accept writes.
 
 > The SDK page for this endpoint claims v4, which appears to be copied from its sibling page. The wire format says v3 (`odata.metadata` at the document root, `#p21_view_oe_hdr/@Element` for a single entity). Trust the wire.
 
@@ -2173,8 +2173,23 @@ The trailing **`M` marks an `Edm.Decimal`**. Omitting it, or quoting a numeric k
 - **No joins** — retrieve each set and join locally.
 - **Curated views only** — the list above is all of it.
 - **User Defined Fields cannot be queried.** *(Stated by Epicor for this surface. Not re-tested against `/odataservice/`, which does expose UDF columns on the tables that carry them.)*
+- **`$count` is rejected.** `?$count=true` is HTTP 400, *"The query parameter '$count' begins with a system-reserved '$' character but is not recognized"*, and `/$count` is HTTP 415. This is OData v3: send `$inlinecount=allpages` and read `odata.count` (a string) from the response. *(play 26.1.5950.0, 2026-10-29.)*
 
 *(Source: middleware API Reference (`{middleware}/docs/apiref.aspx`) and the SDK Data Services v1 reference guide; view count and key addressing verified live.)*
+
+### A Data Services root that writes: `/data/manifest/v1`
+
+`/data/manifest/v1/` (trailing slash; the bare path 307s) is a separate Data Services root for shipping-manifest data, the one Clippership uses. Its service document lists `clippership_return_10004`, `transfer_tracking`, `transport_shipping_info` and `p21_view_*` views over them. It speaks the same OData v3 as `/data/erp/views/v1`, but it is **not** read-only:
+
+| Call | Result |
+|---|---|
+| `GET /data/manifest/v1/clippership_return_10004?$top=2` | 200, rows |
+| `POST /data/manifest/v1/clippership_return_10004` with a JSON row | **201**; the row reads back over `/odataservice` with `last_maintained_by` set to the token's user |
+| `DELETE /data/manifest/v1/clippership_return_10004({clippership_return_uid})` | **204**; the row is gone (a hard delete) |
+
+A POST must carry every NOT NULL column, or it fails with HTTP 500 and the SQL message in `innererror.internalexception` (*"Cannot insert the value NULL into column 'handling_charge_flag'"*). The test row sent `pick_ticket_no`, `tracking_no`, `package_weight`, `shipped_date`, `carrier_name`, `total_charge`, `processed_flag`, `delete_flag` and `handling_charge_flag`.
+
+This is a way to add more tracking numbers to a shipment than the Transaction API's shipping columns allow. It writes the table directly, with none of the window's validation, and the Clippership import decides what happens to a row. Test it on a test tenant first. *(Verified on play 26.1.5950.0, 2026-10-29, with one row marked `processed_flag` `Y` and `delete_flag` `Y`, then deleted. Community lead: Eric Davis, [P21WWUG topic](https://forums.p21ww.org/Topic234562.aspx).)*
 
 ---
 

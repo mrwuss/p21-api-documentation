@@ -2320,11 +2320,21 @@ When item IDs contain special characters, URL encoding is required:
 | Character | Encoding | Status |
 |-----------|----------|--------|
 | `#` | `%23` | **Works** — e.g., `ORDER%23TEST` |
-| `/` | `%2F` | **Broken** — returns 404 "Endpoint not found" |
+| `/` | `%2F` | **Route-dependent** — `/api/inventory/parts/{ItemId}...` returns 404; two other routes work (below) |
 | `&` | `%26` | Use standard URL encoding |
 | `+` | `%2B` | Use standard URL encoding |
 
-> **Known Issue**: Forward slash (`/`) in item IDs cannot be URL-encoded for the pricing endpoints. The API (or IIS) interprets `%2F` as a literal path separator, returning 404. There is no known workaround for items containing `/` in their ID. (Credit: John Kennedy, confirmed by Felipe Maurer)
+> **Known Issue**: Forward slash (`/`) in item IDs cannot be URL-encoded on the `/api/inventory/parts/{ItemId}` routes. `%2F` is read as a path separator, and the request returns an HTML 404. (Credit: John Kennedy, confirmed by Felipe Maurer)
+>
+> **Two routes do reach such items** (play 26.1.5950.0, 2026-10-29, with an item ID of the form `ABC123/X0950`):
+>
+> | Route | Result |
+> |---|---|
+> | `GET /api/inventory/v2/parts/v2/price/{ItemId}` with `%2F` | 200, the item's price. Needs `companyId`, `customerId`, `salesLocId` **and `sourceLocId`**; without `sourceLocId` it is HTTP 500 *"Please provide a value for required parameter sourceLocId."* Double-encoding (`%252F`) is HTTP 500 *"Item is not valid or not defined at this location"* |
+> | `GET /api/inventory/v2/parts/availability?itemId={ItemId}` | 200, the item's availability rows; the ID is a query value, so `%2F` is safe |
+> | `GET /api/inventory/parts/{ItemId}`, `.../{ItemId}/v2/price`, `.../{ItemId}/availability` with `%2F` | 404 |
+>
+> *(Community lead: Felipe Maurer, [P21WWUG topic](https://forums.p21ww.org/Topic241059.aspx); verified here.)*
 >
 > **It is not only the pricing endpoints.** `GET /api/inventory/parts/{ItemId}` also returns 404 for an item ID containing `/` (sent as `%2F`), so the GET → modify → PUT update path cannot reach such items either. For supplier cost and other item edits on them, use the Interactive `Item` window. *(@mrwuss, production 26.1, October 2026 — [#171](https://github.com/mrwuss/p21-api-documentation/issues/171).)*
 
@@ -2374,7 +2384,9 @@ That help page is also where the XML request/response schemas come from, and it 
 
 **Request body** — a JSON array or an XML `ArrayOfItemPriceInfo` of per-item objects. Verified minimum: `ItemId` + `SourceLocId`. Also accepted per item: `CustomerPartNo`, `UnitQuantity`, `UnitSize`, `UOM`, `PriceUom` (all optional — P21 defaults `UOM`/`PriceUom` to the item's base unit when omitted).
 
-**Response** — a JSON array or an XML `ArrayOfItemPrice`, one entry per requested item, in the same shape as [single-item pricing](#verified-pricing-response) (pricing **and** availability fields together).
+**Response** — a JSON array or an XML `ArrayOfItemPrice`, one entry per **valid** requested item, in the same shape as [single-item pricing](#verified-pricing-response) (pricing **and** availability fields together).
+
+> **Unknown item IDs are dropped without a word.** Three items sent, one of them nonexistent: HTTP 200 and two entries. One nonexistent item alone: HTTP 200 and `[]`. Match the response to the request by `ItemId`, never by position. *(play 26.1.5950.0, 2026-10-29.)*
 
 #### Content-Type must match the body — this is not "XML only" (verified)
 
@@ -2544,7 +2556,7 @@ static string ReadField(string payload, string field)
 
 <!-- /tabs -->
 
-**Sample response** (one entry per requested item, same fields as [single-item pricing](#verified-pricing-response)):
+**Sample response** (one entry per valid requested item, same fields as [single-item pricing](#verified-pricing-response)):
 
 ```json
 [

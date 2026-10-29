@@ -4103,8 +4103,12 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <td>405 — route exists; the middleware documents PUT for this action (PUT untested)</td>
 </tr>
 <tr>
-<td><code>GET /api/sales/orders/?$query=...</code></td>
-<td>500 with an unrecognized field name — list query syntax not yet discovered</td>
+<td><code>GET /api/sales/orders/?$query=OrderNo eq '1001234'</code></td>
+<td>200 — a list. Name fields as the REST object does (<code>OrderNo</code>, PascalCase); <code>and</code> ranges work. A database column name (<code>order_no</code>) returns <strong>500</strong> with a SQL error</td>
+</tr>
+<tr>
+<td><code>GET /api/sales/orders/{order_no}?extendedproperties=Lines</code></td>
+<td>200 — <code>Lines.list</code> populated; <code>extendedproperties=*</code> also fills each line's <code>Serials</code>, <code>Lots</code>, <code>Bins</code> and <code>Notes</code></td>
 </tr>
 <tr>
 <td><code>POST /api/sales/orders/</code></td>
@@ -4113,6 +4117,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 </tbody>
 </table></div>
 <p>The approve action and every other write on this family remain <strong>untested</strong>; order creation is the one write with a reported working payload, below.</p>
+<p><strong>Filtering and lines</strong> (play 26.1.5950.0, 2026-10-29). <code>$query</code> takes the REST object's own property names: <code>OrderNo eq '1001234'</code> returned one order, and <code>OrderNo ge '1001230' and OrderNo le '1001234'</code> returned five. The same filter written with the column name <code>order_no</code> returned HTTP 500 whose message is a SQL error (<em>"Ambiguous column name 'order_no'"</em>), so a 500 here usually means a wrong field name, not a broken route. <code>Lines</code> is <code>null</code> on a plain read; add <code>extendedproperties=Lines</code> to a keyed or <code>$query</code> GET to get the lines, or <code>extendedproperties=*</code> for every child collection. <em>(Community lead: Felipe Maurer, <a href="https://forums.p21ww.org/Topic237048.aspx">P21WWUG topic</a>; verified here.)</em></p>
 <h3 id="creating-an-order-post-apisalesorders">Creating an Order (<code>POST /api/sales/orders/</code>)</h3>
 <p><code>/api/sales/orders/</code> is not read-only: the same URL accepts a <strong>POST</strong> whose body is a single order — header fields at the top level, lines nested inside. <code>GET /api/sales/orders/new</code> shows you the object's shape but says nothing about how to submit one, which is why this went undocumented for so long.</p>
 <blockquote>
@@ -4638,6 +4643,33 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <blockquote>
 <p><strong><code>inventory/v2/parts</code> is not a different API.</strong> It pings 200 and a single-item GET returns a <strong>byte-identical</strong> response to <code>inventory/parts</code> (1,396 bytes for the same item on the tested tenant). Treat it as an alias unless you find a divergence on a write path; <a href="11-Inventory-REST-API.html">11 Inventory REST API</a> documents the v1 path and applies to both.</p>
 </blockquote>
+<h4 id="apiecommerce-xbg-messages-one-route"><code>api/ecommerce</code>: XBG messages, one route</h4>
+<p><code>api/ecommerce</code> has one operation, <code>POST {base}/api/ecommerce/</code> (trailing slash; the bare path 307s). The body is an XBG (B2B Seller) message whose root names the call, and the reply is the same message with a <code>Reply</code> and a <code>ReplyStatus</code> filled in. The request layouts are stored in the <code>xml_document</code> table: <code>document_template</code> for the rows whose <code>root_element</code> is <code>GetItemPrice</code>, <code>GetPriceBreaks</code>, <code>GetPDFDocument</code> and so on.</p>
+<p><code>GetItemPrice</code> prices several items in one call, as XML or JSON:</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST {base}/api/ecommerce/</span>
+<span class="err">Content-Type: application/json</span>
+<span class="err">Accept: application/json</span>
+
+<span class="err">{&quot;GetItemPrice&quot;: {&quot;Request&quot;: {</span>
+<span class="err">    &quot;StoreName&quot;: &quot;ACME&quot;,</span>
+<span class="err">    &quot;CustomerCode&quot;: &quot;100198&quot;,</span>
+<span class="err">    &quot;LocationID&quot;: &quot;10&quot;,</span>
+<span class="err">    &quot;WebReferenceNumber&quot;: &quot;WEB-0001&quot;,</span>
+<span class="err">    &quot;ListOfItems&quot;: {&quot;Item&quot;: [</span>
+<span class="err">        {&quot;ItemID&quot;: &quot;WIDGET-001&quot;, &quot;Quantity&quot;: &quot;1&quot;, &quot;UnitName&quot;: &quot;EA&quot;, &quot;UnitSize&quot;: &quot;1&quot;},</span>
+<span class="err">        {&quot;ItemID&quot;: &quot;WIDGET-002&quot;, &quot;Quantity&quot;: &quot;1&quot;, &quot;UnitName&quot;: &quot;EA&quot;, &quot;UnitSize&quot;: &quot;1&quot;}</span>
+<span class="err">    ]}</span>
+<span class="err">}}}</span>
+</code></pre></div>
+
+<ul>
+<li><code>StoreName</code> is the <strong>company ID</strong>. Every value is a string.</li>
+<li>Each <code>Reply.ListOfItems.Item</code> carries <code>NetPrice</code>, <code>LeadTimeDays</code>, <code>FreeQuantity</code>, <code>LocationName</code> and the unit. Adding a <code>B2BSellerVersion</code> block (<code>MajorVersion</code> 5, <code>MinorVersion</code> 9) returned more fields per item, such as <code>QuantityInTransit</code>, <code>PricedByContract</code> and <code>UnitCost</code>.</li>
+<li>An XML body (<code>Content-Type: application/xml</code>) works the same way; the reply format follows <code>Accept</code>.</li>
+<li><strong>An unknown item ID is not an error.</strong> It comes back with empty <code>LocationName</code> and <code>LeadTimeDays</code>, <code>NetPrice</code> <code>0</code>, and <code>ReplyStatus.Result</code> <code>0</code>, the same result code as a real item. Check <code>LocationName</code> before trusting a price.</li>
+</ul>
+<p><code>GetPDFDocument</code> (<code>DocumentType</code> <code>Invoice</code>, invoice number in <code>ReferenceID</code>) did <strong>not</strong> work on the tested tenant: HTTP 200 after 196 seconds, with <code>ReplyStatus.Result</code> <code>40</code> and <em>"Unable to get invoice pdf file"</em>. The HTTP status says nothing; read <code>ReplyStatus</code>. For invoice PDFs, use <a href="03-Transaction-API.html#pdf-report-generation"><code>m_invoices</code> through <code>pdfreport</code></a>.</p>
+<p><em>(Verified on play 26.1.5950.0, 2026-10-29. Community leads: Kevin St Laurent, Chris Goetz and David Levine (GetItemPrice), Daniel Arteaga (GetPDFDocument), P21WWUG forum.)</em></p>
 <h4 id="probe-with-help-not-ping-a-ping-404-proves-nothing">Probe with <code>/help</code>, not <code>/ping</code> — a <code>/ping</code> 404 proves nothing</h4>
 <p><strong>Correction (September 2026).</strong> This section previously carried a sweep built by calling <code>GET {base}/{family}/ping</code> against a guessed list of names, split into "answering" and "not on this tenant". <strong>The right-hand column was wrong.</strong> Re-run against <code>apiref.aspx</code>'s own list on 26.1.5950.0, <strong>every family that sweep wrote off is published and answers <code>/help</code> with HTTP 200</strong>:</p>
 <div class="table-wrap"><table>

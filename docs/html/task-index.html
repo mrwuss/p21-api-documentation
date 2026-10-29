@@ -1377,6 +1377,31 @@
 <td><a href="05-Entity-API.html#other-rest-endpoint-families">05 § Other REST Endpoint Families</a> · <a href="05-Entity-API.html#creating-an-order-post-apisalesorders">05 § Creating an Order</a> — <strong>trailing slash required; lines nest under <code>Lines.list</code></strong></td>
 </tr>
 <tr>
+<td>Filter <code>/api/sales/orders</code> (<code>$query</code>) or get an order's <strong>lines</strong> over REST</td>
+<td><a href="05-Entity-API.html#apisalesorders-exists-and-responds">05 § <code>/api/sales/orders</code></a> — PascalCase names (<code>OrderNo</code>); <code>extendedproperties=Lines</code></td>
+<td></td>
+</tr>
+<tr>
+<td>REST-family read returns <code>POLines</code> / <code>Lines</code> as <code>null</code></td>
+<td><a href="15-Other-REST-Families.html#child-collections-are-null-until-you-ask-for-them">15 § Child collections</a> — add <code>extendedproperties</code></td>
+<td></td>
+</tr>
+<tr>
+<td>Price many items through <strong><code>/api/ecommerce</code></strong> (XBG <code>GetItemPrice</code>)</td>
+<td><a href="05-Entity-API.html#apiecommerce-xbg-messages-one-route">05 § <code>api/ecommerce</code></a> — <code>StoreName</code> is the company ID; unknown items still return <code>Result</code> 0</td>
+<td></td>
+</tr>
+<tr>
+<td>Price or check availability for an item ID containing <code>/</code></td>
+<td><a href="11-Inventory-REST-API.html#url-encoding-for-special-characters">11 § URL Encoding</a> — <code>v2/parts/v2/price/{id}</code> with <code>%2F</code>, or <code>v2/parts/availability?itemId=</code></td>
+<td></td>
+</tr>
+<tr>
+<td>Write Clippership tracking rows, or count rows on <code>/data/erp/views/v1</code></td>
+<td><a href="02-OData-API.html#a-data-services-root-that-writes-datamanifestv1">02 § <code>/data/manifest/v1</code></a> · <a href="02-OData-API.html#documented-limitations">02 § Documented limitations</a> (<code>$inlinecount=allpages</code>)</td>
+<td></td>
+</tr>
+<tr>
 <td>Inventory items: read / create / update locations</td>
 <td>—</td>
 <td><a href="11-Inventory-REST-API.html#reading-items">11 § Reading Items</a> · <a href="11-Inventory-REST-API.html#minimum-create-payload">11 § Minimum Create Payload</a> · <a href="11-Inventory-REST-API.html#updating-existing-location-fields">11 § Updating Existing Location Fields</a></td>

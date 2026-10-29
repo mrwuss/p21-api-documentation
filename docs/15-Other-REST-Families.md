@@ -100,17 +100,19 @@ GET /odataservice/odata/table/activity_trans?$select=activity_trans_no&$filter=c
 GET /api/sales/tasks/{activity_trans_no}
 ```
 
-### Child collections are always `null` on read
+### Child collections are `null` until you ask for them
 
-Every one of these families publishes child collections in its contract and populates **none** of them on a keyed GET. On `purchasing/purchaseorders`, `POLines`, `POSales`, `POHdrNotes` and `POLineNotes` all come back `null`; on `inventory/inventoryadjustments`, `Lines` does.
+Every one of these families publishes child collections in its contract and populates **none** of them on a plain keyed GET. On `purchasing/purchaseorders`, `POLines`, `POSales`, `POHdrNotes` and `POLineNotes` all come back `null`; on `inventory/inventoryadjustments`, `Lines` does.
 
-This is not a parameter you are missing. Verified against `purchasing/purchaseorders/{poNo}` with `includeLines`, `expand`, `$expand`, `full` and `includeChildren` — **all five returned a byte-identical 742-byte header-only response**. Read lines from OData (`po_line`, `inv_adj_line`) or through the [Transaction API](03-Transaction-API.md), which does return them.
+**`extendedproperties` fills them.** `GET /api/purchasing/purchaseorders/{poNo}?extendedproperties=POLines` returns the lines under `POLines.list`, and `GET /api/inventory/inventoryadjustments/{adjustmentNo}?extendedproperties=Lines` returns the adjustment lines. `extendedproperties=*` fills every child collection, including the nested ones (an adjustment line's `Bins`, `Lots`, `Serials`). It is the same parameter the [`/api/entity/` endpoints](05-Entity-API.md) use. *(play 26.1.5950.0, 2026-10-29.)*
 
-### `UserDefinedFields` is present and always empty
+The guessed names do nothing: `includeLines`, `expand`, `$expand`, `full` and `includeChildren` all returned a byte-identical header-only response.
 
-Every object on these families carries a `UserDefinedFields` key, and it is `{}` on every read — **including on records that genuinely have user-defined data**. Purchase order 500104 on the test tenant has a `po_hdr_ud` row with `received_flag: "Y"`; `GET /api/purchasing/purchaseorders/500104` returns `"UserDefinedFields": {}`.
+### `UserDefinedFields` carries the `*_ud` row
 
-Treat the key as a contract placeholder, not as evidence. To read UDF *values*, query the `*_ud` table over OData; to find out which UDFs exist at all, use [`extensibility/userdefinedfields`](#extensibilityuserdefinedfields) below.
+Every object on these families carries a `UserDefinedFields` key. On `purchasing/purchaseorders`, re-tested on play 26.1.5950.0 on 2026-10-29, it holds the PO's `po_hdr_ud` row with PascalCase names (`PoHdrUdUid`, `PoNo`, and one key per UDF column) on a plain GET, no parameter needed. A PO with no `po_hdr_ud` row returns the same keys with `PoHdrUdUid` `0` and every value `null`, so test `PoHdrUdUid`, not the presence of the key.
+
+An earlier test on this page recorded `{}` for a PO that had a `po_hdr_ud` row; that result did not reproduce. To find out which UDFs exist at all, use [`extensibility/userdefinedfields`](#extensibilityuserdefinedfields) below.
 
 ---
 
@@ -507,7 +509,7 @@ The PUT returns the updated object, and a follow-up GET confirmed both changed f
  "UserDefinedFields": {}, ...}
 ```
 
-742 bytes, header only. `DirectShipTo` is an inline object rather than a child collection, so it *is* populated (with empty strings on a non-direct-ship PO). For lines, see [child collections are always null](#child-collections-are-always-null-on-read) — that section is about *reads*; see below for what a *create* actually returns.
+742 bytes, header only. `DirectShipTo` is an inline object rather than a child collection, so it *is* populated (with empty strings on a non-direct-ship PO). For lines, see [child collections are `null` until you ask for them](#child-collections-are-null-until-you-ask-for-them) — that section is about *reads*; see below for what a *create* actually returns.
 
 ### Creating a PO (verified)
 
@@ -533,7 +535,7 @@ Two things worth knowing about that error, both confirmed by re-running with a r
 
 The successful response is the one place this family's child collections are *not* null — `POLines.list` comes back with the real, server-assigned `PoLineUid`, `LineNo`, and pricing-lookup fields (`ExtendedDesc`, `CalcType`, `UnitSize` filled in from the item master). **But `UnitPrice` is not one of the fields honored from your request**: a line sent with `"UnitPrice": 5.00` came back — and was actually stored, confirmed over OData on `po_line.unit_price` — as `0.00`. `PriceEdit: "N"` on the template line suggests price is meant to come from a pricing lookup rather than the caller; sending a price does not override it on this path. If the PO needs a specific price, set it after creation through a surface that supports a manual override, and verify with a read-back either way.
 
-A `GET` on the newly-created PO immediately afterward still returned `POLines: null` — confirming [the null-on-read behavior](#child-collections-are-always-null-on-read) is a genuine property of the GET route, not a caching artifact of an older record.
+A `GET` on the newly-created PO immediately afterward still returned `POLines: null` — confirming [the null-on-read behavior](#child-collections-are-null-until-you-ask-for-them) is a genuine property of a plain GET, not a caching artifact of an older record.
 
 ### Updating a PO (verified)
 
@@ -1076,7 +1078,7 @@ Correctly formatted now — and still refused, against a serial number that genu
 
 ## Open questions
 
-Recorded so the next person does not have to rediscover that they are open. Shorter than it was: `userdefinedfields/generate`, `accounting/gl` POST, the PO create/update/async family, and two of the four `createWms*` routes were all exercised live on 26.1.5950.0 and are documented above.
+Recorded so the next person does not have to rediscover that they are open. Shorter than it was: `accounting/gl` POST, the PO create/update/async family, and two of the four `createWms*` routes were all exercised live on 26.1.5950.0 and are documented above.
 
 - **`purchasing/purchaseorders/async/callback`** — the webhook-style variant, taking a callback URL. Not exercised; it needs a reachable endpoint to receive the callback, which a documentation pass against a shared test tenant cannot safely stand up alone.
 - **`createWmsTagAdjustment` / `createWmsTagAdjustmentWithCost` on a genuinely tag-controlled item.** The refusal path is fully verified (`"{item} is not a tagged item"`), reproduced on two different items including one with `inv_mast.use_tags_flag = 'Y'`. The success path is not — that flag alone did not satisfy the precondition, no `tag`-named OData object exists to inspect existing tag records, and it is unresolved whether the real requirement is a live physical tag created through receiving/putaway rather than anything settable through this endpoint or the item master.

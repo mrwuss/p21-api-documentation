@@ -664,8 +664,8 @@
 <li><a href="#authentication-and-headers">Authentication and headers</a></li>
 <li><a href="#the-route-vocabulary">The route vocabulary</a></li>
 <li><a href="#the-bare-collection-get-is-an-unbounded-full-table-dump">⚠ The bare collection GET is an unbounded full-table dump</a></li>
-<li><a href="#child-collections-are-always-null-on-read">Child collections are always null on read</a></li>
-<li><a href="#userdefinedfields-is-present-and-always-empty">UserDefinedFields is present and always empty</a></li>
+<li><a href="#child-collections-are-null-until-you-ask-for-them">Child collections are null until you ask for them</a></li>
+<li><a href="#userdefinedfields-carries-the-_ud-row">UserDefinedFields carries the *_ud row</a></li>
 </ul>
 </li>
 <li><a href="#extensibilityuserdefinedfields">extensibility/userdefinedfields</a><ul>
@@ -981,12 +981,13 @@ GET /api/sales/tasks/?$top=2     -&gt; 200, 28,332,703 bytes, 17,050 records   &
 <span class="err">GET /api/sales/tasks/{activity_trans_no}</span>
 </code></pre></div>
 
-<h3 id="child-collections-are-always-null-on-read">Child collections are always <code>null</code> on read</h3>
-<p>Every one of these families publishes child collections in its contract and populates <strong>none</strong> of them on a keyed GET. On <code>purchasing/purchaseorders</code>, <code>POLines</code>, <code>POSales</code>, <code>POHdrNotes</code> and <code>POLineNotes</code> all come back <code>null</code>; on <code>inventory/inventoryadjustments</code>, <code>Lines</code> does.</p>
-<p>This is not a parameter you are missing. Verified against <code>purchasing/purchaseorders/{poNo}</code> with <code>includeLines</code>, <code>expand</code>, <code>$expand</code>, <code>full</code> and <code>includeChildren</code> — <strong>all five returned a byte-identical 742-byte header-only response</strong>. Read lines from OData (<code>po_line</code>, <code>inv_adj_line</code>) or through the <a href="03-Transaction-API.html">Transaction API</a>, which does return them.</p>
-<h3 id="userdefinedfields-is-present-and-always-empty"><code>UserDefinedFields</code> is present and always empty</h3>
-<p>Every object on these families carries a <code>UserDefinedFields</code> key, and it is <code>{}</code> on every read — <strong>including on records that genuinely have user-defined data</strong>. Purchase order 500104 on the test tenant has a <code>po_hdr_ud</code> row with <code>received_flag: "Y"</code>; <code>GET /api/purchasing/purchaseorders/500104</code> returns <code>"UserDefinedFields": {}</code>.</p>
-<p>Treat the key as a contract placeholder, not as evidence. To read UDF <em>values</em>, query the <code>*_ud</code> table over OData; to find out which UDFs exist at all, use <a href="#extensibilityuserdefinedfields"><code>extensibility/userdefinedfields</code></a> below.</p>
+<h3 id="child-collections-are-null-until-you-ask-for-them">Child collections are <code>null</code> until you ask for them</h3>
+<p>Every one of these families publishes child collections in its contract and populates <strong>none</strong> of them on a plain keyed GET. On <code>purchasing/purchaseorders</code>, <code>POLines</code>, <code>POSales</code>, <code>POHdrNotes</code> and <code>POLineNotes</code> all come back <code>null</code>; on <code>inventory/inventoryadjustments</code>, <code>Lines</code> does.</p>
+<p><strong><code>extendedproperties</code> fills them.</strong> <code>GET /api/purchasing/purchaseorders/{poNo}?extendedproperties=POLines</code> returns the lines under <code>POLines.list</code>, and <code>GET /api/inventory/inventoryadjustments/{adjustmentNo}?extendedproperties=Lines</code> returns the adjustment lines. <code>extendedproperties=*</code> fills every child collection, including the nested ones (an adjustment line's <code>Bins</code>, <code>Lots</code>, <code>Serials</code>). It is the same parameter the <a href="05-Entity-API.html"><code>/api/entity/</code> endpoints</a> use. <em>(play 26.1.5950.0, 2026-10-29.)</em></p>
+<p>The guessed names do nothing: <code>includeLines</code>, <code>expand</code>, <code>$expand</code>, <code>full</code> and <code>includeChildren</code> all returned a byte-identical header-only response.</p>
+<h3 id="userdefinedfields-carries-the-_ud-row"><code>UserDefinedFields</code> carries the <code>*_ud</code> row</h3>
+<p>Every object on these families carries a <code>UserDefinedFields</code> key. On <code>purchasing/purchaseorders</code>, re-tested on play 26.1.5950.0 on 2026-10-29, it holds the PO's <code>po_hdr_ud</code> row with PascalCase names (<code>PoHdrUdUid</code>, <code>PoNo</code>, and one key per UDF column) on a plain GET, no parameter needed. A PO with no <code>po_hdr_ud</code> row returns the same keys with <code>PoHdrUdUid</code> <code>0</code> and every value <code>null</code>, so test <code>PoHdrUdUid</code>, not the presence of the key.</p>
+<p>An earlier test on this page recorded <code>{}</code> for a PO that had a <code>po_hdr_ud</code> row; that result did not reproduce. To find out which UDFs exist at all, use <a href="#extensibilityuserdefinedfields"><code>extensibility/userdefinedfields</code></a> below.</p>
 <hr />
 <h2 id="extensibilityuserdefinedfields"><code>extensibility/userdefinedfields</code></h2>
 <p><strong>The machine-readable answer to "what custom fields does this P21 have?"</strong> Read-only, fast, and the only surface in this documentation that enumerates UDFs with their types.</p>
@@ -1467,7 +1468,7 @@ GET /api/sales/tasks/?$top=2     -&gt; 200, 28,332,703 bytes, 17,050 records   &
  &quot;UserDefinedFields&quot;: {}, ...}
 </code></pre></div>
 
-<p>742 bytes, header only. <code>DirectShipTo</code> is an inline object rather than a child collection, so it <em>is</em> populated (with empty strings on a non-direct-ship PO). For lines, see <a href="#child-collections-are-always-null-on-read">child collections are always null</a> — that section is about <em>reads</em>; see below for what a <em>create</em> actually returns.</p>
+<p>742 bytes, header only. <code>DirectShipTo</code> is an inline object rather than a child collection, so it <em>is</em> populated (with empty strings on a non-direct-ship PO). For lines, see <a href="#child-collections-are-null-until-you-ask-for-them">child collections are <code>null</code> until you ask for them</a> — that section is about <em>reads</em>; see below for what a <em>create</em> actually returns.</p>
 <h3 id="creating-a-po-verified">Creating a PO (verified)</h3>
 <p>Start from <code>GET /new</code>, which pre-populates <code>POLines.list</code> with one blank line at <code>LineNo: 223</code> — a suggested starting line number, not a real one; the created PO below landed its first line at <code>LineNo: 1</code> regardless. Fill in the header and at least one line, then <code>POST</code> the whole object:</p>
 <div class="highlight"><pre><span></span><code>// PO /new template, trimmed to the fields a create needs
@@ -1485,7 +1486,7 @@ GET /api/sales/tasks/?$top=2     -&gt; 200, 28,332,703 bytes, 17,050 records   &
 
 <p>Two things worth knowing about that error, both confirmed by re-running with a real <code>BuyerId</code>: <strong>the create is implemented on top of P21's Import/Export engine</strong> — the whole error body is an escaped <code>&lt;ImportReturn&gt;</code> XML document, which is why it reads nothing like the clean <code>Column is disabled:</code>-style errors elsewhere in this documentation. And <strong>the second complaint about <code>POSales</code>/"Import Set" is cascade noise from the same root cause</strong>, not a separate requirement — supplying a real <code>BuyerId</code> (a real value from an existing PO, e.g. <code>"812"</code>) and changing nothing else made both messages disappear and the create succeed.</p>
 <p>The successful response is the one place this family's child collections are <em>not</em> null — <code>POLines.list</code> comes back with the real, server-assigned <code>PoLineUid</code>, <code>LineNo</code>, and pricing-lookup fields (<code>ExtendedDesc</code>, <code>CalcType</code>, <code>UnitSize</code> filled in from the item master). <strong>But <code>UnitPrice</code> is not one of the fields honored from your request</strong>: a line sent with <code>"UnitPrice": 5.00</code> came back — and was actually stored, confirmed over OData on <code>po_line.unit_price</code> — as <code>0.00</code>. <code>PriceEdit: "N"</code> on the template line suggests price is meant to come from a pricing lookup rather than the caller; sending a price does not override it on this path. If the PO needs a specific price, set it after creation through a surface that supports a manual override, and verify with a read-back either way.</p>
-<p>A <code>GET</code> on the newly-created PO immediately afterward still returned <code>POLines: null</code> — confirming <a href="#child-collections-are-always-null-on-read">the null-on-read behavior</a> is a genuine property of the GET route, not a caching artifact of an older record.</p>
+<p>A <code>GET</code> on the newly-created PO immediately afterward still returned <code>POLines: null</code> — confirming <a href="#child-collections-are-null-until-you-ask-for-them">the null-on-read behavior</a> is a genuine property of a plain GET, not a caching artifact of an older record.</p>
 <h3 id="updating-a-po-verified">Updating a PO (verified)</h3>
 <p><code>PUT /api/purchasing/purchaseorders/{poNo}</code> with the record read back from <code>GET</code> (edited in place) persisted the changes on a subsequent read. Its response shape is a third variant: <code>POLines: {"list": []}</code> — an <strong>empty list</strong>, neither the <code>null</code> a GET returns nor the populated list a POST returns.</p>
 <h3 id="creating-a-po-asynchronously-verified">Creating a PO asynchronously (verified)</h3>
@@ -2276,7 +2277,7 @@ HTTP 500
 <p>Correctly formatted now — and still refused, against a serial number that genuinely exists for that exact item. <strong><code>InvMastItemId</code> is read by the backend despite looking derived, and omitting it degrades the diagnostic on every other failure this route can produce, not just this one.</strong> Whatever the real precondition for a successful <code>PUT</code> is here remains open; send <code>InvMastItemId</code> regardless; the fix so far only makes the error message trustworthy.</p>
 <hr />
 <h2 id="open-questions">Open questions</h2>
-<p>Recorded so the next person does not have to rediscover that they are open. Shorter than it was: <code>userdefinedfields/generate</code>, <code>accounting/gl</code> POST, the PO create/update/async family, and two of the four <code>createWms*</code> routes were all exercised live on 26.1.5950.0 and are documented above.</p>
+<p>Recorded so the next person does not have to rediscover that they are open. Shorter than it was: <code>accounting/gl</code> POST, the PO create/update/async family, and two of the four <code>createWms*</code> routes were all exercised live on 26.1.5950.0 and are documented above.</p>
 <ul>
 <li><strong><code>purchasing/purchaseorders/async/callback</code></strong> — the webhook-style variant, taking a callback URL. Not exercised; it needs a reachable endpoint to receive the callback, which a documentation pass against a shared test tenant cannot safely stand up alone.</li>
 <li><strong><code>createWmsTagAdjustment</code> / <code>createWmsTagAdjustmentWithCost</code> on a genuinely tag-controlled item.</strong> The refusal path is fully verified (<code>"{item} is not a tagged item"</code>), reproduced on two different items including one with <code>inv_mast.use_tags_flag = 'Y'</code>. The success path is not — that flag alone did not satisfy the precondition, no <code>tag</code>-named OData object exists to inspect existing tag records, and it is unresolved whether the real requirement is a live physical tag created through receiving/putaway rather than anything settable through this endpoint or the item master.</li>
@@ -2310,8 +2311,8 @@ HTTP 500
 <li><a href="#authentication-and-headers">Authentication and headers</a></li>
 <li><a href="#the-route-vocabulary">The route vocabulary</a></li>
 <li><a href="#the-bare-collection-get-is-an-unbounded-full-table-dump">⚠ The bare collection GET is an unbounded full-table dump</a></li>
-<li><a href="#child-collections-are-always-null-on-read">Child collections are always null on read</a></li>
-<li><a href="#userdefinedfields-is-present-and-always-empty">UserDefinedFields is present and always empty</a></li>
+<li><a href="#child-collections-are-null-until-you-ask-for-them">Child collections are null until you ask for them</a></li>
+<li><a href="#userdefinedfields-carries-the-_ud-row">UserDefinedFields carries the *_ud row</a></li>
 </ul>
 </li>
 <li><a href="#extensibilityuserdefinedfields">extensibility/userdefinedfields</a><ul>

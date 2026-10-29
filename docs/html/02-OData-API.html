@@ -760,6 +760,7 @@
 <li><a href="#listing-whats-exposed">Listing what's exposed</a></li>
 <li><a href="#fetching-one-record-by-key">Fetching one record by key</a></li>
 <li><a href="#documented-limitations">Documented limitations</a></li>
+<li><a href="#a-data-services-root-that-writes-datamanifestv1">A Data Services root that writes: /data/manifest/v1</a></li>
 </ul>
 </li>
 <li><a href="#odata-schema-refresh">OData Schema Refresh</a></li>
@@ -3331,7 +3332,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 </tr>
 </tbody>
 </table></div>
-<p>Both are read-only, both need the same token, and neither can join — you assemble related data client-side.</p>
+<p>Both are read-only, both need the same token, and neither can join — you assemble related data client-side. A third Data Services root, <a href="#a-data-services-root-that-writes-datamanifestv1"><code>/data/manifest/v1</code></a>, does accept writes.</p>
 <blockquote>
 <p>The SDK page for this endpoint claims v4, which appears to be copied from its sibling page. The wire format says v3 (<code>odata.metadata</code> at the document root, <code>#p21_view_oe_hdr/@Element</code> for a single entity). Trust the wire.</p>
 </blockquote>
@@ -3360,8 +3361,35 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <li><strong>No joins</strong> — retrieve each set and join locally.</li>
 <li><strong>Curated views only</strong> — the list above is all of it.</li>
 <li><strong>User Defined Fields cannot be queried.</strong> <em>(Stated by Epicor for this surface. Not re-tested against <code>/odataservice/</code>, which does expose UDF columns on the tables that carry them.)</em></li>
+<li><strong><code>$count</code> is rejected.</strong> <code>?$count=true</code> is HTTP 400, <em>"The query parameter '$count' begins with a system-reserved '$' character but is not recognized"</em>, and <code>/$count</code> is HTTP 415. This is OData v3: send <code>$inlinecount=allpages</code> and read <code>odata.count</code> (a string) from the response. <em>(play 26.1.5950.0, 2026-10-29.)</em></li>
 </ul>
 <p><em>(Source: middleware API Reference (<code>{middleware}/docs/apiref.aspx</code>) and the SDK Data Services v1 reference guide; view count and key addressing verified live.)</em></p>
+<h3 id="a-data-services-root-that-writes-datamanifestv1">A Data Services root that writes: <code>/data/manifest/v1</code></h3>
+<p><code>/data/manifest/v1/</code> (trailing slash; the bare path 307s) is a separate Data Services root for shipping-manifest data, the one Clippership uses. Its service document lists <code>clippership_return_10004</code>, <code>transfer_tracking</code>, <code>transport_shipping_info</code> and <code>p21_view_*</code> views over them. It speaks the same OData v3 as <code>/data/erp/views/v1</code>, but it is <strong>not</strong> read-only:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Call</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /data/manifest/v1/clippership_return_10004?$top=2</code></td>
+<td>200, rows</td>
+</tr>
+<tr>
+<td><code>POST /data/manifest/v1/clippership_return_10004</code> with a JSON row</td>
+<td><strong>201</strong>; the row reads back over <code>/odataservice</code> with <code>last_maintained_by</code> set to the token's user</td>
+</tr>
+<tr>
+<td><code>DELETE /data/manifest/v1/clippership_return_10004({clippership_return_uid})</code></td>
+<td><strong>204</strong>; the row is gone (a hard delete)</td>
+</tr>
+</tbody>
+</table></div>
+<p>A POST must carry every NOT NULL column, or it fails with HTTP 500 and the SQL message in <code>innererror.internalexception</code> (<em>"Cannot insert the value NULL into column 'handling_charge_flag'"</em>). The test row sent <code>pick_ticket_no</code>, <code>tracking_no</code>, <code>package_weight</code>, <code>shipped_date</code>, <code>carrier_name</code>, <code>total_charge</code>, <code>processed_flag</code>, <code>delete_flag</code> and <code>handling_charge_flag</code>.</p>
+<p>This is a way to add more tracking numbers to a shipment than the Transaction API's shipping columns allow. It writes the table directly, with none of the window's validation, and the Clippership import decides what happens to a row. Test it on a test tenant first. <em>(Verified on play 26.1.5950.0, 2026-10-29, with one row marked <code>processed_flag</code> <code>Y</code> and <code>delete_flag</code> <code>Y</code>, then deleted. Community lead: Eric Davis, <a href="https://forums.p21ww.org/Topic234562.aspx">P21WWUG topic</a>.)</em></p>
 <hr />
 <h2 id="odata-schema-refresh">OData Schema Refresh</h2>
 <p>The OData service automatically picks up changes to existing table/view schemas (e.g., column type changes). However, when <strong>new tables or views</strong> are added to the database, the OData service must be manually refreshed:</p>
@@ -3492,6 +3520,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <li><a href="#listing-whats-exposed">Listing what's exposed</a></li>
 <li><a href="#fetching-one-record-by-key">Fetching one record by key</a></li>
 <li><a href="#documented-limitations">Documented limitations</a></li>
+<li><a href="#a-data-services-root-that-writes-datamanifestv1">A Data Services root that writes: /data/manifest/v1</a></li>
 </ul>
 </li>
 <li><a href="#odata-schema-refresh">OData Schema Refresh</a></li>
