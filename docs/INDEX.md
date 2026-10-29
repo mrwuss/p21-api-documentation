@@ -60,6 +60,9 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 |------|-------|
 | Payload anatomy (TransactionSet / DataElements / Edits) | [03 § Request Structure](03-Transaction-API.md#request-structure) |
 | Payload rejected / values not landing (shape & type mistakes) | [03 § Payload Anatomy](03-Transaction-API.md#payload-anatomy-types-nesting-and-common-mistakes) |
+| **HTTP 200 with `Summary` 0/0/0** and nothing written | [03 § Common mistakes](03-Transaction-API.md#common-mistakes-and-their-symptoms) — the body is wrapped in `"TransactionSet"` or starts at the transaction |
+| Clear a field, or write NULL | [03 § Edit fields](03-Transaction-API.md#transactionset-fields) — NULL was not stored on the fields tested; a blank may be ignored |
+| Add a price book to a pricing library at a position | [03 § StrategicPricingLibrary Service](03-Transaction-API.md#strategicpricinglibrary-service-adding-a-price-book-at-a-position) |
 | Validate a payload offline before posting (JSON or XML) | [`scripts/validate_payload.py`](../scripts/validate_payload.py) · [03 § Payload Anatomy](03-Transaction-API.md#payload-anatomy-types-nesting-and-common-mistakes) |
 | Copy-ready payload files (JSON and XML, validator-verified) | [`examples/payloads/`](../examples/payloads/README.md) |
 | Send/receive **XML** instead of JSON | [03 § XML Payloads](03-Transaction-API.md#xml-payloads-content-negotiation) |
@@ -250,6 +253,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Task | Where |
 |------|-------|
 | Generate any `m_*` report as PDF | [recipe: generate-pick-ticket-pdf](recipes/generate-pick-ticket-pdf.md) · [03 § PDF Report Generation](03-Transaction-API.md#pdf-report-generation) |
+| **Invoice PDF** (`m_invoices`) returns an empty HTTP 500 | [03 § `m_invoices` needs the API print flag](03-Transaction-API.md#m_invoices-needs-the-api-print-flag-and-a-date-range-that-covers-the-invoice) |
 | **Print or reprint a PO PDF** — empty 500 on every attempt | [03 § `reprint_flag` must match the PO's `po_hdr.printed`](03-Transaction-API.md#reprint_flag-must-match-the-pos-po_hdrprinted) — read `printed` over OData and send it; never hardcode `Y` |
 | Discover callable report names (hidden from /services) | [03 § PDF Report Generation](03-Transaction-API.md#pdf-report-generation) (Discovery note — includes the right-click *SQL Help* path) |
 | Empty HTTP 500 from `pdfreport` on a Crystal report window (`TABPAGE_1.tp_1_dw_1` vs `CRITERIA.criteria`) | [03 § The DataElement name comes from the definition](03-Transaction-API.md#the-dataelement-name-comes-from-the-definition-not-from-tabpage_1) |

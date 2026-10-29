@@ -761,6 +761,7 @@
 <li><a href="#shipto-service-creating-a-ship-to">ShipTo Service — Creating a Ship-To</a></li>
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
 <li><a href="#contact-service-linking-a-new-contact-to-an-existing-address">Contact Service — Linking a New Contact to an Existing Address</a></li>
+<li><a href="#strategicpricinglibrary-service-adding-a-price-book-at-a-position">StrategicPricingLibrary Service — Adding a Price Book at a Position</a></li>
 <li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
 <li><a href="#inventorycostedit-service-changing-an-items-average-cost">InventoryCostEdit Service — Changing an Item's Average Cost</a></li>
 <li><a href="#item-merge-and-customer-merge-m_itemmerge-m_customermerge">Item Merge and Customer Merge (m_itemmerge, m_customermerge)</a></li>
@@ -1158,6 +1159,9 @@ HTTP 400
 </tr>
 </tbody>
 </table></div>
+<blockquote>
+<p><strong>On the two fields tested, NULL was never stored, and one of them would not take a blank.</strong> On <code>oe_hdr.delivery_instructions</code>, a <code>Value</code> of <code>""</code>, <code>null</code> or a single space each stored an <strong>empty string</strong>, never NULL, with or without <code>IgnoreIfEmpty: false</code>; an OData <code>eq null</code> filter does not find the row afterwards. On <code>oe_hdr.po_no</code> the same three values returned <code>Succeeded: 1</code> and <strong>left the old value in place</strong>. A blank is not a reliable way to clear a field: read the field back, and filter with <code>eq ''</code> as well as <code>eq null</code> when you look for empty values. <em>(Verified on play 26.1.5950.0, 2026-10-29, through the <code>Order</code> service on a test order; other fields and services not checked.)</em></p>
+</blockquote>
 <hr />
 <h2 id="payload-anatomy-types-nesting-and-common-mistakes">Payload Anatomy -- Types, Nesting, and Common Mistakes</h2>
 <p>Most first-integration failures are payload <strong>shape</strong> mistakes, not wrong endpoints: a string where an array is expected, a field at the wrong nesting level, or a boolean in quotes. JSON indentation is cosmetic -- what matters is the <strong>nesting</strong> and the <strong>type at every level</strong>. This skeleton annotates both:</p>
@@ -1248,6 +1252,24 @@ HTTP 400
 <td>Property silently unbound — behaves like it was never sent</td>
 </tr>
 <tr>
+<td>Body wrapped in its template key</td>
+<td><code>{"TransactionSet": {"Name": ..., "Transactions": [...]}}</code></td>
+<td><code>{"Name": ..., "Transactions": [...]}</code></td>
+<td><strong>HTTP 200, no messages, <code>Summary</code> 0/0/0 — nothing written.</strong> An all-zero <code>Summary</code> means the body was not parsed</td>
+</tr>
+<tr>
+<td>Body starts at the transaction</td>
+<td><code>{"Status": "New", "DataElements": [...]}</code></td>
+<td>Wrap it in <code>Name</code> + <code>Transactions</code></td>
+<td>Same: HTTP 200, 0/0/0, nothing written</td>
+</tr>
+<tr>
+<td>No <code>Name</code></td>
+<td><code>{"Transactions": [...]}</code></td>
+<td><code>"Name": "Order"</code></td>
+<td>HTTP 500, empty body</td>
+</tr>
+<tr>
 <td>Fields in UI-cascade-breaking order</td>
 <td><code>price</code> before <code>pricing_method</code></td>
 <td>Match the UI order</td>
@@ -1257,7 +1279,7 @@ HTTP 400
 </table></div>
 <p>Two tools take the guesswork out:</p>
 <ul>
-<li><strong>Start from the service's <code>Template</code></strong> — <code>GET /api/v2/definition/{Service}</code> (or the committed <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/README.md"><code>definitions/{Service}.json</code></a>) contains a <code>Template.TransactionSet</code> skeleton with every element and field already correctly shaped. Copy it, fill the <code>Edits</code> you need, delete the rest.</li>
+<li><strong>Start from the service's <code>Template</code></strong> — <code>GET /api/v2/definition/{Service}</code> (or the committed <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/README.md"><code>definitions/{Service}.json</code></a>) contains a <code>Template.TransactionSet</code> skeleton with every element and field already correctly shaped. Copy the <strong>object inside</strong> <code>TransactionSet</code>, not the key itself: a body that still starts with <code>"TransactionSet":</code> is accepted and does nothing (see the table above). Fill the <code>Edits</code> you need, delete the rest.</li>
 <li><strong>Validate before you POST</strong> — <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/scripts/validate_payload.py"><code>scripts/validate_payload.py</code></a> checks a payload file (JSON <strong>or</strong> XML) offline against these rules and the <code>definitions/</code> schema, with exact paths to each problem:</li>
 </ul>
 <p><code>bash
@@ -6586,6 +6608,33 @@ You cannot delete it. DataElement: customersalesrep, Column: row_status_flag, Va
 </tbody>
 </table></div>
 <p><em>(Verified on play 26.1.5950.0, 2026-10-29, with two throwaway contacts read back over OData. Only <code>first_name</code>, <code>last_name</code> and <code>address_id</code> were sent; no address-validation popup or message came back. Community lead: Pat Merlino and Felipe Maurer, P21WWUG forum.)</em></p>
+<h3 id="strategicpricinglibrary-service-adding-a-price-book-at-a-position">StrategicPricingLibrary Service — Adding a Price Book at a Position</h3>
+<p>A price library's books are the <code>LIST_DETAIL.list_detail</code> grid, and <code>sequence_number</code> sets each book's place. Send the grid as a <code>List</code> keyed on <code>price_book_id</code>, with <code>price_book_description</code> as well as the ID and the position:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;StrategicPricingLibrary&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FORM.form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;price_library_id&quot;</span><span class="p">],</span>
+<span class="w">       </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;price_library_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME_OEM&quot;</span><span class="p">}]}]},</span>
+<span class="w">      </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;LIST_DETAIL.list_detail&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;price_book_id&quot;</span><span class="p">],</span>
+<span class="w">       </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">         </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;price_book_id&quot;</span><span class="p">,</span><span class="w">          </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;BOOK-OEM&quot;</span><span class="p">},</span>
+<span class="w">         </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;price_book_description&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;OEM book&quot;</span><span class="p">},</span>
+<span class="w">         </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sequence_number&quot;</span><span class="p">,</span><span class="w">        </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0&quot;</span><span class="p">}</span>
+<span class="w">       </span><span class="p">]}]}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li><strong><code>sequence_number</code> <code>0</code> puts the book first.</strong> It is stored as <code>1</code>, and the books already in the library move down by one (<code>price_book_x_library</code>, read back over OData).</li>
+<li><strong>Without <code>price_book_description</code> the row fails</strong> with <em>"This column is required."</em>, even though the description belongs to the book.</li>
+<li>A new library needs <code>type_cd</code> (a label such as <code>First Of</code>; <code>Column is disabled: company_id</code> if you send <code>company_id</code>) and <code>description</code>, and can take its first book in the same transaction.</li>
+</ul>
+<p><em>(Verified on play 26.1.5950.0, 2026-10-29, on a throwaway library. Community lead: P21WWUG forum.)</em></p>
 <h3 id="itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</h3>
 <p>The <code>ItemDefaults</code> service is the <strong>Item Defaults Maintenance</strong> window (Inventory &gt; Inventory Management &gt; System), business object <code>inventory_defaults</code>, keyed on <code>company_id</code> + <code>location_id</code>. <code>Status: "New"</code> creates the per-company/location defaults record that new <code>inv_loc</code> rows inherit — GL accounts, replenishment location/method, discount groups, tax group, units, stockable/buy/make flags. Verified in Play and production (2026-08-14).</p>
 <p><strong>Why you care:</strong> a location without an <code>inventory_defaults</code> row breaks downstream flows — Inventory REST location-appends demand explicit GL (<code>Required value missing for Revenue Account</code>, see <a href="11-Inventory-REST-API.html#location-append-update-gotchas-verified-at-scale">11 § Location-Append &amp; Update Gotchas</a>), and new <code>inv_loc</code> rows land with <code>replenishment_location = NULL</code>. Creating a brand-new item at such a location fails the same way — see <a href="11-Inventory-REST-API.html#gl-accounts-when-the-location-has-no-defaults">11 § GL accounts when the location has no defaults</a>. Create the defaults row first and these problems disappear. The row's discount groups also matter: a location appended to an existing item takes its discount groups from these defaults, not from the item's other locations (<a href="11-Inventory-REST-API.html#location-append-update-gotchas-verified-at-scale">11 § Location-Append &amp; Update Gotchas</a>, item 7).</p>
@@ -7000,6 +7049,57 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <blockquote>
 <p><strong><code>UseCodeValues</code> requirements vary per report service.</strong> <code>m_reprintpurchaseorders</code> works with <code>UseCodeValues: false</code> (as above), but a production-order <code>m_picktickets</code> run <strong>requires <code>UseCodeValues: true</code> with code values</strong> — e.g. <code>create_pick_ticket_type</code> must be the code <code>"P"</code>; the display label <code>"Production Order"</code> is rejected, and <code>UseCodeValues: false</code> returns HTTP 500. A sales-order run of the same service is the reverse: the label <code>"Sales Order"</code> with <code>UseCodeValues: false</code> works, and <code>true</code> with <code>"S"</code> or <code>"O"</code> returned an empty HTTP 500 (play 26.1.5950.0, 2026-10-17). When a report errors on seemingly-correct criteria, try the other setting: <code>UseCodeValues: true</code> with the code values from the service's definition (<code>ValidValues</code>), or <code>false</code> with the labels.</p>
 </blockquote>
+<h4 id="m_invoices-needs-the-api-print-flag-and-a-date-range-that-covers-the-invoice"><code>m_invoices</code> needs the API print flag, and a date range that covers the invoice</h4>
+<p>The invoice print window has a criteria field just for API callers, <code>allow_api_to_print_and_reprint_invoice</code>, whose default is <code>N</code>. Without <code>Y</code> the call is an <strong>empty HTTP 500</strong>. With it, an invoice inside the window's default date range prints from three fields (<code>invoice_no</code>, <code>reprint_flag</code> and the flag). The example also sends the date pair, which a recent invoice needs:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;m_invoices&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">        </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">            </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">            </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;invoice_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2001234&quot;</span><span class="p">},</span>
+<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;reprint_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ON&quot;</span><span class="p">},</span>
+<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;allow_api_to_print_and_reprint_invoice&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Y&quot;</span><span class="p">},</span>
+<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;dt_beg_date2&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;01/01/2000&quot;</span><span class="p">},</span>
+<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;dt_end_date2&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;12/31/2030&quot;</span><span class="p">}</span>
+<span class="w">            </span><span class="p">]}]</span>
+<span class="w">        </span><span class="p">}]</span>
+<span class="w">    </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>The date pair matters for recent invoices. The window defaults <code>dt_end_date2</code> to a date that can be days old (<code>GET /api/v2/defaults/m_invoices</code> returned 2026-10-23 on 2026-10-29), so an invoice dated after it is outside the run. That also fails as an empty HTTP 500, not as an empty result. Send <code>dt_beg_date2</code> and <code>dt_end_date2</code> wide enough to cover the invoice date.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Criteria sent</th>
+<th>Invoice dated inside the default range</th>
+<th>Invoice dated after it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>invoice_no</code>, <code>reprint_flag</code></td>
+<td>empty 500</td>
+<td>empty 500</td>
+</tr>
+<tr>
+<td>+ <code>allow_api_to_print_and_reprint_invoice</code> <code>Y</code></td>
+<td>PDF (<code>IN… INVOICE.pdf</code>, about 139 KB)</td>
+<td>empty 500</td>
+</tr>
+<tr>
+<td>+ a wide <code>dt_beg_date2</code> / <code>dt_end_date2</code></td>
+<td>—</td>
+<td>PDF</td>
+</tr>
+</tbody>
+</table></div>
+<p><em>(Verified on play 26.1.5950.0, 2026-10-29, with two invoices. Community lead: P21WWUG forum, which reported <code>[]</code> rather than a 500 for the date case on an older build.)</em></p>
 <h4 id="reprint_flag-must-match-the-pos-po_hdrprinted"><code>reprint_flag</code> must match the PO's <code>po_hdr.printed</code></h4>
 <p><code>m_reprintpurchaseorders</code> is the <strong>Print Purchase Orders</strong> window in both of its modes. The <code>reprint_flag</code> criterion is not a "reprint please" switch. It selects which population of POs the run considers, and that population is fixed by each PO's own print history:</p>
 <div class="table-wrap"><table>
@@ -8258,6 +8358,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li><a href="#shipto-service-creating-a-ship-to">ShipTo Service — Creating a Ship-To</a></li>
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
 <li><a href="#contact-service-linking-a-new-contact-to-an-existing-address">Contact Service — Linking a New Contact to an Existing Address</a></li>
+<li><a href="#strategicpricinglibrary-service-adding-a-price-book-at-a-position">StrategicPricingLibrary Service — Adding a Price Book at a Position</a></li>
 <li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
 <li><a href="#inventorycostedit-service-changing-an-items-average-cost">InventoryCostEdit Service — Changing an Item's Average Cost</a></li>
 <li><a href="#item-merge-and-customer-merge-m_itemmerge-m_customermerge">Item Merge and Customer Merge (m_itemmerge, m_customermerge)</a></li>
