@@ -372,7 +372,7 @@ Where a derived comparison has to happen in the database — an aging report, a 
 
 ### Long filters and `POST /$query`
 
-A long `or` chain runs into two separate limits. Neither one returns an OData error, so a client that only checks for an OData error body misreads both.
+A long `or` chain runs into two separate limits. Both return HTTP 404, the status this service also uses for a missing table or a bad column name, so read the body before you debug the query: the first limit answers with an IIS HTML page, the second with a one-line message.
 
 | Limit | Value | What you get past it |
 |---|---|---|

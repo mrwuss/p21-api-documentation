@@ -1251,7 +1251,7 @@
 
 <p>Where a derived comparison has to happen in the database — an aging report, a reconciliation — that is a reason to reach for SQL or a purpose-built view rather than OData.</p>
 <h3 id="long-filters-and-post-query">Long filters and <code>POST /$query</code></h3>
-<p>A long <code>or</code> chain runs into two separate limits. Neither one returns an OData error, so a client that only checks for an OData error body misreads both.</p>
+<p>A long <code>or</code> chain runs into two separate limits. Both return HTTP 404, the status this service also uses for a missing table or a bad column name, so read the body before you debug the query: the first limit answers with an IIS HTML page, the second with a one-line message.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
