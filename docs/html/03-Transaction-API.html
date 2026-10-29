@@ -6543,7 +6543,7 @@ You cannot delete it. DataElement: customersalesrep, Column: row_status_flag, Va
 </ul>
 <p><em>(From <a href="https://github.com/mrwuss/p21-api-documentation/issues/109">issue #109</a>, verified in production 2026-08-11.)</em></p>
 <h3 id="contact-service-linking-a-new-contact-to-an-existing-address">Contact Service — Linking a New Contact to an Existing Address</h3>
-<p>A <code>Contact</code> create takes an <code>address_id</code>. Set it to an existing customer's or ship-to's address and the new contact belongs to that address: no new <code>address</code> row, and P21 adds the ship-to link itself. Leave it out and P21 creates a new <code>address</code> row for the contact alone.</p>
+<p>A <code>Contact</code> create takes an <code>address_id</code>. Set it to an existing address and the new contact belongs to it: no new <code>address</code> row. For the customer tested, whose own address is also its ship-to, P21 added the ship-to link itself. Leave it out and P21 creates a new <code>address</code> row for the contact alone.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Contact&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -6574,7 +6574,7 @@ You cannot delete it. DataElement: customersalesrep, Column: row_status_flag, Va
 </thead>
 <tbody>
 <tr>
-<td>With <code>address_id</code> = a customer's address</td>
+<td>With <code>address_id</code> = a customer's address (also its ship-to)</td>
 <td>That address</td>
 <td>A <code>contacts_x_ship_to</code> row linking the contact to that ship-to (<code>row_status_flag</code> <code>704</code>)</td>
 </tr>
