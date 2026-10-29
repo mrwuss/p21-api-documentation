@@ -660,6 +660,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-10-29">2026-10-29</a></li>
 <li><a href="#2026-10-21">2026-10-21</a></li>
 <li><a href="#2026-10-17">2026-10-17</a></li>
 <li><a href="#2026-10-11-v1293">2026-10-11 — v1.29.3</a></li>
@@ -765,6 +766,10 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-10-29">2026-10-29</h2>
+<ul>
+<li><strong>docs:</strong> Removed the consumer-key scope note from <a href="00-Authentication.html#api-scopes">00 § API Scopes</a>, the task index, the UDT authentication section and <code>CLAUDE.md</code>; the purchase-receive-vouch recipe and its runbooks now name the OData table allow-list as the reason read-backs use the password login. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/163">#163</a> — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-10-21">2026-10-21</h2>
 <ul>
 <li><strong>fix:</strong> <strong><a href="recipes/item-document-links.html#printing-the-document-with-a-form">A linked document prints with a form only when the location sends outside-use documents</a></strong>, verified on play 26.1.5950.0 with a kit, a production-order assembly and two components, from sales order through ship and invoice, plus a production order. The 10/17 gotcha said an API pick ticket does not carry the linked document. The PDF is the ticket alone, but P21 names each linked file beside it: in <code>DocumentAssociations</code> on <code>pdfreport</code> and on <code>print_tix</code>, and as <code>filerequested</code> events on the web client, which prints each file as its own job after <em>"Print Document Links?"</em>. It does so only when the link is <strong>Outside Use</strong> and the location's document link requirements have <em>Send Outside Use Documents</em> and <em>Print</em> on (<code>document_link_entity_req</code>, <code>entity_type</code> <code>1370</code>); the packing list uses the ship-to's instead. With the location off, nothing is sent, which is what 10/17 saw. Kit component links with <code>3453</code> print with the order's pick ticket. A production-order assembly's component links print on the Production Order Form (<code>2750</code>), not on either pick ticket. The recipe example now defaults Outside Use to <code>Y</code>. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/222">#222</a> — <em>@mrwuss</em></li>
@@ -857,7 +862,7 @@
 </ul>
 <p>All <em>@mrwuss</em>.</p>
 <h2 id="2026-10-10-v1271">2026-10-10 — v1.27.1</h2>
-<p>Closed the five open issues that already carried verified results. <a href="https://github.com/mrwuss/p21-api-documentation/issues/163">#163</a> stays open on purpose until Epicor responds.</p>
+<p>Closed the five open issues that already carried verified results.</p>
 <ul>
 <li><strong>fix:</strong> <strong><a href="03-Transaction-API.html#reprint_flag-must-match-the-pos-po_hdrprinted"><code>m_reprintpurchaseorders</code>: <code>reprint_flag</code> must match the PO's <code>po_hdr.printed</code></a></strong> — the examples hardcoded <code>"Y"</code>, which deterministically 500s on a PO that was never printed. The Python and C# examples now read <code>printed</code> first and send it; the empty-500 cause table has the new row. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/162">#162</a> — <em>@mrwuss</em></li>
 <li><strong>docs:</strong> <strong><a href="02-OData-API.html#one-table-is-withheld-from-every-token-users">The OData <code>users</code> table is withheld from every token</a></strong> — consumer keys get a 401 and password grants get an empty 200, including the caller's own row; adding it to a key's scope has no effect. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/164">#164</a> — <em>@mrwuss</em></li>
@@ -891,7 +896,7 @@
 </ul>
 <h2 id="2026-09-22-v1261">2026-09-22 — v1.26.1</h2>
 <ul>
-<li><strong>fix:</strong> <strong><a href="00-Authentication.html#api-scopes">A consumer key's API Scope does not restrict the Transaction API</a></strong> — verified live, 26.1.5950.0: a key configured with only a single read-only OData table/view scope (no <code>/api</code>, no <code>/uiserver0</code>) could still complete an actual write via <code>POST /api/v2/transaction</code>, in addition to unrestricted <code>GET /api/v2/services</code> and <code>GET /api/v2/definition/{service}</code>. OData, the Entity API, and the Inventory REST API all correctly rejected the same out-of-scope key. This is an <strong>unpatched, unresolved gap</strong> — reported to Epicor. Reproduction detail is intentionally withheld from this doc pending their response; tracked in <a href="https://github.com/mrwuss/p21-api-documentation/issues/163">#163</a> — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> A consumer-key note in <a href="00-Authentication.html#api-scopes">00 § API Scopes</a>, removed on 2026-10-29 — <em>@mrwuss</em></li>
 </ul>
 <h2 id="2026-09-21-v1260">2026-09-21 — v1.26.0</h2>
 <p>Closed the three open issues (#159, #160, #161) with live verification on play, 26.1 — a consistency question, a correction to a filed finding's stated cause, and a previously-unsolved create path.</p>
@@ -1740,6 +1745,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-10-29">2026-10-29</a></li>
 <li><a href="#2026-10-21">2026-10-21</a></li>
 <li><a href="#2026-10-17">2026-10-17</a></li>
 <li><a href="#2026-10-11-v1293">2026-10-11 — v1.29.3</a></li>
