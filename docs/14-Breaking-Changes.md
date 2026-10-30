@@ -12,7 +12,7 @@ A version-indexed registry of P21 middleware changes that **break or silently co
 
 | Version | Still live on the latest build we have | Resolved | Severity |
 |---------|---------|----------|----------|
-| [2026.1](#p21-20261) | `SessionId` → `Id` · `/v2/tab` binds only `PageName` (`TabName` ignored) · **silent-false-success on nonexistent-record loads** · **batched changes are sequential and fail-fast** · **UDT update/delete can't target rows (delete silently no-ops)** · **`IgnoreDisabled` reports success on writes that write nothing** · **a bad `DatawindowName` eats the next request on that window** | [Empty 500 without `Accept: application/json`](#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header) and the [ghost sessions](#2-ghost-sessions-the-failed-create-still-half-creates-the-session-alternating-500409) it caused — both fixed in **26.1.5940.0** | High — four data-integrity hazards |
+| [2026.1](#p21-20261) | `SessionId` → `Id` · `/v2/tab` binds only `PageName` (`TabName` ignored) · **silent-false-success on nonexistent-record loads** · **batched changes are sequential and fail-fast** · **UDT update/delete ignore a `name`/`value` condition (delete silently no-ops; use `rowuid`)** · **`IgnoreDisabled` reports success on writes that write nothing** · **a bad `DatawindowName` eats the next request on that window** | [Empty 500 without `Accept: application/json`](#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header) and the [ghost sessions](#2-ghost-sessions-the-failed-create-still-half-creates-the-session-alternating-500409) it caused — both fixed in **26.1.5940.0** | High — four data-integrity hazards |
 | [25.2](#p21-252) | `DatawindowName` required in change requests | — | High — hard break for 3-param change calls |
 
 > **Resolved entries stay on this page.** A fix in a later 2026.1 build does not help you if you are upgrading *from* an affected one, and the symptom is what you will search for when it bites. Resolved entries are marked at the top and moved to the end of their version's section.
@@ -123,44 +123,60 @@ A client that treats the 400 as "the change did not happen" is wrong: part of it
 >
 > **Write tab-by-tab anyway.** The client that filed the original report still groups its field writes by tab and switches before each group, and that remains the right shape regardless of which build you are on: it costs one `/v2/tab` call per tab, removes the question entirely, and matches how the window behaves for a human. Treat it as cheap insurance, not as a workaround for a bug we can currently demonstrate.
 
-### 7. UDT Service update/delete cannot target rows in a UDT created on 2026.1
+### 7. UDT Service update/delete ignore a name/value condition on a UDT created on 2026.1
 
 **Data-integrity hazard — silent false success on delete.**
 
-> **Verification scope:** unlike entries 1–6, this one has **no prior-version comparison** — by the time it was found, no pre-2026.1 tenant remained available. What follows is verified on 2026.1; whether it is a *regression* or has always depended on how the table was created is **unproven**. Treated as a 2026.1 hazard because 2026.1's table-creation UI is what produces the incompatible shape.
+> **Verification scope:** this entry has **no prior-version comparison**; by the time it was found, no pre-2026.1 tenant remained available. Whether it is a *regression* or has always depended on how the table was created is **unproven**. It is treated as a 2026.1 hazard because 2026.1's table-creation window produces the table shape that triggers it.
 >
-> **Partially re-verified on 26.1.5940.0 (August 2026) and again on 26.1.5950.0 (September 2026).** The `row_uid` existence probe, the update `400 {"error":["Invalid Row Uid!"]}` for *every* condition name — including the table's real primary key — and the nested-`conditions` payload trap all reproduce verbatim on both builds. **The delete half still could not be re-tested**: the tenant available for the re-run carries no user-created UDT (its only `udt_*` table is a P21 system table), so the `[0] rows deleted ... successfully!` silent no-op is carried forward on the original July 2026 verification rather than re-confirmed. Flagged rather than quietly restated, because that half is the dangerous one.
->
-> **And a P21 system `udt_*` table is not a substitute target.** Pointing delete at one returns `400 {"errorNo": 4001, "errorMessage": "Invalid UDT table"}` — the service distinguishes user-defined tables from the system tables that happen to share the prefix, so you cannot rehearse the delete path against `udt_column_visual_profile` or its siblings. Re-testing this half needs a UDT created through User Defined Table Maintenance.
+> **Re-run in full on 26.1.5950.0 (2026-10-29)** on a UDT created through User Defined Table Maintenance, with every result read back over OData on rows added for the test. Both halves reproduce, delete included, and the run found the condition shape that works: `{"rowuid": N}`.
 
-`PUT /udtservice/api/udtdata/updateudtdata` and `DELETE .../deleteudtdata` identify rows by a column named **exactly `row_uid`**. P21's **User Defined Table Maintenance** on 2026.1 names the primary key **`udt_{tablename}_uid`** and creates **no** `row_uid` column — so on any UDT built there, neither endpoint can reach a single row:
+`PUT /udtservice/api/udtdata/updateudtdata` and `DELETE .../deleteudtdata` select rows by primary key, through a `rowuid` value in each condition. P21's **User Defined Table Maintenance** on 2026.1 names that key **`udt_{tablename}_uid`** and creates **no** `row_uid` column. A condition written as a `name`/`value` pair reaches no row:
 
 ```jsonc
-// Update — returns this for EVERY condition: the real PK name, any other
-// column, any casing, value as string or int.
+// Update, rows[].conditions: [{"name": "row_uid", "value": "5"}]
+// The same for the table's real primary-key name, any other column,
+// any casing, the value as a string or an int.
 400 {"error": ["Invalid Row Uid!"]}
 
-// Delete — HTTP 200, and nothing is deleted.
+// Delete, top-level conditions: [{"name": "row_uid", "value": "9"}]
+// HTTP 200, and nothing is deleted.
 200 {"id": 0, "errorNo": 0,
-     "errorMessage": "[0] rows deleted from [udt_bulk_probe] table successfully!"}
+     "errorMessage": "[0] rows deleted from [udt_example] table successfully!"}
 ```
 
-The delete is the dangerous half. `errorNo: 0` and the word *"successfully"* read as a clean delete to any client checking status or `errorNo` — **only the `[0]` row count reveals it did nothing.** A purge or retention job built on this reports success indefinitely while the table grows without bound.
+The delete is the dangerous half. `errorNo: 0` and the word *"successfully"* read as a clean delete to any client checking status or `errorNo`; **only the `[0]` row count reveals it did nothing.** A purge or retention job built on this reports success indefinitely while the table grows without bound.
 
-> **This is a naming mismatch, not a missing identifier — which is why it reads as a defect.** P21's own documentation for the maintenance windows this UI generates describes a **Row ID** field at the top of every generated window: *"To create a new database entry, populate the fields while leaving Row ID blank and save... To edit an existing entry, enter that row's ID to recall its values... To delete an existing database row, recall it with the Row ID, check Delete Row, and save."* It is also *"always a searchable field"*, unlike the others.
->
-> So the per-row identifier the API says it needs **does exist and the UI uses it for exactly these three operations** — it is simply surfaced as "Row ID" over the `udt_{tablename}_uid` primary key, while the service accepts only a column named literally `row_uid`. The window and the service disagree about the name of the same thing. *(Source: P21 26.2 help, System Administration > Creating a User-Defined Database Table.)*
+**The fix is the condition shape.** Put the row's primary-key value in `rowuid`:
 
-Confirm the column is genuinely absent rather than mis-typed:
+```jsonc
+// Update: conditions inside each row
+{"table": "udt_example", "rows": [{"columns": [{"name": "status", "value": "done"}],
+                                   "conditions": [{"rowuid": 5}]}]}
+→ 200 "[1] row updated in [udt_example] table successfully!"
+
+// Delete: conditions at the top level
+{"table": "udt_example", "conditions": [{"rowuid": 9}]}
+→ 200 "[1] row deleted from [udt_example] table successfully!"
+```
+
+The service reads only `rowuid`: a condition carrying both a `rowuid` and a non-matching `name`/`value` pair updated the `rowuid` row. A `rowuid` with no matching row still returns `[0] ... successfully!`, so the row-count check stays. The full matrix is in [UDT Service API § Update](13-UDT-Service-API.md#update) and [§ Delete](13-UDT-Service-API.md#delete).
+
+> **This is why the maintenance window's Row ID and the API agree after all.** P21's generated UDT maintenance windows recall, edit and delete a row by its **Row ID**, which sits over the `udt_{tablename}_uid` primary key. The service's `rowuid` is the same value. *(Window behavior: P21 26.2 help, System Administration > Creating a User-Defined Database Table.)*
+
+Confirm that the table has no `row_uid` column, and find its key:
 
 ```http
 GET /odataservice/odata/table/{udt}?$select=row_uid
 → 404 "Could not find a property named 'row_uid' on type 'dbo.{udt}'."
+
+GET /odataservice/odata/table/{udt}?$top=1
+→ the row includes udt_{tablename}_uid
 ```
 
-**Mitigation:** before relying on UDT update/delete, **check that `row_uid` exists** (above). If it doesn't, these endpoints cannot reach your data at all — use P21's maintenance UI or direct SQL, and don't build an integration on them. Where they *do* work, **parse the `[N]` row count out of `errorMessage`** and treat `[0]` as a failure; never trust `errorNo: 0` alone. The `row_uid` convention is well-attested by the contributors who first documented these endpoints, so tables predating 2026.1 evidently do carry the column. Full detail: [UDT Service API § Update](13-UDT-Service-API.md#update).
+**Mitigation:** read the target rows' `udt_{tablename}_uid` values over OData, send one `{"rowuid": N}` per row, **parse the `[N]` row count out of `errorMessage`** and treat `[0]` as a failure; never trust `errorNo: 0` alone. Whether `rowuid` maps to a literal `row_uid` column on an older table that has one could not be tested.
 
-Related payload trap: **delete reads `conditions` from the payload's top level**, not nested inside `rows[]` — the nested form returns `400 {"error":["Conditions cannot be blank or none!"]}` on 2026.1. See [UDT Service API § Delete](13-UDT-Service-API.md#delete).
+Related payload trap: **delete reads `conditions` from the payload's top level**, not from inside `rows[]`. The nested form returns `400 {"error":["Conditions cannot be blank or none!"]}`, re-verified on 26.1.5950.0. See [UDT Service API § Delete](13-UDT-Service-API.md#delete).
 
 ### 8. `IgnoreDisabled: true` reports success on writes that write nothing
 

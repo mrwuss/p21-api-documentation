@@ -43,7 +43,7 @@ Two verified instances (2026-08-11), both documented in detail in the [Transacti
 |---------|-------|-------------|-------------|--------|----------------|-------------|
 | **Read Data** | Excellent | Limited | Good | Good (4 entities) | Good (items) | No (use OData) |
 | **Create Data** | No | Excellent | Good | Good (4 entities) | Good (items) | Good (UDT rows) |
-| **Update Data** | No | Good* | Excellent | Good (4 entities) | Good (items/locations) | Good (by `row_uid`) |
+| **Update Data** | No | Good* | Excellent | Good (4 entities) | Good (items/locations) | Good (by primary key, `rowuid`) |
 | **Delete Data** | No | No | Via UI | Via flag | No | Yes |
 | **Bulk Operations** | Yes (read) | Yes | No | No | No | Yes (multi-row insert) |
 | **Business Logic** | No | Partial | Full | No | Partial (validation) | No |
@@ -254,7 +254,7 @@ See [Inventory REST API](11-Inventory-REST-API.md) for full details.
 - **Write-only** - insert, update, and delete endpoints; read UDT data via OData
 - **Stateless** - no session management required
 - **Column-based payloads** - data sent as column name/value pairs
-- **Condition-based targeting** - updates and deletes identify rows via `row_uid`
+- **Condition-based targeting** - updates and deletes identify rows by primary key, as `{"rowuid": N}`
 
 ### Use When
 - You need to insert, update, or delete rows in a `udt_*` table
@@ -266,7 +266,7 @@ See [Inventory REST API](11-Inventory-REST-API.md) for full details.
 
 ### Example Use Cases
 - Insert rows: `POST /udtservice/api/udtdata/insertudtdata`
-- Update rows by `row_uid`: `PUT /udtservice/api/udtdata/updateudtdata`
+- Update rows by primary key (`rowuid`): `PUT /udtservice/api/udtdata/updateudtdata`
 - Delete rows: `DELETE /udtservice/api/udtdata/deleteudtdata`
 
 See [UDT Service API](13-UDT-Service-API.md) for full details.

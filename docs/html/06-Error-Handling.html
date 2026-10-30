@@ -1323,22 +1323,22 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 <div class="highlight"><pre><span></span><code><span class="mi">400</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;Invalid Row Uid!&quot;</span><span class="p">]}</span>
 </code></pre></div>
 
-<p>The update and delete endpoints identify rows by a column named <strong>exactly <code>row_uid</code></strong>. A UDT created by 2026.1's User Defined Table Maintenance has its primary key named <code>udt_{tablename}_uid</code> and <strong>no <code>row_uid</code></strong> — so this error comes back for <em>every</em> condition you try, including the real PK name.</p>
-<p><strong>Check whether the column exists at all</strong>:</p>
+<p>The update and delete endpoints select rows by primary key, from a <code>rowuid</code> value in each condition. A condition written as a <code>name</code>/<code>value</code> pair carries no <code>rowuid</code>, so update returns this error for <em>every</em> such condition, including one on the table's real primary key. A UDT created by 2026.1's User Defined Table Maintenance names that key <code>udt_{tablename}_uid</code> and has <strong>no <code>row_uid</code></strong> column.</p>
+<p><strong>Confirm the table has no <code>row_uid</code> column</strong>:</p>
 <div class="highlight"><pre><span></span><code><span class="err">GET /odataservice/odata/table/{udt}?$select=row_uid</span>
 <span class="err">→ 404 &quot;Could not find a property named &#39;row_uid&#39; on type &#39;dbo.{udt}&#39;.&quot;</span>
 </code></pre></div>
 
-<p><strong>Solution</strong>: if there's no <code>row_uid</code>, these endpoints cannot reach your data — use P21's maintenance UI or direct SQL. Details: <a href="13-UDT-Service-API.html#update">UDT Service API § Update</a> · <a href="14-Breaking-Changes.html#p21-20261">Breaking Changes § 2026.1</a>.</p>
+<p><strong>Solution</strong>: read the row's <code>udt_{tablename}_uid</code> value over OData and send it as <code>"conditions": [{"rowuid": N}]</code>. On play 26.1.5950.0 (2026-10-29) that returned <code>[1] row updated</code> on a 2026.1-created UDT. Details: <a href="13-UDT-Service-API.html#update">UDT Service API § Update</a> · <a href="14-Breaking-Changes.html#7-udt-service-updatedelete-ignore-a-namevalue-condition-on-a-udt-created-on-20261">Breaking Changes entry 7</a>.</p>
 <h3 id="0-rows-deleted-successfully-a-delete-that-deletes-nothing-20261"><code>"[0] rows deleted ... successfully!"</code> — a Delete That Deletes Nothing (2026.1)</h3>
 <div class="highlight"><pre><span></span><code><span class="mi">200</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;errorNo&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
 <span class="w">     </span><span class="nt">&quot;errorMessage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;[0] rows deleted from [udt_example] table successfully!&quot;</span><span class="p">}</span>
 </code></pre></div>
 
 <blockquote>
-<p>⚠️ <strong>This is a success response that did nothing.</strong> <code>errorNo: 0</code> and the word <em>"successfully"</em> pass every ordinary status check — only the <code>[0]</code> row count betrays it. On a UDT without <code>row_uid</code> (see above), <strong>every</strong> delete returns this. A purge or retention job built on it reports success forever while the table grows without bound.</p>
+<p>⚠️ <strong>This is a success response that did nothing.</strong> <code>errorNo: 0</code> and the word <em>"successfully"</em> pass every ordinary status check — only the <code>[0]</code> row count betrays it. A <code>name</code>/<code>value</code> condition (see above) always returns this, and so does a <code>rowuid</code> that matches no row. A purge or retention job built on it reports success forever while the table grows without bound.</p>
 </blockquote>
-<p><strong>Solution</strong>: parse the <code>[N]</code> count out of <code>errorMessage</code> and treat <code>[0]</code> as a failure — never trust <code>errorNo: 0</code> alone. Confirm with a row-count read-back over OData.</p>
+<p><strong>Solution</strong>: send <code>"conditions": [{"rowuid": N}]</code> at the top level, parse the <code>[N]</code> count out of <code>errorMessage</code> and treat <code>[0]</code> as a failure — never trust <code>errorNo: 0</code> alone. Confirm with a row-count read-back over OData.</p>
 <h3 id="conditions-cannot-be-blank-or-none-on-delete-20261"><code>"Conditions cannot be blank or none!"</code> on Delete (2026.1)</h3>
 <div class="highlight"><pre><span></span><code><span class="mi">400</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;Conditions cannot be blank or none!&quot;</span><span class="p">]}</span>
 </code></pre></div>

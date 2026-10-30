@@ -859,7 +859,7 @@
 <td>Excellent</td>
 <td>Good (4 entities)</td>
 <td>Good (items/locations)</td>
-<td>Good (by <code>row_uid</code>)</td>
+<td>Good (by primary key, <code>rowuid</code>)</td>
 </tr>
 <tr>
 <td><strong>Delete Data</strong></td>
@@ -1132,7 +1132,7 @@
 <li><strong>Write-only</strong> - insert, update, and delete endpoints; read UDT data via OData</li>
 <li><strong>Stateless</strong> - no session management required</li>
 <li><strong>Column-based payloads</strong> - data sent as column name/value pairs</li>
-<li><strong>Condition-based targeting</strong> - updates and deletes identify rows via <code>row_uid</code></li>
+<li><strong>Condition-based targeting</strong> - updates and deletes identify rows by primary key, as <code>{"rowuid": N}</code></li>
 </ul>
 <h3 id="use-when_5">Use When</h3>
 <ul>
@@ -1147,7 +1147,7 @@
 <h3 id="example-use-cases_5">Example Use Cases</h3>
 <ul>
 <li>Insert rows: <code>POST /udtservice/api/udtdata/insertudtdata</code></li>
-<li>Update rows by <code>row_uid</code>: <code>PUT /udtservice/api/udtdata/updateudtdata</code></li>
+<li>Update rows by primary key (<code>rowuid</code>): <code>PUT /udtservice/api/udtdata/updateudtdata</code></li>
 <li>Delete rows: <code>DELETE /udtservice/api/udtdata/deleteudtdata</code></li>
 </ul>
 <p>See <a href="13-UDT-Service-API.html">UDT Service API</a> for full details.</p>
