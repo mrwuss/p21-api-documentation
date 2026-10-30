@@ -31,6 +31,7 @@ from datetime import datetime
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -42,13 +43,19 @@ class Window:
         self.window_id = window_id
         self.data = data
 
-    def change(self, tab_name: str, datawindow_name: str,
-               field_name: str, value: str):
+    def change(self, tab_name: str, datawindow_name: str, field_name: str, value: str):
         """Change a single field (v2 format with DatawindowName)."""
-        return self.session.change_data(self.window_id, [
-            {"TabName": tab_name, "DatawindowName": datawindow_name,
-             "FieldName": field_name, "Value": value}
-        ])
+        return self.session.change_data(
+            self.window_id,
+            [
+                {
+                    "TabName": tab_name,
+                    "DatawindowName": datawindow_name,
+                    "FieldName": field_name,
+                    "Value": value,
+                }
+            ],
+        )
 
     def change_multiple(self, changes: list):
         """Change multiple fields at once."""
@@ -70,8 +77,10 @@ class Window:
 class InteractiveClient:
     """Full-featured Interactive API v2 client."""
 
-    def __init__(self, base_url: str, username: str, password: str, verify_ssl: bool = False):
-        self.base_url = base_url.rstrip('/')
+    def __init__(
+        self, base_url: str, username: str, password: str, verify_ssl: bool = False
+    ):
+        self.base_url = base_url.rstrip("/")
         self.username = username
         self.password = password
         self.verify_ssl = verify_ssl
@@ -80,7 +89,9 @@ class InteractiveClient:
         self.client = None
 
     def __enter__(self):
-        self.client = httpx.Client(verify=self.verify_ssl, timeout=60.0, follow_redirects=True)
+        self.client = httpx.Client(
+            verify=self.verify_ssl, timeout=60.0, follow_redirects=True
+        )
         self._authenticate()
         self._get_ui_server()
         self._start_session()
@@ -99,7 +110,7 @@ class InteractiveClient:
         response = self.client.post(
             f"{self.base_url}/api/security/token/v2",
             json={"username": self.username, "password": self.password},
-            headers={"Accept": "application/json"}
+            headers={"Accept": "application/json"},
         )
         response.raise_for_status()
         self.token = response.json()["AccessToken"]
@@ -107,7 +118,10 @@ class InteractiveClient:
     def _get_ui_server(self):
         response = self.client.get(
             f"{self.base_url}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
-            headers={"Authorization": f"Bearer {self.token}", "Accept": "application/json"}
+            headers={
+                "Authorization": f"Bearer {self.token}",
+                "Accept": "application/json",
+            },
         )
         response.raise_for_status()
         self.ui_server_url = response.json()["Url"].rstrip("/")
@@ -116,21 +130,21 @@ class InteractiveClient:
         return {
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
-            "Accept": "application/json"
+            "Accept": "application/json",
         }
 
     def _start_session(self):
         response = self.client.post(
             f"{self.ui_server_url}/api/ui/interactive/sessions/",
             headers=self._headers(),
-            json={"ResponseWindowHandlingEnabled": False}
+            json={"ResponseWindowHandlingEnabled": False},
         )
         response.raise_for_status()
 
     def _end_session(self):
         self.client.delete(
             f"{self.ui_server_url}/api/ui/interactive/sessions/",
-            headers=self._headers()
+            headers=self._headers(),
         )
 
     def open_window(self, service_name: str) -> Window:
@@ -138,7 +152,7 @@ class InteractiveClient:
         response = self.client.post(
             f"{self.ui_server_url}/api/ui/interactive/v2/window",
             headers=self._headers(),
-            json={"ServiceName": service_name}
+            json={"ServiceName": service_name},
         )
         response.raise_for_status()
         data = response.json()
@@ -155,7 +169,7 @@ class InteractiveClient:
         response = self.client.put(
             f"{self.ui_server_url}/api/ui/interactive/v2/change",
             headers=self._headers(),
-            json={"WindowId": window_id, "List": changes}
+            json={"WindowId": window_id, "List": changes},
         )
         response.raise_for_status()
         return response.json()
@@ -165,7 +179,7 @@ class InteractiveClient:
         response = self.client.put(
             f"{self.ui_server_url}/api/ui/interactive/v2/tab",
             headers=self._headers(),
-            json={"WindowId": window_id, "PageName": tab_name}
+            json={"WindowId": window_id, "PageName": tab_name},
         )
         response.raise_for_status()
         return response.json()
@@ -175,7 +189,7 @@ class InteractiveClient:
         response = self.client.put(
             f"{self.ui_server_url}/api/ui/interactive/v2/data",
             headers=self._headers(),
-            json=window_id  # v2: just the GUID string
+            json=window_id,  # v2: just the GUID string
         )
         response.raise_for_status()
         return response.json()
@@ -185,13 +199,18 @@ class InteractiveClient:
         self.client.delete(
             f"{self.ui_server_url}/api/ui/interactive/v2/window",
             params={"id": window_id},
-            headers=self._headers()
+            headers=self._headers(),
         )
 
 
-def create_price_page_workflow(client: InteractiveClient, description: str,
-                                supplier_id: int, product_group: str, multiplier: float,
-                                execute: bool = False):
+def create_price_page_workflow(
+    client: InteractiveClient,
+    description: str,
+    supplier_id: int,
+    product_group: str,
+    multiplier: float,
+    execute: bool = False,
+):
     """
     Complete workflow to create a price page.
 
@@ -231,20 +250,46 @@ def create_price_page_workflow(client: InteractiveClient, description: str,
         print("OK")
 
         print("    Setting remaining fields...", end=" ")
-        window.change_multiple([
-            {"TabName": "FORM", "DatawindowName": "form",
-             "FieldName": "description", "Value": description},
-            {"TabName": "FORM", "DatawindowName": "form",
-             "FieldName": "pricing_method_cd", "Value": "Source"},
-            {"TabName": "FORM", "DatawindowName": "form",
-             "FieldName": "source_price_cd", "Value": "Supplier List Price"},
-            {"TabName": "FORM", "DatawindowName": "form",
-             "FieldName": "effective_date", "Value": datetime.now().strftime("%Y-%m-%d")},
-            {"TabName": "FORM", "DatawindowName": "form",
-             "FieldName": "expiration_date", "Value": "2030-12-31"},
-            {"TabName": "FORM", "DatawindowName": "form",
-             "FieldName": "row_status_flag", "Value": "Active"},
-        ])
+        window.change_multiple(
+            [
+                {
+                    "TabName": "FORM",
+                    "DatawindowName": "form",
+                    "FieldName": "description",
+                    "Value": description,
+                },
+                {
+                    "TabName": "FORM",
+                    "DatawindowName": "form",
+                    "FieldName": "pricing_method_cd",
+                    "Value": "Source",
+                },
+                {
+                    "TabName": "FORM",
+                    "DatawindowName": "form",
+                    "FieldName": "source_price_cd",
+                    "Value": "Supplier List Price",
+                },
+                {
+                    "TabName": "FORM",
+                    "DatawindowName": "form",
+                    "FieldName": "effective_date",
+                    "Value": datetime.now().strftime("%Y-%m-%d"),
+                },
+                {
+                    "TabName": "FORM",
+                    "DatawindowName": "form",
+                    "FieldName": "expiration_date",
+                    "Value": "2030-12-31",
+                },
+                {
+                    "TabName": "FORM",
+                    "DatawindowName": "form",
+                    "FieldName": "row_status_flag",
+                    "Value": "Active",
+                },
+            ]
+        )
         print("OK")
 
         # Step 4: Switch to VALUES tab
@@ -254,12 +299,22 @@ def create_price_page_workflow(client: InteractiveClient, description: str,
 
         # Step 5: Set calculation values
         print("    Setting calculation values...", end=" ")
-        window.change_multiple([
-            {"TabName": "VALUES", "DatawindowName": "values",
-             "FieldName": "calculation_method_cd", "Value": "Multiplier"},
-            {"TabName": "VALUES", "DatawindowName": "values",
-             "FieldName": "calculation_value1", "Value": str(multiplier)},
-        ])
+        window.change_multiple(
+            [
+                {
+                    "TabName": "VALUES",
+                    "DatawindowName": "values",
+                    "FieldName": "calculation_method_cd",
+                    "Value": "Multiplier",
+                },
+                {
+                    "TabName": "VALUES",
+                    "DatawindowName": "values",
+                    "FieldName": "calculation_value1",
+                    "Value": str(multiplier),
+                },
+            ]
+        )
         print("OK")
 
         # Step 6: Save (gated - skipped on dry runs)
@@ -298,8 +353,11 @@ def create_price_page_workflow(client: InteractiveClient, description: str,
 
 def main():
     parser = argparse.ArgumentParser(description="Interactive API complex workflow")
-    parser.add_argument("--execute", action="store_true",
-                        help="Actually save the record (default: drive the window read-only, skip save)")
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Actually save the record (default: drive the window read-only, skip save)",
+    )
     args = parser.parse_args()
 
     print("Interactive API - Complex Workflow (v2)")
@@ -315,12 +373,8 @@ def main():
     # Use context manager for automatic cleanup
     try:
         with InteractiveClient(
-            config.base_url,
-            config.username,
-            config.password,
-            config.verify_ssl
+            config.base_url, config.username, config.password, config.verify_ssl
         ) as client:
-
             print("\n1. Session started via context manager")
             print("-" * 50)
 
@@ -334,7 +388,7 @@ def main():
                 supplier_id=10,
                 product_group="MISC",
                 multiplier=0.75,
-                execute=args.execute
+                execute=args.execute,
             )
 
             if saved:

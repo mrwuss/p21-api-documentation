@@ -22,24 +22,28 @@ from common.auth import get_token, get_auth_headers
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
-def get_new_template(base_url: str, endpoint: str, headers: dict, verify_ssl: bool) -> dict:
+def get_new_template(
+    base_url: str, endpoint: str, headers: dict, verify_ssl: bool
+) -> dict:
     """Get a new template for creating a record."""
     response = httpx.get(
         f"{base_url}{endpoint}/new",
         headers=headers,
         verify=verify_ssl,
         follow_redirects=True,
-        timeout=30.0
+        timeout=30.0,
     )
     response.raise_for_status()
     return response.json()
 
 
-def create_entity(base_url: str, endpoint: str, data: dict,
-                   headers: dict, verify_ssl: bool) -> dict:
+def create_entity(
+    base_url: str, endpoint: str, data: dict, headers: dict, verify_ssl: bool
+) -> dict:
     """Create a new entity record."""
     response = httpx.post(
         f"{base_url}{endpoint}",
@@ -47,7 +51,7 @@ def create_entity(base_url: str, endpoint: str, data: dict,
         json=data,
         verify=verify_ssl,
         follow_redirects=True,
-        timeout=30.0
+        timeout=30.0,
     )
     response.raise_for_status()
     return response.json()
@@ -69,10 +73,7 @@ def main():
 
     try:
         template = get_new_template(
-            config.base_url,
-            "/api/sales/customers",
-            headers,
-            config.verify_ssl
+            config.base_url, "/api/sales/customers", headers, config.verify_ssl
         )
 
         print(f"  Template has {len(template)} fields")
@@ -118,7 +119,7 @@ def main():
         "City": "Anytown",
         "State": "IA",
         "Zip": "52402",
-        "Country": "USA"
+        "Country": "USA",
     }
 
     print("  {")

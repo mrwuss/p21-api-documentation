@@ -41,6 +41,7 @@ from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -59,8 +60,10 @@ def page_payload(args: argparse.Namespace) -> dict:
         dict: Transaction API payload.
     """
     form = [
-        edit("price_page_type_cd", "Item"),       # FIRST: the type decides which keys are valid
-        edit("company_id", args.company),         # before the key field
+        edit(
+            "price_page_type_cd", "Item"
+        ),  # FIRST: the type decides which keys are valid
+        edit("company_id", args.company),  # before the key field
         edit("item_id", args.item_id),
         edit("description", args.description),
         edit("effective_date", args.effective),
@@ -85,17 +88,31 @@ def page_payload(args: argparse.Namespace) -> dict:
     return {
         "Name": "SalesPricePage",
         "UseCodeValues": False,
-        "Transactions": [{
-            "Status": "New",
-            "DataElements": [
-                {"Name": "FORM.form", "Type": "Form", "Keys": [],
-                 "Rows": [{"Edits": form, "RelativeDateEdits": []}]},
-                {"Name": "COSTS.costs", "Type": "Form", "Keys": [],
-                 "Rows": [{"Edits": costs, "RelativeDateEdits": []}]},
-                {"Name": "VALUES.values", "Type": "Form", "Keys": [],
-                 "Rows": [{"Edits": values, "RelativeDateEdits": []}]},
-            ],
-        }],
+        "Transactions": [
+            {
+                "Status": "New",
+                "DataElements": [
+                    {
+                        "Name": "FORM.form",
+                        "Type": "Form",
+                        "Keys": [],
+                        "Rows": [{"Edits": form, "RelativeDateEdits": []}],
+                    },
+                    {
+                        "Name": "COSTS.costs",
+                        "Type": "Form",
+                        "Keys": [],
+                        "Rows": [{"Edits": costs, "RelativeDateEdits": []}],
+                    },
+                    {
+                        "Name": "VALUES.values",
+                        "Type": "Form",
+                        "Keys": [],
+                        "Rows": [{"Edits": values, "RelativeDateEdits": []}],
+                    },
+                ],
+            }
+        ],
     }
 
 
@@ -116,16 +133,30 @@ def link_payload(book_id: str, price_page_uid: str, unlink: bool = False) -> dic
     return {
         "Name": "SalesPriceBook",
         "UseCodeValues": False,
-        "Transactions": [{
-            "Status": "New",
-            "DataElements": [
-                {"Name": "FORM.form", "Type": "Form", "Keys": ["price_book_id"],
-                 "Rows": [{"Edits": [edit("price_book_id", book_id)],
-                           "RelativeDateEdits": []}]},
-                {"Name": "LIST.list_detail", "Type": "List", "Keys": ["price_page_uid"],
-                 "Rows": [{"Edits": row, "RelativeDateEdits": []}]},
-            ],
-        }],
+        "Transactions": [
+            {
+                "Status": "New",
+                "DataElements": [
+                    {
+                        "Name": "FORM.form",
+                        "Type": "Form",
+                        "Keys": ["price_book_id"],
+                        "Rows": [
+                            {
+                                "Edits": [edit("price_book_id", book_id)],
+                                "RelativeDateEdits": [],
+                            }
+                        ],
+                    },
+                    {
+                        "Name": "LIST.list_detail",
+                        "Type": "List",
+                        "Keys": ["price_page_uid"],
+                        "Rows": [{"Edits": row, "RelativeDateEdits": []}],
+                    },
+                ],
+            }
+        ],
     }
 
 
@@ -134,15 +165,27 @@ def page_delete_payload(price_page_uid: str) -> dict:
     return {
         "Name": "SalesPricePage",
         "UseCodeValues": False,
-        "Transactions": [{
-            "Status": "New",
-            "DataElements": [
-                {"Name": "FORM.form", "Type": "Form", "Keys": ["price_page_uid"],
-                 "Rows": [{"Edits": [edit("price_page_uid", price_page_uid),
-                                     edit("row_status_flag", "Delete")],
-                           "RelativeDateEdits": []}]},
-            ],
-        }],
+        "Transactions": [
+            {
+                "Status": "New",
+                "DataElements": [
+                    {
+                        "Name": "FORM.form",
+                        "Type": "Form",
+                        "Keys": ["price_page_uid"],
+                        "Rows": [
+                            {
+                                "Edits": [
+                                    edit("price_page_uid", price_page_uid),
+                                    edit("row_status_flag", "Delete"),
+                                ],
+                                "RelativeDateEdits": [],
+                            }
+                        ],
+                    },
+                ],
+            }
+        ],
     }
 
 
@@ -152,8 +195,14 @@ def post(ui_server: str, headers: dict, verify: bool, payload: dict) -> dict:
     Returns:
         dict: Parsed response body.
     """
-    resp = httpx.post(f"{ui_server}/api/v2/transaction", headers=headers, json=payload,
-                      verify=verify, follow_redirects=True, timeout=120)
+    resp = httpx.post(
+        f"{ui_server}/api/v2/transaction",
+        headers=headers,
+        json=payload,
+        verify=verify,
+        follow_redirects=True,
+        timeout=120,
+    )
     resp.raise_for_status()  # HTTP 200 even when the transaction failed
     result = resp.json()
     summary = result["Summary"]
@@ -173,28 +222,42 @@ def new_page_uid(result: dict) -> str:
     raise RuntimeError("No price_page_uid in the create response")
 
 
-def odata(base_url: str, headers: dict, verify: bool, table: str, flt: str) -> list[dict]:
+def odata(
+    base_url: str, headers: dict, verify: bool, table: str, flt: str
+) -> list[dict]:
     """Return the rows of an OData table query."""
-    resp = httpx.get(f"{base_url}/odataservice/odata/table/{table}",
-                     params={"$filter": flt}, headers=headers, verify=verify,
-                     follow_redirects=True, timeout=60)
+    resp = httpx.get(
+        f"{base_url}/odataservice/odata/table/{table}",
+        params={"$filter": flt},
+        headers=headers,
+        verify=verify,
+        follow_redirects=True,
+        timeout=60,
+    )
     resp.raise_for_status()
     return resp.json()["value"]
 
 
 def main() -> None:
     """Entry point: dry run prints both payloads; --execute creates, links and verifies."""
-    p = argparse.ArgumentParser(description="Create a sales price page and link it to a book")
+    p = argparse.ArgumentParser(
+        description="Create a sales price page and link it to a book"
+    )
     p.add_argument("--execute", action="store_true", help="POST (default: dry run)")
-    p.add_argument("--cleanup", action="store_true",
-                   help="After verifying, unlink the page and soft-delete it")
+    p.add_argument(
+        "--cleanup",
+        action="store_true",
+        help="After verifying, unlink the page and soft-delete it",
+    )
     p.add_argument("--company", default="ACME")
     p.add_argument("--item-id", default="ITEM-001")
     p.add_argument("--book-id", default="BOOK-001", help="Existing price_book_id")
     p.add_argument("--description", default="ITEM-001 contract price")
     p.add_argument("--contract", default="CONTRACT-1")
     p.add_argument("--price", default="12.34")
-    p.add_argument("--cost", default="5.67", help="Other cost and commission cost Value")
+    p.add_argument(
+        "--cost", default="5.67", help="Other cost and commission cost Value"
+    )
     p.add_argument("--effective", default="2030-01-01")
     p.add_argument("--expiration", default="2030-12-31")
     args = p.parse_args()
@@ -216,8 +279,13 @@ def main() -> None:
     ui_server = get_ui_server_url(config.base_url, token, config.verify_ssl)
     verify = config.verify_ssl
 
-    book = odata(config.base_url, headers, verify, "price_book",
-                 f"price_book_id eq '{args.book_id}'")
+    book = odata(
+        config.base_url,
+        headers,
+        verify,
+        "price_book",
+        f"price_book_id eq '{args.book_id}'",
+    )
     if not book:
         raise SystemExit(f"Price book {args.book_id} not found")
     book_uid = book[0]["price_book_uid"]
@@ -231,13 +299,24 @@ def main() -> None:
     print(f"2. Linked to {args.book_id}")
 
     # 3. Verify both
-    page = odata(config.base_url, headers, verify, "price_page", f"price_page_uid eq {uid}")[0]
-    print(f"\n3. Verify price_page {uid}: type={page['price_page_type_cd']} "
-          f"price={page['price']} pricing_method_cd={page['pricing_method_cd']} "
-          f"other_cost_value={page['other_cost_value']} row_status_flag={page['row_status_flag']}")
-    links = odata(config.base_url, headers, verify, "price_page_x_book",
-                  f"price_page_uid eq {uid} and price_book_uid eq {book_uid}")
-    print(f"   price_page_x_book rows: {len(links)} -> {'OK' if len(links) == 1 else 'MISSING'}")
+    page = odata(
+        config.base_url, headers, verify, "price_page", f"price_page_uid eq {uid}"
+    )[0]
+    print(
+        f"\n3. Verify price_page {uid}: type={page['price_page_type_cd']} "
+        f"price={page['price']} pricing_method_cd={page['pricing_method_cd']} "
+        f"other_cost_value={page['other_cost_value']} row_status_flag={page['row_status_flag']}"
+    )
+    links = odata(
+        config.base_url,
+        headers,
+        verify,
+        "price_page_x_book",
+        f"price_page_uid eq {uid} and price_book_uid eq {book_uid}",
+    )
+    print(
+        f"   price_page_x_book rows: {len(links)} -> {'OK' if len(links) == 1 else 'MISSING'}"
+    )
 
     if not args.cleanup:
         print(f"\nLeft in place: page {uid}, linked to {args.book_id}.")
@@ -245,12 +324,21 @@ def main() -> None:
 
     # 4. Unlink (physical delete of the link row), then soft-delete the page
     post(ui_server, headers, verify, link_payload(args.book_id, uid, unlink=True))
-    links = odata(config.base_url, headers, verify, "price_page_x_book",
-                  f"price_page_uid eq {uid}")
-    print(f"\n4. Unlinked: price_page_x_book rows now {len(links)} -> "
-          f"{'OK' if not links else 'STILL LINKED'}")
+    links = odata(
+        config.base_url,
+        headers,
+        verify,
+        "price_page_x_book",
+        f"price_page_uid eq {uid}",
+    )
+    print(
+        f"\n4. Unlinked: price_page_x_book rows now {len(links)} -> "
+        f"{'OK' if not links else 'STILL LINKED'}"
+    )
     post(ui_server, headers, verify, page_delete_payload(uid))
-    page = odata(config.base_url, headers, verify, "price_page", f"price_page_uid eq {uid}")[0]
+    page = odata(
+        config.base_url, headers, verify, "price_page", f"price_page_uid eq {uid}"
+    )[0]
     print(f"   Page {uid} row_status_flag={page['row_status_flag']} (700 = Delete)")
 
 

@@ -31,11 +31,12 @@ from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # --- Configuration (generic placeholders -- substitute your own) ------------
 PROD_ORDER = "1000123"  # production order number
-LOCATION_ID = "10"      # location whose inventory the components pick from
+LOCATION_ID = "10"  # location whose inventory the components pick from
 
 
 def build_report_payload() -> dict:
@@ -50,26 +51,36 @@ def build_report_payload() -> dict:
     """
     return {
         "Name": "m_picktickets",
-        "UseCodeValues": True,   # required here -- False returns HTTP 500
-        "Transactions": [{
-            "Status": "New",
-            "DataElements": [{
-                "Keys": [],      # always empty for reports
-                "Type": "Form",
-                "Name": "TABPAGE_1.tp_1_dw_1",
-                "Rows": [{"Edits": [
-                    # code "P" = Production Order (the display label is rejected)
-                    {"Name": "create_pick_ticket_type", "Value": "P"},
-                    {"Name": "beg_prod_order", "Value": PROD_ORDER},
-                    {"Name": "end_prod_order", "Value": PROD_ORDER},
-                    {"Name": "location_id", "Value": LOCATION_ID},
-                ]}],
-            }],
-        }],
+        "UseCodeValues": True,  # required here -- False returns HTTP 500
+        "Transactions": [
+            {
+                "Status": "New",
+                "DataElements": [
+                    {
+                        "Keys": [],  # always empty for reports
+                        "Type": "Form",
+                        "Name": "TABPAGE_1.tp_1_dw_1",
+                        "Rows": [
+                            {
+                                "Edits": [
+                                    # code "P" = Production Order (the display label is rejected)
+                                    {"Name": "create_pick_ticket_type", "Value": "P"},
+                                    {"Name": "beg_prod_order", "Value": PROD_ORDER},
+                                    {"Name": "end_prod_order", "Value": PROD_ORDER},
+                                    {"Name": "location_id", "Value": LOCATION_ID},
+                                ]
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
     }
 
 
-def run_report(ui_server: str, headers: dict, verify_ssl: bool, payload: dict) -> list[dict]:
+def run_report(
+    ui_server: str, headers: dict, verify_ssl: bool, payload: dict
+) -> list[dict]:
     """POST the report payload and return the document array.
 
     Errors come back as the standard P21 error envelope
@@ -89,8 +100,11 @@ def run_report(ui_server: str, headers: dict, verify_ssl: bool, payload: dict) -
     """
     response = httpx.post(
         f"{ui_server}/api/v2/process/pdfreport",  # NOT /api/v2/transaction
-        headers=headers, json=payload, verify=verify_ssl,
-        follow_redirects=True, timeout=120,
+        headers=headers,
+        json=payload,
+        verify=verify_ssl,
+        follow_redirects=True,
+        timeout=120,
     )
     if response.status_code >= 400:
         raise SystemExit(f"HTTP {response.status_code}: {response.text}")
@@ -121,8 +135,10 @@ def save_documents(documents: list[dict]) -> None:
             f.write(pdf_bytes)
         # Verify: decoded bytes must start with %PDF
         is_pdf = pdf_bytes.startswith(b"%PDF")
-        print(f"Saved {filename} ({len(pdf_bytes)} bytes) "
-              f"{'-- verified %PDF header' if is_pdf else '-- WARNING: not a PDF'}")
+        print(
+            f"Saved {filename} ({len(pdf_bytes)} bytes) "
+            f"{'-- verified %PDF header' if is_pdf else '-- WARNING: not a PDF'}"
+        )
 
 
 def read_tickets(config, headers: dict) -> dict[int, dict]:
@@ -141,9 +157,14 @@ def read_tickets(config, headers: dict) -> dict[int, dict]:
     """
     resp = httpx.get(
         f"{config.base_url}/odataservice/odata/table/prod_pick_ticket_hdr",
-        params={"$filter": f"prod_order_number eq {PROD_ORDER}",
-                "$select": "prod_pick_ticket_number,location_id,row_status_flag"},
-        headers=headers, verify=config.verify_ssl, follow_redirects=True, timeout=60,
+        params={
+            "$filter": f"prod_order_number eq {PROD_ORDER}",
+            "$select": "prod_pick_ticket_number,location_id,row_status_flag",
+        },
+        headers=headers,
+        verify=config.verify_ssl,
+        follow_redirects=True,
+        timeout=60,
     )
     resp.raise_for_status()
     return {row["prod_pick_ticket_number"]: row for row in resp.json().get("value", [])}
@@ -152,10 +173,14 @@ def read_tickets(config, headers: dict) -> dict[int, dict]:
 def main() -> None:
     """Entry point: build payload; on --execute run the report and save the PDF."""
     parser = argparse.ArgumentParser(
-        description="Generate a pick-ticket PDF (docs/recipes/generate-pick-ticket-pdf.md)")
-    parser.add_argument("--execute", action="store_true",
-                        help="Actually run the report -- this CREATES the pick-ticket "
-                             "record in P21 (default: dry run)")
+        description="Generate a pick-ticket PDF (docs/recipes/generate-pick-ticket-pdf.md)"
+    )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Actually run the report -- this CREATES the pick-ticket "
+        "record in P21 (default: dry run)",
+    )
     args = parser.parse_args()
 
     print("Recipe - Generate Pick Ticket PDF (m_picktickets)")
@@ -164,10 +189,14 @@ def main() -> None:
     payload = build_report_payload()
 
     if not args.execute:
-        print("\nDRY RUN - payload that would be POSTed to "
-              "{ui_server}/api/v2/process/pdfreport")
-        print("(side effect at execute time: the pick-ticket record is CREATED at "
-              f"location {LOCATION_ID}):")
+        print(
+            "\nDRY RUN - payload that would be POSTed to "
+            "{ui_server}/api/v2/process/pdfreport"
+        )
+        print(
+            "(side effect at execute time: the pick-ticket record is CREATED at "
+            f"location {LOCATION_ID}):"
+        )
         print(json.dumps(payload, indent=2))
         print("\nRe-run with --execute to run the report.")
         return
@@ -175,7 +204,9 @@ def main() -> None:
     config = load_config()
     token_data = get_token(config)
     headers = get_auth_headers(token_data["AccessToken"])
-    ui_server = get_ui_server_url(config.base_url, token_data["AccessToken"], config.verify_ssl)
+    ui_server = get_ui_server_url(
+        config.base_url, token_data["AccessToken"], config.verify_ssl
+    )
     print(f"UI Server: {ui_server}")
 
     before = read_tickets(config, headers)
@@ -189,8 +220,10 @@ def main() -> None:
         raise SystemExit(f"No new pick ticket on production order {PROD_ORDER}")
     for ticket in new:
         # row_status_flag: 702 = Open, 1962 = Confirmed, 1268 = Completed
-        print(f"New ticket {ticket['prod_pick_ticket_number']} at location "
-              f"{ticket['location_id']}: status {ticket['row_status_flag']}")
+        print(
+            f"New ticket {ticket['prod_pick_ticket_number']} at location "
+            f"{ticket['location_id']}: status {ticket['row_status_flag']}"
+        )
 
 
 if __name__ == "__main__":

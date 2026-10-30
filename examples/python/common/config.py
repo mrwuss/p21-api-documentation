@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 @dataclass
 class P21Config:
     """P21 API configuration."""
+
     base_url: str
     username: str = ""
     password: str = ""
@@ -92,7 +93,9 @@ def load_config() -> P21Config:
         missing.append("P21_PASSWORD (or P21_CONSUMER_KEY)")
 
     if missing:
-        raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
+        raise ValueError(
+            f"Missing required environment variables: {', '.join(missing)}"
+        )
 
     # Get optional variables
     verify_ssl = os.getenv("P21_VERIFY_SSL", "false").lower() == "true"
@@ -103,7 +106,7 @@ def load_config() -> P21Config:
         password=password,
         consumer_key=consumer_key,
         consumer_username=consumer_username,
-        verify_ssl=verify_ssl
+        verify_ssl=verify_ssl,
     )
 
 

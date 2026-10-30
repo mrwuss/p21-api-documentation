@@ -29,11 +29,12 @@ from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # --- Configuration (generic placeholders -- substitute your own) ------------
-PROD_ORDER = "1000123"   # production order number
-STOCK_LOCATION = "10"    # where the components stock (NOT necessarily the make location)
+PROD_ORDER = "1000123"  # production order number
+STOCK_LOCATION = "10"  # where the components stock (NOT necessarily the make location)
 
 CHECKLIST = """\
 Runbook stages (this script automates Stage 3 only -- see the recipe page
@@ -99,20 +100,31 @@ def build_report_payload() -> dict:
     return {
         "Name": "m_picktickets",
         "UseCodeValues": True,  # m_picktickets REQUIRES code values; False returns HTTP 500
-        "Transactions": [{
-            "Status": "New",
-            "DataElements": [{
-                "Keys": [],
-                "Type": "Form",
-                "Name": "TABPAGE_1.tp_1_dw_1",
-                "Rows": [{"Edits": [
-                    {"Name": "create_pick_ticket_type", "Value": "P"},  # code "P" = Production Order
-                    {"Name": "beg_prod_order", "Value": PROD_ORDER},
-                    {"Name": "end_prod_order", "Value": PROD_ORDER},
-                    {"Name": "location_id", "Value": STOCK_LOCATION},
-                ]}],
-            }],
-        }],
+        "Transactions": [
+            {
+                "Status": "New",
+                "DataElements": [
+                    {
+                        "Keys": [],
+                        "Type": "Form",
+                        "Name": "TABPAGE_1.tp_1_dw_1",
+                        "Rows": [
+                            {
+                                "Edits": [
+                                    {
+                                        "Name": "create_pick_ticket_type",
+                                        "Value": "P",
+                                    },  # code "P" = Production Order
+                                    {"Name": "beg_prod_order", "Value": PROD_ORDER},
+                                    {"Name": "end_prod_order", "Value": PROD_ORDER},
+                                    {"Name": "location_id", "Value": STOCK_LOCATION},
+                                ]
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
     }
 
 
@@ -132,8 +144,11 @@ def generate_pick_ticket(ui_server: str, headers: dict, verify_ssl: bool) -> str
     """
     resp = httpx.post(
         f"{ui_server}/api/v2/process/pdfreport",  # NOT /api/v2/transaction (silent no-op there)
-        headers=headers, json=build_report_payload(), verify=verify_ssl,
-        follow_redirects=True, timeout=120,
+        headers=headers,
+        json=build_report_payload(),
+        verify=verify_ssl,
+        follow_redirects=True,
+        timeout=120,
     )
     resp.raise_for_status()
     result = resp.json()
@@ -152,8 +167,9 @@ def generate_pick_ticket(ui_server: str, headers: dict, verify_ssl: bool) -> str
     return file_name
 
 
-def read_ticket_status(ui_server: str, headers: dict, verify_ssl: bool,
-                       ticket_no: str) -> None:
+def read_ticket_status(
+    ui_server: str, headers: dict, verify_ssl: bool, ticket_no: str
+) -> None:
     """Read the new ticket back via /transaction/get and print its status.
 
     Args:
@@ -164,14 +180,21 @@ def read_ticket_status(ui_server: str, headers: dict, verify_ssl: bool,
     """
     get_payload = {
         "ServiceName": "ProductionOrderPicking",
-        "TransactionStates": [{
-            "DataElementName": "TP_PRODPICKTICKETCONF.tp_prodpickticketconf",
-            "Keys": [{"Name": "prod_pick_ticket_number", "Value": ticket_no}],
-        }],
+        "TransactionStates": [
+            {
+                "DataElementName": "TP_PRODPICKTICKETCONF.tp_prodpickticketconf",
+                "Keys": [{"Name": "prod_pick_ticket_number", "Value": ticket_no}],
+            }
+        ],
     }
-    resp = httpx.post(f"{ui_server}/api/v2/transaction/get",
-                      headers=headers, json=get_payload, verify=verify_ssl,
-                      follow_redirects=True, timeout=60)
+    resp = httpx.post(
+        f"{ui_server}/api/v2/transaction/get",
+        headers=headers,
+        json=get_payload,
+        verify=verify_ssl,
+        follow_redirects=True,
+        timeout=60,
+    )
     resp.raise_for_status()
 
     for txn in resp.json().get("Transactions", []):
@@ -180,18 +203,24 @@ def read_ticket_status(ui_server: str, headers: dict, verify_ssl: bool,
                 fields = {e["Name"]: e["Value"] for e in row.get("Edits", [])}
                 if "row_status_flag" in fields:
                     # 702 = Open, 1962 = Confirmed, 1268 = Completed
-                    print(f"Ticket {fields.get('prod_pick_ticket_number')} "
-                          f"for prod order {fields.get('prod_order_number')}: "
-                          f"status {fields.get('row_status_flag')}")
+                    print(
+                        f"Ticket {fields.get('prod_pick_ticket_number')} "
+                        f"for prod order {fields.get('prod_order_number')}: "
+                        f"status {fields.get('row_status_flag')}"
+                    )
 
 
 def main() -> None:
     """Entry point: print the runbook checklist; on --execute run Stage 3."""
     parser = argparse.ArgumentParser(
-        description="Production order runbook (docs/recipes/production-order-runbook.md)")
-    parser.add_argument("--execute", action="store_true",
-                        help="Run Stage 3 (m_picktickets) -- CREATES the pick-ticket "
-                             "record in P21 (default: dry run)")
+        description="Production order runbook (docs/recipes/production-order-runbook.md)"
+    )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Run Stage 3 (m_picktickets) -- CREATES the pick-ticket "
+        "record in P21 (default: dry run)",
+    )
     args = parser.parse_args()
 
     print("Recipe - Production Order Runbook (Create to Invoice)")
@@ -200,16 +229,22 @@ def main() -> None:
     print(CHECKLIST)
 
     if not args.execute:
-        print("DRY RUN - Stage 3 payload that would be POSTed to "
-              "{ui_server}/api/v2/process/pdfreport:")
+        print(
+            "DRY RUN - Stage 3 payload that would be POSTed to "
+            "{ui_server}/api/v2/process/pdfreport:"
+        )
         print(json.dumps(build_report_payload(), indent=2))
-        print("\nRe-run with --execute to generate the pick ticket and read its status back.")
+        print(
+            "\nRe-run with --execute to generate the pick ticket and read its status back."
+        )
         return
 
     config = load_config()
     token_data = get_token(config)
     headers = get_auth_headers(token_data["AccessToken"])
-    ui_server = get_ui_server_url(config.base_url, token_data["AccessToken"], config.verify_ssl)
+    ui_server = get_ui_server_url(
+        config.base_url, token_data["AccessToken"], config.verify_ssl
+    )
     print(f"UI Server: {ui_server}")
 
     # --- Stage 3, part 1: generate the pick ticket (record + PDF) ---

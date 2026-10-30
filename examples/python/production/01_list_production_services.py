@@ -19,13 +19,26 @@ from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # Keywords that indicate production/labor/manufacturing services
 PRODUCTION_KEYWORDS = [
-    "production", "labor", "timeentry", "time_entry", "technician",
-    "work_order", "workorder", "manufacturing", "bom", "routing",
-    "shop", "schedule", "completion", "assembly", "component",
+    "production",
+    "labor",
+    "timeentry",
+    "time_entry",
+    "technician",
+    "work_order",
+    "workorder",
+    "manufacturing",
+    "bom",
+    "routing",
+    "shop",
+    "schedule",
+    "completion",
+    "assembly",
+    "component",
 ]
 
 
@@ -87,13 +100,17 @@ def main() -> None:
 
     # Step 2: Filter for production/labor-related services
     production_services: list[str] = []
-    for service in sorted(services, key=lambda x: x.get("Name", x) if isinstance(x, dict) else x):
+    for service in sorted(
+        services, key=lambda x: x.get("Name", x) if isinstance(x, dict) else x
+    ):
         name = service.get("Name") if isinstance(service, dict) else service
         if matches_production(name):
             production_services.append(name)
 
-    print(f"\nFound {len(production_services)} production/labor-related services "
-          f"(out of {len(services)} total):\n")
+    print(
+        f"\nFound {len(production_services)} production/labor-related services "
+        f"(out of {len(services)} total):\n"
+    )
 
     # Step 3: Check which ones have definitions available
     for name in production_services:
@@ -103,8 +120,10 @@ def main() -> None:
         if code == 200:
             status = "[definition available]"
         else:
-            status = (f"[definition unavailable (HTTP {code}) - often "
-                      "environment availability, not permission]")
+            status = (
+                f"[definition unavailable (HTTP {code}) - often "
+                "environment availability, not permission]"
+            )
         print(f"  {name:40s} {status}")
 
     # Step 4: Also show a broader keyword scan to catch anything missed
@@ -113,11 +132,24 @@ def main() -> None:
     print("-" * 50)
 
     # Broader keywords to catch related services
-    broad_keywords = ["prod", "labor", "time", "tech", "shop", "bom",
-                      "route", "schedule", "complet", "assem", "manuf"]
+    broad_keywords = [
+        "prod",
+        "labor",
+        "time",
+        "tech",
+        "shop",
+        "bom",
+        "route",
+        "schedule",
+        "complet",
+        "assem",
+        "manuf",
+    ]
 
     broad_matches: list[str] = []
-    for service in sorted(services, key=lambda x: x.get("Name", x) if isinstance(x, dict) else x):
+    for service in sorted(
+        services, key=lambda x: x.get("Name", x) if isinstance(x, dict) else x
+    ):
         name = service.get("Name") if isinstance(service, dict) else service
         lower_name = name.lower()
         matched_kw = [kw for kw in broad_keywords if kw in lower_name]

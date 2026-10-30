@@ -47,9 +47,11 @@ logger = logging.getLogger(__name__)
 # Dataclasses for structured responses
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Result:
     """Interactive API response."""
+
     status_code: int
     success: bool
     data: dict | list | None = None
@@ -74,7 +76,12 @@ class Result:
             window_id = data.get("WindowId") or data.get("windowId")
             # Status field: 1 = Success, 2 = Failure, 3 = Blocked (integer)
             status_val = data.get("Status") or data.get("status")
-            success = status_code in (200, 201) and status_val not in (2, 3, "Failure", "Blocked")
+            success = status_code in (200, 201) and status_val not in (
+                2,
+                3,
+                "Failure",
+                "Blocked",
+            )
         else:
             messages = []
             events = []
@@ -95,6 +102,7 @@ class Result:
 @dataclass
 class TransactionResult:
     """Transaction API response."""
+
     status_code: int
     succeeded: int = 0
     failed: int = 0
@@ -132,6 +140,7 @@ class TransactionResult:
 # ---------------------------------------------------------------------------
 # Helper functions
 # ---------------------------------------------------------------------------
+
 
 def get_generated_key(result: Result) -> str | None:
     """Extract auto-generated key from Result events (e.g., new record ID)."""
@@ -171,6 +180,7 @@ def get_opened_window_id(result: Result) -> str | None:
 # Sync Window
 # ---------------------------------------------------------------------------
 
+
 class Window:
     """Sync interactive window handle."""
 
@@ -208,8 +218,9 @@ class Window:
         resp = self._client.put(f"{self._ui}/api/ui/interactive/v2/change", json=body)
         return Result.from_response(resp)
 
-    def change_fields(self, tab_name: str, fields: dict[str, str],
-                      datawindow_name: str) -> Result:
+    def change_fields(
+        self, tab_name: str, fields: dict[str, str], datawindow_name: str
+    ) -> Result:
         """Change multiple fields at once.
 
         Args:
@@ -269,7 +280,11 @@ class Window:
 
     def change_row(self, row: int, datawindow_name: str) -> Result:
         """Select a row (v2 format)."""
-        body = {"WindowId": self.window_id, "DatawindowName": datawindow_name, "Row": row}
+        body = {
+            "WindowId": self.window_id,
+            "DatawindowName": datawindow_name,
+            "Row": row,
+        }
         resp = self._client.put(f"{self._ui}/api/ui/interactive/v2/row", json=body)
         return Result.from_response(resp)
 
@@ -283,7 +298,11 @@ class Window:
 
     def run_tool(self, tool_name: str, tool_text: str = "") -> Result:
         """Run a tool/button."""
-        body = {"WindowId": self.window_id, "ToolName": tool_name, "ToolText": tool_text}
+        body = {
+            "WindowId": self.window_id,
+            "ToolName": tool_name,
+            "ToolText": tool_text,
+        }
         resp = self._client.post(f"{self._ui}/api/ui/interactive/v2/tools", json=body)
         return Result.from_response(resp)
 
@@ -299,6 +318,7 @@ class Window:
 # ---------------------------------------------------------------------------
 # Async Window
 # ---------------------------------------------------------------------------
+
 
 class AsyncWindow:
     """Async interactive window handle."""
@@ -327,11 +347,14 @@ class AsyncWindow:
             "Value": value,
         }
         body = {"WindowId": self.window_id, "List": [change]}
-        resp = await self._client.put(f"{self._ui}/api/ui/interactive/v2/change", json=body)
+        resp = await self._client.put(
+            f"{self._ui}/api/ui/interactive/v2/change", json=body
+        )
         return Result.from_response(resp)
 
-    async def change_fields(self, tab_name: str, fields: dict[str, str],
-                            datawindow_name: str) -> Result:
+    async def change_fields(
+        self, tab_name: str, fields: dict[str, str], datawindow_name: str
+    ) -> Result:
         """Change multiple fields.
 
         datawindow_name is REQUIRED — P21 25.2+ rejects change requests
@@ -347,7 +370,9 @@ class AsyncWindow:
             }
             changes.append(change)
         body = {"WindowId": self.window_id, "List": changes}
-        resp = await self._client.put(f"{self._ui}/api/ui/interactive/v2/change", json=body)
+        resp = await self._client.put(
+            f"{self._ui}/api/ui/interactive/v2/change", json=body
+        )
         return Result.from_response(resp)
 
     async def save_data(self) -> Result:
@@ -373,17 +398,27 @@ class AsyncWindow:
 
     async def select_tab(self, page_name: str) -> Result:
         body = {"WindowId": self.window_id, "PageName": page_name}
-        resp = await self._client.put(f"{self._ui}/api/ui/interactive/v2/tab", json=body)
+        resp = await self._client.put(
+            f"{self._ui}/api/ui/interactive/v2/tab", json=body
+        )
         return Result.from_response(resp)
 
     async def add_row(self, datawindow_name: str) -> Result:
         body = {"WindowId": self.window_id, "DatawindowName": datawindow_name}
-        resp = await self._client.post(f"{self._ui}/api/ui/interactive/v2/row", json=body)
+        resp = await self._client.post(
+            f"{self._ui}/api/ui/interactive/v2/row", json=body
+        )
         return Result.from_response(resp)
 
     async def change_row(self, row: int, datawindow_name: str) -> Result:
-        body = {"WindowId": self.window_id, "DatawindowName": datawindow_name, "Row": row}
-        resp = await self._client.put(f"{self._ui}/api/ui/interactive/v2/row", json=body)
+        body = {
+            "WindowId": self.window_id,
+            "DatawindowName": datawindow_name,
+            "Row": row,
+        }
+        resp = await self._client.put(
+            f"{self._ui}/api/ui/interactive/v2/row", json=body
+        )
         return Result.from_response(resp)
 
     async def get_tools(self) -> Result:
@@ -394,8 +429,14 @@ class AsyncWindow:
         return Result.from_response(resp)
 
     async def run_tool(self, tool_name: str, tool_text: str = "") -> Result:
-        body = {"WindowId": self.window_id, "ToolName": tool_name, "ToolText": tool_text}
-        resp = await self._client.post(f"{self._ui}/api/ui/interactive/v2/tools", json=body)
+        body = {
+            "WindowId": self.window_id,
+            "ToolName": tool_name,
+            "ToolText": tool_text,
+        }
+        resp = await self._client.post(
+            f"{self._ui}/api/ui/interactive/v2/tools", json=body
+        )
         return Result.from_response(resp)
 
     async def close(self) -> Result:
@@ -410,11 +451,13 @@ class AsyncWindow:
 # Sync Interactive Session
 # ---------------------------------------------------------------------------
 
+
 class InteractiveSession:
     """Sync interactive session (context manager)."""
 
-    def __init__(self, client: httpx.Client, ui_server: str,
-                 response_windows: bool = False):
+    def __init__(
+        self, client: httpx.Client, ui_server: str, response_windows: bool = False
+    ):
         self._client = client
         self._ui = ui_server
         self._started = False
@@ -442,8 +485,9 @@ class InteractiveSession:
                 logger.debug(f"Session cleanup error (ignored): {e}")
             self._started = False
 
-    def open_window(self, service_name: str | None = None,
-                    title: str | None = None) -> Window:
+    def open_window(
+        self, service_name: str | None = None, title: str | None = None
+    ) -> Window:
         body: dict[str, Any] = {}
         if service_name:
             body["ServiceName"] = service_name
@@ -475,11 +519,13 @@ class InteractiveSession:
 # Async Interactive Session
 # ---------------------------------------------------------------------------
 
+
 class AsyncInteractiveSession:
     """Async interactive session (async context manager)."""
 
-    def __init__(self, client: httpx.AsyncClient, ui_server: str,
-                 response_windows: bool = False):
+    def __init__(
+        self, client: httpx.AsyncClient, ui_server: str, response_windows: bool = False
+    ):
         self._client = client
         self._ui = ui_server
         self._started = False
@@ -507,8 +553,9 @@ class AsyncInteractiveSession:
                 logger.debug(f"Session cleanup error (ignored): {e}")
             self._started = False
 
-    async def open_window(self, service_name: str | None = None,
-                          title: str | None = None) -> AsyncWindow:
+    async def open_window(
+        self, service_name: str | None = None, title: str | None = None
+    ) -> AsyncWindow:
         body: dict[str, Any] = {}
         if service_name:
             body["ServiceName"] = service_name
@@ -541,6 +588,7 @@ class AsyncInteractiveSession:
 # ---------------------------------------------------------------------------
 # Sync API namespaces
 # ---------------------------------------------------------------------------
+
 
 class ODataAPI:
     """OData API namespace (read-only queries)."""
@@ -665,7 +713,9 @@ class InteractiveAPI:
 
     def session(self, response_windows: bool = False) -> InteractiveSession:
         """Return an InteractiveSession (use as context manager)."""
-        return InteractiveSession(self._client, self._ui, response_windows=response_windows)
+        return InteractiveSession(
+            self._client, self._ui, response_windows=response_windows
+        )
 
 
 class EntityAPI:
@@ -680,7 +730,9 @@ class EntityAPI:
         resp.raise_for_status()
         return resp.json()
 
-    def get(self, resource: str, key: str, extended_properties: str | None = None) -> dict:
+    def get(
+        self, resource: str, key: str, extended_properties: str | None = None
+    ) -> dict:
         params = {}
         if extended_properties:
             params["extendedproperties"] = extended_properties
@@ -729,6 +781,7 @@ class EntityAPI:
 # ---------------------------------------------------------------------------
 # Async API namespaces
 # ---------------------------------------------------------------------------
+
 
 class AsyncODataAPI:
     def __init__(self, client: httpx.AsyncClient, odata_url: str):
@@ -817,7 +870,9 @@ class AsyncTransactionAPI:
         return TransactionResult.from_response(resp)
 
     async def create_async(self, payload: dict) -> dict:
-        resp = await self._client.post(f"{self._ui}/api/v2/transaction/async", json=payload)
+        resp = await self._client.post(
+            f"{self._ui}/api/v2/transaction/async", json=payload
+        )
         resp.raise_for_status()
         return resp.json()
 
@@ -830,7 +885,9 @@ class AsyncTransactionAPI:
         return resp.json()
 
     async def get_records(self, payload: dict) -> dict:
-        resp = await self._client.post(f"{self._ui}/api/v2/transaction/get", json=payload)
+        resp = await self._client.post(
+            f"{self._ui}/api/v2/transaction/get", json=payload
+        )
         resp.raise_for_status()
         return resp.json()
 
@@ -841,7 +898,9 @@ class AsyncInteractiveAPI:
         self._ui = ui_server
 
     def session(self, response_windows: bool = False) -> AsyncInteractiveSession:
-        return AsyncInteractiveSession(self._client, self._ui, response_windows=response_windows)
+        return AsyncInteractiveSession(
+            self._client, self._ui, response_windows=response_windows
+        )
 
 
 class AsyncEntityAPI:
@@ -854,8 +913,9 @@ class AsyncEntityAPI:
         resp.raise_for_status()
         return resp.json()
 
-    async def get(self, resource: str, key: str,
-                  extended_properties: str | None = None) -> dict:
+    async def get(
+        self, resource: str, key: str, extended_properties: str | None = None
+    ) -> dict:
         params = {}
         if extended_properties:
             params["extendedproperties"] = extended_properties
@@ -903,6 +963,7 @@ class AsyncEntityAPI:
 # ---------------------------------------------------------------------------
 # Sync P21Client
 # ---------------------------------------------------------------------------
+
 
 class P21Client:
     """Sync P21 API client with namespace-based access to all four APIs.
@@ -969,7 +1030,9 @@ class P21Client:
         self._token = token_data["AccessToken"]
 
         # Parse expiry — ExpiresIn (XML) or ExpiresInSeconds (JSON)
-        expires_str = token_data.get("ExpiresIn") or token_data.get("ExpiresInSeconds") or "3600"
+        expires_str = (
+            token_data.get("ExpiresIn") or token_data.get("ExpiresInSeconds") or "3600"
+        )
         try:
             expires_in = int(expires_str)
         except ValueError:
@@ -995,7 +1058,9 @@ class P21Client:
             return self._ui_server
         self._ensure_token()
         client = self._get_client()
-        resp = client.get(f"{self.config.base_url}/api/ui/router/v1/?urlType=external")  # trailing slash avoids a 307
+        resp = client.get(
+            f"{self.config.base_url}/api/ui/router/v1/?urlType=external"
+        )  # trailing slash avoids a 307
         resp.raise_for_status()
         # Router may respond with JSON or XML — handle both
         self._ui_server = _parse_router_response(resp).rstrip("/")
@@ -1033,6 +1098,7 @@ class P21Client:
 # ---------------------------------------------------------------------------
 # Async P21Client
 # ---------------------------------------------------------------------------
+
 
 class AsyncP21Client:
     """Async P21 API client with namespace-based access to all four APIs.
@@ -1093,7 +1159,9 @@ class AsyncP21Client:
         token_data = _parse_token_response(resp)
         self._token = token_data["AccessToken"]
 
-        expires_str = token_data.get("ExpiresIn") or token_data.get("ExpiresInSeconds") or "3600"
+        expires_str = (
+            token_data.get("ExpiresIn") or token_data.get("ExpiresInSeconds") or "3600"
+        )
         try:
             expires_in = int(expires_str)
         except ValueError:
@@ -1115,7 +1183,9 @@ class AsyncP21Client:
             return self._ui_server
         await self._ensure_token()
         client = self._get_client()
-        resp = await client.get(f"{self.config.base_url}/api/ui/router/v1/?urlType=external")  # trailing slash avoids a 307
+        resp = await client.get(
+            f"{self.config.base_url}/api/ui/router/v1/?urlType=external"
+        )  # trailing slash avoids a 307
         resp.raise_for_status()
         # Router may respond with JSON or XML — handle both
         self._ui_server = _parse_router_response(resp).rstrip("/")

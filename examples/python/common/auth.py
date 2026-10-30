@@ -37,8 +37,16 @@ def _parse_token_response(response: httpx.Response) -> dict:
 
     # Fall back to XML regex parsing (handles namespaces, BOM, control chars)
     result = {}
-    for field in ("AccessToken", "TokenType", "ExpiresIn", "ExpiresInSeconds",
-                  "RefreshToken", "Scope", "SessionId", "ConsumerUid"):
+    for field in (
+        "AccessToken",
+        "TokenType",
+        "ExpiresIn",
+        "ExpiresInSeconds",
+        "RefreshToken",
+        "Scope",
+        "SessionId",
+        "ConsumerUid",
+    ):
         match = re.search(rf"<{field}>([^<]*)</{field}>", text)
         if match and match.group(1):
             result[field] = match.group(1)
@@ -75,7 +83,7 @@ def get_token(
     username: Optional[str] = None,
     password: Optional[str] = None,
     consumer_key: Optional[str] = None,
-    use_v2: bool = True
+    use_v2: bool = True,
 ) -> dict:
     """
     Obtain an access token from P21.
@@ -114,22 +122,17 @@ def get_token(
             url = f"{config.base_url}/api/security/token/v2"
 
             if consumer_key:
-                body = {
-                    "ClientSecret": consumer_key,
-                    "GrantType": "client_credentials"
-                }
+                body = {"ClientSecret": consumer_key, "GrantType": "client_credentials"}
                 if username:
                     body["username"] = username
             else:
                 body = {
                     "username": username or config.username,
-                    "password": password or config.password
+                    "password": password or config.password,
                 }
 
             response = client.post(
-                url,
-                json=body,
-                headers={"Accept": "application/json"}
+                url, json=body, headers={"Accept": "application/json"}
             )
         else:
             # V1 endpoint - only valid for consumer-key (appkey header) auth.
@@ -152,11 +155,7 @@ def get_token(
             if username:
                 headers["username"] = username
 
-            response = client.post(
-                config.token_url,
-                headers=headers,
-                content=""
-            )
+            response = client.post(config.token_url, headers=headers, content="")
 
         response.raise_for_status()
         return _parse_token_response(response)
@@ -180,7 +179,7 @@ def get_auth_headers(token: str) -> dict:
     return {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
-        "Accept": "application/json"
+        "Accept": "application/json",
     }
 
 
@@ -209,7 +208,7 @@ def get_ui_server_url(base_url: str, token: str, verify_ssl: bool = False) -> st
     with httpx.Client(verify=verify_ssl, follow_redirects=True) as client:
         response = client.get(
             f"{base_url}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
-            headers=get_auth_headers(token)
+            headers=get_auth_headers(token),
         )
         response.raise_for_status()
         # Router may respond with JSON or XML — handle both
@@ -219,6 +218,7 @@ def get_ui_server_url(base_url: str, token: str, verify_ssl: bool = False) -> st
 if __name__ == "__main__":
     # Test authentication
     import warnings
+
     warnings.filterwarnings("ignore")
 
     print("Testing P21 Authentication")
@@ -238,9 +238,7 @@ if __name__ == "__main__":
         # Get UI server
         print("\n2. Getting UI server URL...")
         ui_url = get_ui_server_url(
-            config.base_url,
-            token_data["AccessToken"],
-            config.verify_ssl
+            config.base_url, token_data["AccessToken"], config.verify_ssl
         )
         print(f"   UI Server: {ui_url}")
 

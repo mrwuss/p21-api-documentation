@@ -21,6 +21,7 @@ from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -31,21 +32,22 @@ class InteractiveSession:
         self.ui_server_url = ui_server_url
         self.headers = headers
         self.verify_ssl = verify_ssl
-        self.client = httpx.Client(verify=verify_ssl, timeout=30.0, follow_redirects=True)
+        self.client = httpx.Client(
+            verify=verify_ssl, timeout=30.0, follow_redirects=True
+        )
 
     def start(self):
         response = self.client.post(
             f"{self.ui_server_url}/api/ui/interactive/sessions/",
             headers=self.headers,
-            json={"ResponseWindowHandlingEnabled": False}
+            json={"ResponseWindowHandlingEnabled": False},
         )
         response.raise_for_status()
         return response.json()
 
     def end(self):
         self.client.delete(
-            f"{self.ui_server_url}/api/ui/interactive/sessions/",
-            headers=self.headers
+            f"{self.ui_server_url}/api/ui/interactive/sessions/", headers=self.headers
         )
         self.client.close()
 
@@ -61,7 +63,7 @@ class InteractiveSession:
         response = self.client.post(
             f"{self.ui_server_url}/api/ui/interactive/v2/window",
             headers=self.headers,
-            json=payload
+            json=payload,
         )
         response.raise_for_status()
         return response.json()
@@ -72,7 +74,7 @@ class InteractiveSession:
         response = self.client.get(
             f"{self.ui_server_url}/api/ui/interactive/v2/window",
             params={"id": window_id},
-            headers=self.headers
+            headers=self.headers,
         )
         response.raise_for_status()
         return response.json()
@@ -82,7 +84,7 @@ class InteractiveSession:
         response = self.client.delete(
             f"{self.ui_server_url}/api/ui/interactive/v2/window",
             params={"id": window_id},
-            headers=self.headers
+            headers=self.headers,
         )
         response.raise_for_status()
 
@@ -94,7 +96,9 @@ def main():
     config = load_config()
     token_data = get_token(config)
     headers = get_auth_headers(token_data["AccessToken"])
-    ui_server_url = get_ui_server_url(config.base_url, token_data["AccessToken"], config.verify_ssl)
+    ui_server_url = get_ui_server_url(
+        config.base_url, token_data["AccessToken"], config.verify_ssl
+    )
 
     print(f"UI Server: {ui_server_url}")
 

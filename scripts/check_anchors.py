@@ -45,11 +45,7 @@ def collect_anchors() -> dict[str, set[str]]:
 def source_files() -> list[str]:
     """Markdown files whose internal links should resolve."""
     os.chdir(PROJECT_DIR)
-    return (
-        glob.glob("docs/*.md")
-        + glob.glob("docs/recipes/*.md")
-        + ["CLAUDE.md"]
-    )
+    return glob.glob("docs/*.md") + glob.glob("docs/recipes/*.md") + ["CLAUDE.md"]
 
 
 def main() -> int:
@@ -90,7 +86,9 @@ def main() -> int:
         return 1
 
     total = sum(len(v) for v in anchors.values())
-    print(f"OK -- every internal anchor resolves ({total} ids across {len(anchors)} pages)")
+    print(
+        f"OK -- every internal anchor resolves ({total} ids across {len(anchors)} pages)"
+    )
     return 0
 
 

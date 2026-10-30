@@ -35,6 +35,7 @@ from common.auth import get_token, get_auth_headers
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 CHILD_COLLECTIONS = ("POLines", "POSales", "POHdrNotes", "POLineNotes")
@@ -44,7 +45,10 @@ def get_po(base_url: str, headers: dict, verify_ssl: bool, po_no: str) -> dict:
     """GET one PO header by po_no."""
     response = httpx.get(
         f"{base_url}/api/purchasing/purchaseorders/{po_no}",
-        headers=headers, verify=verify_ssl, follow_redirects=True, timeout=60.0,
+        headers=headers,
+        verify=verify_ssl,
+        follow_redirects=True,
+        timeout=60.0,
     )
     response.raise_for_status()
     return response.json()
@@ -67,16 +71,20 @@ def main() -> None:
 
     po = get_po(config.base_url, headers, config.verify_ssl, args.po_no)
 
-    print(f"\nPO {po['PoNo']}  vendor={po['VendorId']}  location={po['LocationId']}  "
-          f"approved={po['Approved']}  complete={po['Complete']}")
+    print(
+        f"\nPO {po['PoNo']}  vendor={po['VendorId']}  location={po['LocationId']}  "
+        f"approved={po['Approved']}  complete={po['Complete']}"
+    )
 
     print("\nChild collections (always null on this family -- see docs/15):")
     for key in CHILD_COLLECTIONS:
         print(f"  {key}: {po.get(key)!r}")
 
-    print(f"\nUserDefinedFields: {po.get('UserDefinedFields')!r}  "
-          f"(always {{}} here even when po_hdr_ud has real data -- read UDF "
-          f"values over OData)")
+    print(
+        f"\nUserDefinedFields: {po.get('UserDefinedFields')!r}  "
+        f"(always {{}} here even when po_hdr_ud has real data -- read UDF "
+        f"values over OData)"
+    )
 
 
 if __name__ == "__main__":

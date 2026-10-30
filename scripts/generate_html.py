@@ -293,6 +293,7 @@ def out_stem(stem: str) -> str:
     """Output filename stem for a source markdown stem."""
     return OUT_STEM_MAP.get(stem, stem)
 
+
 # ---------------------------------------------------------------------------
 # Tab infrastructure for multi-language code blocks
 # ---------------------------------------------------------------------------
@@ -406,9 +407,7 @@ def postprocess_tabs(html_content: str) -> str:
     start_re = re.compile(
         rf"<p>\s*{re.escape(TAB_START)}\s*</p>|{re.escape(TAB_START)}"
     )
-    end_re = re.compile(
-        rf"<p>\s*{re.escape(TAB_END)}\s*</p>|{re.escape(TAB_END)}"
-    )
+    end_re = re.compile(rf"<p>\s*{re.escape(TAB_END)}\s*</p>|{re.escape(TAB_END)}")
 
     # Language sentinel pattern (becomes <p>CODETAB_LANG_9x7k2m:python</p>)
     lang_sentinel_re = re.compile(
@@ -437,9 +436,7 @@ def postprocess_tabs(html_content: str) -> str:
         between = html_content[start_match.end() : end_match.start()]
 
         # Extract languages from sentinels (in order)
-        langs = [
-            m.group(1) or m.group(2) for m in lang_sentinel_re.finditer(between)
-        ]
+        langs = [m.group(1) or m.group(2) for m in lang_sentinel_re.finditer(between)]
 
         # Remove language sentinels from the between content
         between_clean = lang_sentinel_re.sub("", between)
@@ -506,16 +503,28 @@ def build_recipe_index() -> list[tuple[str, str]]:
 # named here lands in a trailing "More" group so new files never vanish.
 NAV_GROUPS: list[tuple[str, list[str]]] = [
     ("Start Here", ["INDEX", "00-Authentication", "01-API-Selection-Guide"]),
-    ("API Reference", [
-        "02-OData-API", "03-Transaction-API", "04-Interactive-API",
-        "05-Entity-API", "11-Inventory-REST-API", "12-Production-Labor-API",
-        "13-UDT-Service-API",
-    ]),
-    ("Guides & Troubleshooting", [
-        "14-Breaking-Changes", "06-Error-Handling",
-        "07-Session-Pool-Troubleshooting", "08-SalesPricePage-Codes",
-        "09-Batch-Processing-Patterns",
-    ]),
+    (
+        "API Reference",
+        [
+            "02-OData-API",
+            "03-Transaction-API",
+            "04-Interactive-API",
+            "05-Entity-API",
+            "11-Inventory-REST-API",
+            "12-Production-Labor-API",
+            "13-UDT-Service-API",
+        ],
+    ),
+    (
+        "Guides & Troubleshooting",
+        [
+            "14-Breaking-Changes",
+            "06-Error-Handling",
+            "07-Session-Pool-Troubleshooting",
+            "08-SalesPricePage-Codes",
+            "09-Batch-Processing-Patterns",
+        ],
+    ),
     ("Project", ["10-Changelog"]),
 ]
 
@@ -572,7 +581,8 @@ def build_sidebar_html(current_stem: str, prefix: str = "") -> str:
             cls = ' class="active"' if active else ""
             label = NAV_LABELS.get(stem, titles[stem])
             items.append(
-                f'            <li{cls}><a href="{prefix}{out_stem(stem)}.html">{label}</a></li>')
+                f'            <li{cls}><a href="{prefix}{out_stem(stem)}.html">{label}</a></li>'
+            )
         if not items:
             continue
         # Doc groups are short (1-7 links) -- keep them all open.
@@ -592,7 +602,8 @@ def build_sidebar_html(current_stem: str, prefix: str = "") -> str:
         cls = ' class="active"' if active else ""
         label = "Recipes Overview" if stem == "README" else title
         recipe_items.append(
-            f'            <li{cls}><a href="{prefix}recipes/{stem}.html">{label}</a></li>')
+            f'            <li{cls}><a href="{prefix}recipes/{stem}.html">{label}</a></li>'
+        )
     if recipe_items:
         open_attr = " open" if recipes_active else ""
         sections.append(f"""        <details class="nav-group"{open_attr}>
@@ -1489,28 +1500,98 @@ def generate_index_page():
     """Generate index.html using the same sidebar template as other pages."""
     # Page descriptions for the landing page content
     page_info = {
-        "INDEX": ("Task Index", "\"I want to...\" routing map — jump straight to the exact section for your task instead of reading whole guides."),
-        "00-Authentication": ("Authentication", "Token generation, credentials vs consumer keys, V1 and V2 endpoints, and token refresh patterns."),
-        "01-API-Selection-Guide": ("API Selection Guide", "Decision tree and comparison table to help you choose the right API for your use case."),
-        "02-OData-API": ("OData API", "Query any P21 table using standard OData v3 protocol. Filtering, pagination, and complex queries.", "READ"),
-        "03-Transaction-API": ("Transaction API", "Stateless bulk operations for creating and updating records. Service discovery and async operations.", "WRITE"),
-        "04-Interactive-API": ("Interactive API", "Stateful window interactions with full business logic. Sessions, windows, and response handling.", "READ/WRITE"),
-        "05-Entity-API": ("Entity API", "Simple REST operations on customers, vendors, contacts, and addresses.", "CRUD"),
-        "06-Error-Handling": ("Error Handling", "HTTP status codes, API-specific errors, Python error handling patterns, and debugging tips."),
-        "07-Session-Pool-Troubleshooting": ("Session Pool Issues", "Diagnosing and fixing Transaction API session pool contamination and related problems."),
-        "08-SalesPricePage-Codes": ("SalesPricePage Codes", "Dropdown code mappings for the Sales Price Page window in the Interactive API."),
-        "09-Batch-Processing-Patterns": ("Batch Processing Patterns", "Production patterns for bulk operations: session batching, error recovery, and async client."),
-        "10-Changelog": ("Changelog", "Complete history of changes, additions, and contributors to this documentation project."),
-        "11-Inventory-REST-API": ("Inventory REST API", "Inventory item CRUD and multi-company workflows. Read inv_loc data, append locations and suppliers.", "CRUD"),
-        "12-Production-Labor-API": ("Production & Labor API", "Production orders, labor hours, time entry, and the end-to-end production lifecycle.", "READ/WRITE"),
-        "13-UDT-Service-API": ("UDT Service API", "Insert, update, and delete rows in user-defined tables via /udtservice/api/udtdata/.", "CRUD"),
-        "14-Breaking-Changes": ("P21 Breaking Changes", "Version-indexed registry of P21 upgrade changes that break or silently corrupt integrations. Check before upgrading."),
+        "INDEX": (
+            "Task Index",
+            '"I want to..." routing map — jump straight to the exact section for your task instead of reading whole guides.',
+        ),
+        "00-Authentication": (
+            "Authentication",
+            "Token generation, credentials vs consumer keys, V1 and V2 endpoints, and token refresh patterns.",
+        ),
+        "01-API-Selection-Guide": (
+            "API Selection Guide",
+            "Decision tree and comparison table to help you choose the right API for your use case.",
+        ),
+        "02-OData-API": (
+            "OData API",
+            "Query any P21 table using standard OData v3 protocol. Filtering, pagination, and complex queries.",
+            "READ",
+        ),
+        "03-Transaction-API": (
+            "Transaction API",
+            "Stateless bulk operations for creating and updating records. Service discovery and async operations.",
+            "WRITE",
+        ),
+        "04-Interactive-API": (
+            "Interactive API",
+            "Stateful window interactions with full business logic. Sessions, windows, and response handling.",
+            "READ/WRITE",
+        ),
+        "05-Entity-API": (
+            "Entity API",
+            "Simple REST operations on customers, vendors, contacts, and addresses.",
+            "CRUD",
+        ),
+        "06-Error-Handling": (
+            "Error Handling",
+            "HTTP status codes, API-specific errors, Python error handling patterns, and debugging tips.",
+        ),
+        "07-Session-Pool-Troubleshooting": (
+            "Session Pool Issues",
+            "Diagnosing and fixing Transaction API session pool contamination and related problems.",
+        ),
+        "08-SalesPricePage-Codes": (
+            "SalesPricePage Codes",
+            "Dropdown code mappings for the Sales Price Page window in the Interactive API.",
+        ),
+        "09-Batch-Processing-Patterns": (
+            "Batch Processing Patterns",
+            "Production patterns for bulk operations: session batching, error recovery, and async client.",
+        ),
+        "10-Changelog": (
+            "Changelog",
+            "Complete history of changes, additions, and contributors to this documentation project.",
+        ),
+        "11-Inventory-REST-API": (
+            "Inventory REST API",
+            "Inventory item CRUD and multi-company workflows. Read inv_loc data, append locations and suppliers.",
+            "CRUD",
+        ),
+        "12-Production-Labor-API": (
+            "Production & Labor API",
+            "Production orders, labor hours, time entry, and the end-to-end production lifecycle.",
+            "READ/WRITE",
+        ),
+        "13-UDT-Service-API": (
+            "UDT Service API",
+            "Insert, update, and delete rows in user-defined tables via /udtservice/api/udtdata/.",
+            "CRUD",
+        ),
+        "14-Breaking-Changes": (
+            "P21 Breaking Changes",
+            "Version-indexed registry of P21 upgrade changes that break or silently corrupt integrations. Check before upgrading.",
+        ),
     }
 
     # Build sections
     getting_started = ["INDEX", "00-Authentication", "01-API-Selection-Guide"]
-    api_reference = ["02-OData-API", "03-Transaction-API", "04-Interactive-API", "05-Entity-API", "11-Inventory-REST-API", "12-Production-Labor-API", "13-UDT-Service-API"]
-    troubleshooting = ["14-Breaking-Changes", "06-Error-Handling", "07-Session-Pool-Troubleshooting", "08-SalesPricePage-Codes", "09-Batch-Processing-Patterns", "10-Changelog"]
+    api_reference = [
+        "02-OData-API",
+        "03-Transaction-API",
+        "04-Interactive-API",
+        "05-Entity-API",
+        "11-Inventory-REST-API",
+        "12-Production-Labor-API",
+        "13-UDT-Service-API",
+    ]
+    troubleshooting = [
+        "14-Breaking-Changes",
+        "06-Error-Handling",
+        "07-Session-Pool-Troubleshooting",
+        "08-SalesPricePage-Codes",
+        "09-Batch-Processing-Patterns",
+        "10-Changelog",
+    ]
 
     def make_card(stem):
         info = page_info.get(stem, (stem, ""))
@@ -1519,7 +1600,13 @@ def generate_index_page():
         badge = info[2] if len(info) > 2 else None
         badge_html = ""
         if badge:
-            badge_class = "badge-read" if badge == "READ" else "badge-write" if badge == "WRITE" else "badge-both"
+            badge_class = (
+                "badge-read"
+                if badge == "READ"
+                else "badge-write"
+                if badge == "WRITE"
+                else "badge-both"
+            )
             badge_html = f' <span class="badge {badge_class}">{badge}</span>'
         return f"""<a href="{out_stem(stem)}.html" class="index-card">
             <h3>{title}{badge_html}</h3>

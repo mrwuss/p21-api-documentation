@@ -51,11 +51,15 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from common.tapi import connect, edit, odata, odata_quote, post_transaction
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # --- Configuration (generic placeholders -- substitute your own) ------------
 COMPANY_ID = "ACME"
-CREDIT_LIMIT_TYPES = ["Use Highest Credit Limit", "Keep the Target Customer Credit Limit"]
+CREDIT_LIMIT_TYPES = [
+    "Use Highest Credit Limit",
+    "Keep the Target Customer Credit Limit",
+]
 
 
 def build_payload(args: argparse.Namespace) -> dict:
@@ -72,10 +76,10 @@ def build_payload(args: argparse.Namespace) -> dict:
         keys = ["source_item_id", "target_item_id"]
         edits = [
             edit("source_item_id", args.source),
-            edit("target_item_id", args.target),     # omitted = silent no-op success
+            edit("target_item_id", args.target),  # omitted = silent no-op success
             edit("create_alt_code_flag", args.create_alt_code),
             edit("keep_restrictions_flag", "OFF"),
-            edit("schedule_merge_flag", "OFF"),      # ON needs the Item Merge Schedule task
+            edit("schedule_merge_flag", "OFF"),  # ON needs the Item Merge Schedule task
         ]
     else:
         service = "m_customermerge"
@@ -87,10 +91,23 @@ def build_payload(args: argparse.Namespace) -> dict:
             edit("credit_limit_type", args.credit_limit_type),
             edit("keep_cust_as_shipto", args.keep_cust_as_shipto),
         ]
-    return {"Name": service, "UseCodeValues": False,
-            "Transactions": [{"Status": "New", "DataElements": [{
-                "Name": "FORM.form", "Type": "Form", "Keys": keys,
-                "Rows": [{"Edits": edits}]}]}]}
+    return {
+        "Name": service,
+        "UseCodeValues": False,
+        "Transactions": [
+            {
+                "Status": "New",
+                "DataElements": [
+                    {
+                        "Name": "FORM.form",
+                        "Type": "Form",
+                        "Keys": keys,
+                        "Rows": [{"Edits": edits}],
+                    }
+                ],
+            }
+        ],
+    }
 
 
 def resolve_items(session, source: str, target: str) -> tuple[int, int]:
@@ -106,9 +123,12 @@ def resolve_items(session, source: str, target: str) -> tuple[int, int]:
     """
     uids = []
     for item_id in (source, target):
-        rows = odata(session, "inv_mast",
-                     f"item_id eq {odata_quote(item_id)} and delete_flag eq 'N'",
-                     "inv_mast_uid,item_id")
+        rows = odata(
+            session,
+            "inv_mast",
+            f"item_id eq {odata_quote(item_id)} and delete_flag eq 'N'",
+            "inv_mast_uid,item_id",
+        )
         # Exact match only: the merge fields also resolve alternate codes.
         rows = [r for r in rows if r["item_id"] == item_id]
         if not rows:
@@ -130,9 +150,12 @@ def resolve_customers(session, source: str, target: str) -> None:
     if source == target:
         raise SystemExit("Source and target are the same customer")
     for customer_id in (source, target):
-        rows = odata(session, "customer",
-                     f"customer_id eq {customer_id} and delete_flag eq 'N'",
-                     "customer_id,customer_name")
+        rows = odata(
+            session,
+            "customer",
+            f"customer_id eq {customer_id} and delete_flag eq 'N'",
+            "customer_id,customer_name",
+        )
         if not rows:
             raise SystemExit(f"{customer_id} is not a live customer -- not posting")
 
@@ -140,24 +163,31 @@ def resolve_customers(session, source: str, target: str) -> None:
 def main() -> None:
     """Entry point: dry run prints the payload; --execute guards, merges, reads back."""
     parser = argparse.ArgumentParser(
-        description="Merge an item or a customer (one-way; test tenant first)")
+        description="Merge an item or a customer (one-way; test tenant first)"
+    )
     parser.add_argument("mode", choices=["item", "customer"])
     parser.add_argument("source", help="ID merged away (soft-deleted)")
     parser.add_argument("target", help="ID that survives")
     parser.add_argument("--company", default=COMPANY_ID)
     parser.add_argument("--create-alt-code", choices=["ON", "OFF"], default="ON")
-    parser.add_argument("--credit-limit-type", choices=CREDIT_LIMIT_TYPES,
-                        default=CREDIT_LIMIT_TYPES[0])
+    parser.add_argument(
+        "--credit-limit-type", choices=CREDIT_LIMIT_TYPES, default=CREDIT_LIMIT_TYPES[0]
+    )
     parser.add_argument("--keep-cust-as-shipto", choices=["ON", "OFF"], default="ON")
-    parser.add_argument("--execute", action="store_true",
-                        help="Actually POST the merge (default: dry run)")
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Actually POST the merge (default: dry run)",
+    )
     args = parser.parse_args()
 
     print(f"Recipe - {args.mode.title()} merge: {args.source} INTO {args.target}")
     print("=" * 60)
     payload = build_payload(args)
     if not args.execute:
-        print("\nDRY RUN - payload that would be POSTed to {ui_server}/api/v2/transaction:")
+        print(
+            "\nDRY RUN - payload that would be POSTed to {ui_server}/api/v2/transaction:"
+        )
         print(json.dumps(payload, indent=2))
         print("\nRe-run with --execute to POST it. A merge cannot be undone.")
         return
@@ -169,18 +199,35 @@ def main() -> None:
         source_uid, target_uid = resolve_items(session, args.source, args.target)
         post_transaction(session, payload)
         checks = [
-            ("source inv_mast", "inv_mast", f"inv_mast_uid eq {source_uid}",
-             "item_id,delete_flag,item_desc,extended_desc"),
-            ("target inv_mast", "inv_mast", f"inv_mast_uid eq {target_uid}",
-             "item_id,delete_flag"),
-            ("item_merge_audit", "item_merge_audit", f"source_inv_mast_uid eq {source_uid}",
-             "item_merge_run,source_item_id,target_item_id,processed_flag,message"),
+            (
+                "source inv_mast",
+                "inv_mast",
+                f"inv_mast_uid eq {source_uid}",
+                "item_id,delete_flag,item_desc,extended_desc",
+            ),
+            (
+                "target inv_mast",
+                "inv_mast",
+                f"inv_mast_uid eq {target_uid}",
+                "item_id,delete_flag",
+            ),
+            (
+                "item_merge_audit",
+                "item_merge_audit",
+                f"source_inv_mast_uid eq {source_uid}",
+                "item_merge_run,source_item_id,target_item_id,processed_flag,message",
+            ),
         ]
         if args.create_alt_code == "ON":
-            checks.append(("alternate_code on target", "alternate_code",
-                           f"inv_mast_uid eq {target_uid} and "
-                           f"alternate_code eq {odata_quote(args.source)}",
-                           "alternate_code,delete_flag"))
+            checks.append(
+                (
+                    "alternate_code on target",
+                    "alternate_code",
+                    f"inv_mast_uid eq {target_uid} and "
+                    f"alternate_code eq {odata_quote(args.source)}",
+                    "alternate_code,delete_flag",
+                )
+            )
         print("\nVerify (OData read-back):")
         for label, table, filter_expr, select in checks:
             print(f"  {label}: {odata(session, table, filter_expr, select)}")
@@ -189,17 +236,29 @@ def main() -> None:
     resolve_customers(session, args.source, args.target)
     post_transaction(session, payload)
     print("  (A successful customer merge reports Failed: 1 -- the read-back decides.)")
-    audit = odata(session, "customer_merge_audit",
-                  f"source_customer_id eq {args.source} and target_customer_id eq {args.target}",
-                  "customer_merge_run,processed_flag,merge_message,keep_custas_shipto_flag")
-    source = odata(session, "customer", f"customer_id eq {args.source}",
-                   "customer_id,customer_name,delete_flag")
+    audit = odata(
+        session,
+        "customer_merge_audit",
+        f"source_customer_id eq {args.source} and target_customer_id eq {args.target}",
+        "customer_merge_run,processed_flag,merge_message,keep_custas_shipto_flag",
+    )
+    source = odata(
+        session,
+        "customer",
+        f"customer_id eq {args.source}",
+        "customer_id,customer_name,delete_flag",
+    )
     print("\nVerify (OData read-back):")
     print(f"  customer_merge_audit: {audit}")
     print(f"  source customer: {source}")
-    merged = (any((row.get("merge_message") or "").startswith("Merge was Successful")
-                  for row in audit)
-              and bool(source) and source[0]["delete_flag"] == "Y")
+    merged = (
+        any(
+            (row.get("merge_message") or "").startswith("Merge was Successful")
+            for row in audit
+        )
+        and bool(source)
+        and source[0]["delete_flag"] == "Y"
+    )
     print(f"\nMerge committed: {'YES' if merged else 'NO'}")
 
 

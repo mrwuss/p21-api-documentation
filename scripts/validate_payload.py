@@ -32,9 +32,17 @@ DEFAULT_DEFINITIONS = REPO_ROOT / "definitions"
 V2_NS = "http://schemas.datacontract.org/2004/07/P21.Transactions.Model.V2"
 ARRAYS_NS = "http://schemas.microsoft.com/2003/10/Serialization/Arrays"
 
-KNOWN_ROOT_KEYS = {"Name", "UseCodeValues", "IgnoreDisabled", "Transactions",
-                   "Query", "FieldMap", "TransactionSplitMethod", "Parameters",
-                   "Description"}
+KNOWN_ROOT_KEYS = {
+    "Name",
+    "UseCodeValues",
+    "IgnoreDisabled",
+    "Transactions",
+    "Query",
+    "FieldMap",
+    "TransactionSplitMethod",
+    "Parameters",
+    "Description",
+}
 KNOWN_TXN_KEYS = {"Status", "DataElements", "Documents"}
 KNOWN_ELEMENT_KEYS = {"Name", "Type", "Keys", "Rows", "BusinessObjectName"}
 KNOWN_ROW_KEYS = {"Edits", "RelativeDateEdits"}
@@ -43,9 +51,17 @@ KNOWN_EDIT_KEYS = {"Name", "Value", "IgnoreIfEmpty"}
 # DataContract (alphabetical) child order per complex type -- XML bodies must
 # follow it; out-of-order elements are dropped by the deserializer.
 XML_ORDER = {
-    "TransactionSet": ["Description", "FieldMap", "IgnoreDisabled", "Name",
-                       "Parameters", "Query", "TransactionSplitMethod",
-                       "Transactions", "UseCodeValues"],
+    "TransactionSet": [
+        "Description",
+        "FieldMap",
+        "IgnoreDisabled",
+        "Name",
+        "Parameters",
+        "Query",
+        "TransactionSplitMethod",
+        "Transactions",
+        "UseCodeValues",
+    ],
     "Transaction": ["DataElements", "Documents", "Status"],
     "DataElement": ["BusinessObjectName", "Keys", "Name", "Rows", "Type"],
     "Row": ["Edits", "RelativeDateEdits"],
@@ -54,9 +70,14 @@ XML_ORDER = {
 
 # Verified field-order rules: (service, element-suffix, must-precede pairs)
 FIELD_ORDER_RULES = [
-    ("JobContractPricing", "jobpriceline", "pricing_method", "price",
-     "changing pricing_method clears the typed price -- a line sent price-first "
-     "lands at $0 while still reporting Succeeded"),
+    (
+        "JobContractPricing",
+        "jobpriceline",
+        "pricing_method",
+        "price",
+        "changing pricing_method clears the typed price -- a line sent price-first "
+        "lands at $0 while still reporting Succeeded",
+    ),
 ]
 
 
@@ -80,8 +101,10 @@ class Report:
     def dump(self) -> int:
         for line in self.errors + self.warnings + self.notes:
             print(line)
-        print(f"\n{len(self.errors)} error(s), {len(self.warnings)} warning(s), "
-              f"{len(self.notes)} note(s)")
+        print(
+            f"\n{len(self.errors)} error(s), {len(self.warnings)} warning(s), "
+            f"{len(self.notes)} note(s)"
+        )
         return 1 if self.errors else 0
 
 
@@ -91,8 +114,11 @@ def load_definition(name: str, definitions_dir: Path, rpt: Report) -> dict | Non
         return None
     path = definitions_dir / f"{name}.json"
     if not path.exists():
-        rpt.note("Name", f"no schema at {path} -- element/field names not checked "
-                         f"(fetch with scripts/fetch_definitions.py --services {name})")
+        rpt.note(
+            "Name",
+            f"no schema at {path} -- element/field names not checked "
+            f"(fetch with scripts/fetch_definitions.py --services {name})",
+        )
         return None
     try:
         return json.loads(path.read_text(encoding="utf-8"))
@@ -106,7 +132,8 @@ def element_map(definition: dict | None) -> dict[str, dict]:
     if not definition:
         return {}
     elements = (definition.get("TransactionDefinition") or {}).get(
-        "DataElementDefinitions") or []
+        "DataElementDefinitions"
+    ) or []
     return {e.get("Name"): e for e in elements if e.get("Name")}
 
 
@@ -121,11 +148,17 @@ def expect_list(value, path: str, what: str, rpt: Report) -> bool:
     if isinstance(value, list):
         return True
     if isinstance(value, str):
-        rpt.error(path, f"{what} must be an ARRAY, got a string -- "
-                        f'write ["{value}"] instead of "{value}"')
+        rpt.error(
+            path,
+            f"{what} must be an ARRAY, got a string -- "
+            f'write ["{value}"] instead of "{value}"',
+        )
     elif isinstance(value, dict):
-        rpt.error(path, f"{what} must be an ARRAY of objects, got a single "
-                        f"object -- wrap it in [ ... ]")
+        rpt.error(
+            path,
+            f"{what} must be an ARRAY of objects, got a single "
+            f"object -- wrap it in [ ... ]",
+        )
     else:
         rpt.error(path, f"{what} must be an array, got {type(value).__name__}")
     return False
@@ -136,8 +169,11 @@ def expect_bool(value, path: str, what: str, rpt: Report) -> None:
     if isinstance(value, bool) or value is None:
         return
     if isinstance(value, str):
-        rpt.error(path, f'{what} must be a JSON boolean (true/false), got the '
-                        f'STRING "{value}" -- remove the quotes')
+        rpt.error(
+            path,
+            f"{what} must be a JSON boolean (true/false), got the "
+            f'STRING "{value}" -- remove the quotes',
+        )
     else:
         rpt.warn(path, f"{what} should be a boolean, got {type(value).__name__}")
 
@@ -145,9 +181,12 @@ def expect_bool(value, path: str, what: str, rpt: Report) -> None:
 def check_edit(edit, path: str, fields: dict[str, dict], rpt: Report) -> str | None:
     """Validate one Edit object; returns the field name if identifiable."""
     if not isinstance(edit, dict):
-        rpt.error(path, f'each Edit must be an object like '
-                        f'{{"Name": "field", "Value": "..."}}, got '
-                        f"{type(edit).__name__}")
+        rpt.error(
+            path,
+            f"each Edit must be an object like "
+            f'{{"Name": "field", "Value": "..."}}, got '
+            f"{type(edit).__name__}",
+        )
         return None
     name = edit.get("Name")
     if not isinstance(name, str) or not name:
@@ -158,43 +197,58 @@ def check_edit(edit, path: str, fields: dict[str, dict], rpt: Report) -> str | N
     else:
         value = edit["Value"]
         if value is not None and not isinstance(value, str):
-            rpt.warn(path, f"Value is a {type(value).__name__} "
-                           f"({value!r}) -- every verified example sends Values "
-                           f'as STRINGS (e.g. "{value}"); numbers/booleans are '
-                           f"not a documented, tested form")
+            rpt.warn(
+                path,
+                f"Value is a {type(value).__name__} "
+                f"({value!r}) -- every verified example sends Values "
+                f'as STRINGS (e.g. "{value}"); numbers/booleans are '
+                f"not a documented, tested form",
+            )
     for key in edit:
         if key not in KNOWN_EDIT_KEYS:
-            rpt.warn(f"{path}.{key}", f"unknown Edit property"
-                                      f"{suggest(key, sorted(KNOWN_EDIT_KEYS))}")
+            rpt.warn(
+                f"{path}.{key}",
+                f"unknown Edit property{suggest(key, sorted(KNOWN_EDIT_KEYS))}",
+            )
     if name and fields and name not in fields:
-        rpt.warn(path, f'field "{name}" is not in the schema for this element'
-                       f"{suggest(name, list(fields))} -- note: committed "
-                       f"definitions omit environment-specific ufc_* fields")
+        rpt.warn(
+            path,
+            f'field "{name}" is not in the schema for this element'
+            f"{suggest(name, list(fields))} -- note: committed "
+            f"definitions omit environment-specific ufc_* fields",
+        )
     return name
 
 
-def check_field_order(service: str, element_name: str, edit_names: list[str],
-                      path: str, rpt: Report) -> None:
+def check_field_order(
+    service: str, element_name: str, edit_names: list[str], path: str, rpt: Report
+) -> None:
     """Apply verified must-precede field-order rules."""
     for svc, elem_suffix, first, second, why in FIELD_ORDER_RULES:
         if service == svc and element_name.lower().endswith(elem_suffix):
             if first in edit_names and second in edit_names:
                 if edit_names.index(first) > edit_names.index(second):
-                    rpt.error(path, f'"{first}" must come BEFORE "{second}" '
-                                    f"in the Edits: {why}")
+                    rpt.error(
+                        path,
+                        f'"{first}" must come BEFORE "{second}" in the Edits: {why}',
+                    )
 
 
-def check_data_element(element, path: str, service: str,
-                       elements: dict[str, dict], rpt: Report) -> None:
+def check_data_element(
+    element, path: str, service: str, elements: dict[str, dict], rpt: Report
+) -> None:
     """Validate one DataElement."""
     if not isinstance(element, dict):
-        rpt.error(path, f"each DataElement must be an object, got "
-                        f"{type(element).__name__}")
+        rpt.error(
+            path, f"each DataElement must be an object, got {type(element).__name__}"
+        )
         return
     if "IgnoreDisabled" in element:
-        rpt.error(f"{path}.IgnoreDisabled",
-                  "IgnoreDisabled belongs at the PAYLOAD TOP LEVEL (next to "
-                  "Name/Transactions); anywhere else it is silently ignored")
+        rpt.error(
+            f"{path}.IgnoreDisabled",
+            "IgnoreDisabled belongs at the PAYLOAD TOP LEVEL (next to "
+            "Name/Transactions); anywhere else it is silently ignored",
+        )
     name = element.get("Name")
     fields: dict[str, dict] = {}
     if not isinstance(name, str) or not name:
@@ -202,30 +256,47 @@ def check_data_element(element, path: str, service: str,
         name = ""
     elif elements:
         if name not in elements:
-            rpt.error(f"{path}.Name", f'unknown DataElement "{name}" for service '
-                                      f'"{service}"{suggest(name, list(elements))}')
+            rpt.error(
+                f"{path}.Name",
+                f'unknown DataElement "{name}" for service '
+                f'"{service}"{suggest(name, list(elements))}',
+            )
         else:
             defn = elements[name]
-            fields = {f.get("Name"): f for f in defn.get("FieldDefinitions") or []
-                      if f.get("Name")}
+            fields = {
+                f.get("Name"): f
+                for f in defn.get("FieldDefinitions") or []
+                if f.get("Name")
+            }
             expected_type = defn.get("Type")
             actual_type = element.get("Type")
-            if (isinstance(actual_type, str) and isinstance(expected_type, str)
-                    and expected_type in ("Form", "List")
-                    and actual_type != expected_type):
-                rpt.warn(f"{path}.Type", f'schema says this element is '
-                                         f'"{expected_type}", payload says '
-                                         f'"{actual_type}"')
+            if (
+                isinstance(actual_type, str)
+                and isinstance(expected_type, str)
+                and expected_type in ("Form", "List")
+                and actual_type != expected_type
+            ):
+                rpt.warn(
+                    f"{path}.Type",
+                    f"schema says this element is "
+                    f'"{expected_type}", payload says '
+                    f'"{actual_type}"',
+                )
 
     keys = element.get("Keys")
     if keys is not None and expect_list(keys, f"{path}.Keys", "Keys", rpt):
         for i, key in enumerate(keys):
             if not isinstance(key, str):
-                rpt.error(f"{path}.Keys[{i}]", f"key names must be strings, got "
-                                               f"{type(key).__name__}")
+                rpt.error(
+                    f"{path}.Keys[{i}]",
+                    f"key names must be strings, got {type(key).__name__}",
+                )
             elif fields and key not in fields:
-                rpt.warn(f"{path}.Keys[{i}]", f'key "{key}" is not a field of '
-                                              f"this element{suggest(key, list(fields))}")
+                rpt.warn(
+                    f"{path}.Keys[{i}]",
+                    f'key "{key}" is not a field of '
+                    f"this element{suggest(key, list(fields))}",
+                )
 
     rows = element.get("Rows")
     if rows is None:
@@ -234,8 +305,11 @@ def check_data_element(element, path: str, service: str,
         for r_i, row in enumerate(rows):
             r_path = f"{path}.Rows[{r_i}]"
             if not isinstance(row, dict):
-                rpt.error(r_path, f'each Row must be an object like '
-                                  f'{{"Edits": [...]}}, got {type(row).__name__}')
+                rpt.error(
+                    r_path,
+                    f"each Row must be an object like "
+                    f'{{"Edits": [...]}}, got {type(row).__name__}',
+                )
                 continue
             edits = row.get("Edits")
             if edits is None:
@@ -250,53 +324,66 @@ def check_data_element(element, path: str, service: str,
                 check_field_order(service, name, edit_names, f"{r_path}.Edits", rpt)
             rde = row.get("RelativeDateEdits")
             if rde is not None:
-                expect_list(rde, f"{r_path}.RelativeDateEdits",
-                            "RelativeDateEdits", rpt)
+                expect_list(
+                    rde, f"{r_path}.RelativeDateEdits", "RelativeDateEdits", rpt
+                )
 
     for key in element:
         if key not in KNOWN_ELEMENT_KEYS | {"IgnoreDisabled"}:
-            rpt.warn(f"{path}.{key}", f"unknown DataElement property"
-                                      f"{suggest(key, sorted(KNOWN_ELEMENT_KEYS))}")
+            rpt.warn(
+                f"{path}.{key}",
+                f"unknown DataElement property"
+                f"{suggest(key, sorted(KNOWN_ELEMENT_KEYS))}",
+            )
 
 
-def check_transaction(txn, path: str, service: str, elements: dict[str, dict],
-                      rpt: Report) -> None:
+def check_transaction(
+    txn, path: str, service: str, elements: dict[str, dict], rpt: Report
+) -> None:
     """Validate one Transaction."""
     if not isinstance(txn, dict):
-        rpt.error(path, f"each Transaction must be an object, got "
-                        f"{type(txn).__name__}")
+        rpt.error(path, f"each Transaction must be an object, got {type(txn).__name__}")
         return
     if "IgnoreDisabled" in txn:
-        rpt.error(f"{path}.IgnoreDisabled",
-                  "IgnoreDisabled belongs at the PAYLOAD TOP LEVEL (next to "
-                  "Name/Transactions); inside a Transaction it is SILENTLY "
-                  "ignored and disabled-column errors persist")
+        rpt.error(
+            f"{path}.IgnoreDisabled",
+            "IgnoreDisabled belongs at the PAYLOAD TOP LEVEL (next to "
+            "Name/Transactions); inside a Transaction it is SILENTLY "
+            "ignored and disabled-column errors persist",
+        )
     status = txn.get("Status")
     if status is None:
         rpt.warn(path, 'Transaction has no "Status" -- record edits use "New"')
     elif isinstance(status, str):
         if status.lower() != "new":
-            rpt.error(f"{path}.Status",
-                      f'"{status}" is not a TransactionStatus member -- HTTP 400 '
-                      f"on 26.1.5940.0 and later, HTTP 500 before. \"New\" is "
-                      f"the only value, for create AND update (keyed rows "
-                      f"upsert) and for report payloads alike")
+            rpt.error(
+                f"{path}.Status",
+                f'"{status}" is not a TransactionStatus member -- HTTP 400 '
+                f'on 26.1.5940.0 and later, HTTP 500 before. "New" is '
+                f"the only value, for create AND update (keyed rows "
+                f"upsert) and for report payloads alike",
+            )
     elif isinstance(status, int):
-        rpt.warn(f"{path}.Status",
-                 'integer Status binds silently (any integer is accepted, '
-                 'never range-checked) -- send the string "New", on '
-                 "/api/v2/transaction and /api/v2/process/pdfreport alike")
+        rpt.warn(
+            f"{path}.Status",
+            "integer Status binds silently (any integer is accepted, "
+            'never range-checked) -- send the string "New", on '
+            "/api/v2/transaction and /api/v2/process/pdfreport alike",
+        )
     data_elements = txn.get("DataElements")
     if data_elements is None:
         rpt.error(path, 'Transaction has no "DataElements"')
     elif expect_list(data_elements, f"{path}.DataElements", "DataElements", rpt):
         for i, element in enumerate(data_elements):
-            check_data_element(element, f"{path}.DataElements[{i}]",
-                               service, elements, rpt)
+            check_data_element(
+                element, f"{path}.DataElements[{i}]", service, elements, rpt
+            )
     for key in txn:
         if key not in KNOWN_TXN_KEYS | {"IgnoreDisabled"}:
-            rpt.warn(f"{path}.{key}", f"unknown Transaction property"
-                                      f"{suggest(key, sorted(KNOWN_TXN_KEYS))}")
+            rpt.warn(
+                f"{path}.{key}",
+                f"unknown Transaction property{suggest(key, sorted(KNOWN_TXN_KEYS))}",
+            )
 
 
 def validate_get_request(payload: dict, definitions_dir: Path, rpt: Report) -> None:
@@ -315,23 +402,29 @@ def validate_get_request(payload: dict, definitions_dir: Path, rpt: Report) -> N
     for i, state in enumerate(states):
         path = f"$.TransactionStates[{i}]"
         if not isinstance(state, dict):
-            rpt.error(path, f"each TransactionState must be an object, got "
-                            f"{type(state).__name__}")
+            rpt.error(
+                path,
+                f"each TransactionState must be an object, got {type(state).__name__}",
+            )
             continue
         name = state.get("DataElementName")
         if not isinstance(name, str) or not name:
             rpt.error(path, 'missing "DataElementName"')
         elif elements and name not in elements:
-            rpt.error(f"{path}.DataElementName",
-                      f'unknown DataElement "{name}"{suggest(name, list(elements))}')
+            rpt.error(
+                f"{path}.DataElementName",
+                f'unknown DataElement "{name}"{suggest(name, list(elements))}',
+            )
         keys = state.get("Keys")
         if keys is not None and expect_list(keys, f"{path}.Keys", "Keys", rpt):
             for k_i, key in enumerate(keys):
                 if not (isinstance(key, dict) and "Name" in key and "Value" in key):
-                    rpt.error(f"{path}.Keys[{k_i}]",
-                              'get-request keys are objects: '
-                              '{"Name": "field", "Value": "..."} '
-                              '(unlike TransactionSet Keys, which are strings)')
+                    rpt.error(
+                        f"{path}.Keys[{k_i}]",
+                        "get-request keys are objects: "
+                        '{"Name": "field", "Value": "..."} '
+                        "(unlike TransactionSet Keys, which are strings)",
+                    )
     rpt.note("$", "transaction/get request — POST to /api/v2/transaction/get")
 
 
@@ -345,8 +438,12 @@ def looks_like_rest_family_payload(payload: dict) -> bool:
     this validator can only confirm the shape is sane, not that a given
     field name is real.
     """
-    return ("Name" not in payload and "Transactions" not in payload
-            and "ServiceName" not in payload and "TransactionStates" not in payload)
+    return (
+        "Name" not in payload
+        and "Transactions" not in payload
+        and "ServiceName" not in payload
+        and "TransactionStates" not in payload
+    )
 
 
 def validate_rest_family_payload(payload: dict, rpt: Report) -> None:
@@ -361,25 +458,30 @@ def validate_rest_family_payload(payload: dict, rpt: Report) -> None:
     family's own GET /new template or GET /{key} response -- see
     docs/15-Other-REST-Families.md.
     """
-    rpt.note("$", "no Name/Transactions or ServiceName/TransactionStates -- "
-                  "treating this as a REST-family object payload (docs/15), "
-                  "not a Transaction API payload. Field names are not "
-                  "checked: there is no committed schema for these "
-                  "families. Verify against the family's own GET /new "
-                  "template before relying on this shape.")
+    rpt.note(
+        "$",
+        "no Name/Transactions or ServiceName/TransactionStates -- "
+        "treating this as a REST-family object payload (docs/15), "
+        "not a Transaction API payload. Field names are not "
+        "checked: there is no committed schema for these "
+        "families. Verify against the family's own GET /new "
+        "template before relying on this shape.",
+    )
     for key, value in payload.items():
         if isinstance(value, list):
-            rpt.warn(f"$.{key}", "REST-family payloads documented so far are "
-                                 "flat objects -- a top-level array is "
-                                 "unusual for this shape. Confirm against "
-                                 "the family's own GET /new template.")
+            rpt.warn(
+                f"$.{key}",
+                "REST-family payloads documented so far are "
+                "flat objects -- a top-level array is "
+                "unusual for this shape. Confirm against "
+                "the family's own GET /new template.",
+            )
 
 
 def validate_payload_dict(payload: dict, definitions_dir: Path, rpt: Report) -> None:
     """Validate a parsed TransactionSet payload."""
     if not isinstance(payload, dict):
-        rpt.error("$", f"payload root must be an object, got "
-                       f"{type(payload).__name__}")
+        rpt.error("$", f"payload root must be an object, got {type(payload).__name__}")
         return
     if "ServiceName" in payload or "TransactionStates" in payload:
         validate_get_request(payload, definitions_dir, rpt)
@@ -395,7 +497,9 @@ def validate_payload_dict(payload: dict, definitions_dir: Path, rpt: Report) -> 
     elements = element_map(definition)
 
     expect_bool(payload.get("UseCodeValues"), "$.UseCodeValues", "UseCodeValues", rpt)
-    expect_bool(payload.get("IgnoreDisabled"), "$.IgnoreDisabled", "IgnoreDisabled", rpt)
+    expect_bool(
+        payload.get("IgnoreDisabled"), "$.IgnoreDisabled", "IgnoreDisabled", rpt
+    )
 
     transactions = payload.get("Transactions")
     if transactions is None:
@@ -406,9 +510,12 @@ def validate_payload_dict(payload: dict, definitions_dir: Path, rpt: Report) -> 
 
     for key in payload:
         if key not in KNOWN_ROOT_KEYS:
-            rpt.warn(f"$.{key}", f"unknown top-level property"
-                                 f"{suggest(key, sorted(KNOWN_ROOT_KEYS))} -- "
-                                 f"property names are case-sensitive")
+            rpt.warn(
+                f"$.{key}",
+                f"unknown top-level property"
+                f"{suggest(key, sorted(KNOWN_ROOT_KEYS))} -- "
+                f"property names are case-sensitive",
+            )
 
 
 def _local(tag: str) -> str:
@@ -424,18 +531,22 @@ def _check_xml_order(node: ET.Element, type_name: str, path: str, rpt: Report) -
     for child in node:
         name = _local(child.tag)
         if name not in order:
-            rpt.warn(f"{path}/{name}", f"unexpected element in <{type_name}>"
-                                       f"{suggest(name, order)}")
+            rpt.warn(
+                f"{path}/{name}",
+                f"unexpected element in <{type_name}>{suggest(name, order)}",
+            )
             continue
         index = order.index(name)
         if index < last_index:
-            rpt.error(f"{path}/{name}",
-                      f"out of order in <{type_name}> -- DataContract XML "
-                      f"requires ALPHABETICAL element order "
-                      f"({' < '.join(order)}). Out-of-order elements are "
-                      f"dropped by the deserializer (top-level: HTTP 500; "
-                      f"inside an Edit: silent drop, then a NullReference "
-                      f"transaction failure)")
+            rpt.error(
+                f"{path}/{name}",
+                f"out of order in <{type_name}> -- DataContract XML "
+                f"requires ALPHABETICAL element order "
+                f"({' < '.join(order)}). Out-of-order elements are "
+                f"dropped by the deserializer (top-level: HTTP 500; "
+                f"inside an Edit: silent drop, then a NullReference "
+                f"transaction failure)",
+            )
         last_index = max(last_index, index)
 
 
@@ -452,6 +563,7 @@ def xml_to_payload(root: ET.Element, rpt: Report, has_ns: bool) -> dict:
     Traversal matches on local names so that documents missing the namespace
     (already flagged as an error) still get the full set of findings.
     """
+
     def text_of(node, name):
         for child in node:
             if _local(child.tag) == name:
@@ -475,16 +587,22 @@ def xml_to_payload(root: ET.Element, rpt: Report, has_ns: bool) -> dict:
         for d_i, de_node in enumerate(_iter_local(txn_node, "DataElement")):
             de_path = f"/Transactions[{t_i}]/DataElements[{d_i}]"
             _check_xml_order(de_node, "DataElement", de_path, rpt)
-            element: dict = {"Name": text_of(de_node, "Name"),
-                             "Type": text_of(de_node, "Type"), "Keys": [], "Rows": []}
+            element: dict = {
+                "Name": text_of(de_node, "Name"),
+                "Type": text_of(de_node, "Type"),
+                "Keys": [],
+                "Rows": [],
+            }
             keys_node = next((c for c in de_node if _local(c.tag) == "Keys"), None)
             if keys_node is not None:
                 for key_child in keys_node:
                     if has_ns and key_child.tag != f"{{{ARRAYS_NS}}}string":
-                        rpt.error(f"{de_path}/Keys",
-                                  f"Keys items must be <string> in the arrays "
-                                  f'namespace ({ARRAYS_NS}), got '
-                                  f"<{_local(key_child.tag)}>")
+                        rpt.error(
+                            f"{de_path}/Keys",
+                            f"Keys items must be <string> in the arrays "
+                            f"namespace ({ARRAYS_NS}), got "
+                            f"<{_local(key_child.tag)}>",
+                        )
                     element["Keys"].append(key_child.text or "")
             for r_i, row_node in enumerate(_iter_local(de_node, "Row")):
                 r_path = f"{de_path}/Rows[{r_i}]"
@@ -492,8 +610,12 @@ def xml_to_payload(root: ET.Element, rpt: Report, has_ns: bool) -> dict:
                 row: dict = {"Edits": []}
                 for e_i, edit_node in enumerate(_iter_local(row_node, "Edit")):
                     _check_xml_order(edit_node, "Edit", f"{r_path}/Edits[{e_i}]", rpt)
-                    row["Edits"].append({"Name": text_of(edit_node, "Name"),
-                                         "Value": text_of(edit_node, "Value")})
+                    row["Edits"].append(
+                        {
+                            "Name": text_of(edit_node, "Name"),
+                            "Value": text_of(edit_node, "Value"),
+                        }
+                    )
                 element["Rows"].append(row)
             txn["DataElements"].append(element)
         payload["Transactions"].append(txn)
@@ -510,16 +632,25 @@ def validate_xml(text: str, definitions_dir: Path, rpt: Report) -> None:
     local = _local(root.tag)
     ns = root.tag[1:].rsplit("}", 1)[0] if root.tag.startswith("{") else ""
     if local == "TransactionStateRequest":
-        rpt.note("/", "transaction/get request detected -- structural checks "
-                      "only apply to <TransactionSet> bodies")
+        rpt.note(
+            "/",
+            "transaction/get request detected -- structural checks "
+            "only apply to <TransactionSet> bodies",
+        )
     elif local != "TransactionSet":
-        rpt.error("/", f"root must be <TransactionSet> (or "
-                       f"<TransactionStateRequest> for /transaction/get), got "
-                       f"<{local}>")
+        rpt.error(
+            "/",
+            f"root must be <TransactionSet> (or "
+            f"<TransactionStateRequest> for /transaction/get), got "
+            f"<{local}>",
+        )
     if ns != V2_NS:
-        rpt.error("/", f'root is missing the DataContract namespace -- without '
-                       f'xmlns="{V2_NS}" the body deserializes to null and the '
-                       f'server returns 400 "The content field is required."')
+        rpt.error(
+            "/",
+            f"root is missing the DataContract namespace -- without "
+            f'xmlns="{V2_NS}" the body deserializes to null and the '
+            f'server returns 400 "The content field is required."',
+        )
     if local == "TransactionSet":
         payload = xml_to_payload(root, rpt, has_ns=(ns == V2_NS))
         validate_payload_dict(payload, definitions_dir, rpt)
@@ -527,36 +658,79 @@ def validate_xml(text: str, definitions_dir: Path, rpt: Report) -> None:
 
 def self_test() -> int:
     """Run the validator against built-in good/bad payloads."""
-    good = {"Name": "JobContractPricing", "UseCodeValues": False,
-            "Transactions": [{"Status": "New", "DataElements": [
-                {"Name": "FORM.d_dw_job_price_hdr", "Type": "Form", "Keys": [],
-                 "Rows": [{"Edits": [
-                     {"Name": "contract_no", "Value": "JOB-1001"},
-                     {"Name": "end_date", "Value": "2030-01-01"}]}]},
-                {"Name": "JOBPRICELINE.jobpriceline", "Type": "List",
-                 "Keys": ["item_id"],
-                 "Rows": [{"Edits": [
-                     {"Name": "item_id", "Value": "WIDGET-001"},
-                     {"Name": "pricing_method", "Value": "Price"},
-                     {"Name": "price", "Value": "36.58"}]}]}]}]}
-    bad = {"Name": "JobContractPricing", "UseCodeValues": "false",
-           "Transactions": [{
-               "Status": "Existing",
-               "IgnoreDisabled": True,
-               "DataElements": [
-                   {"Name": "JOBPRICELINE.jobpriceline", "Type": "List",
-                    "Keys": "item_id",
-                    "Rows": [{"Edits": [
-                        {"Name": "item_id", "Value": "WIDGET-001"},
-                        {"Name": "price", "Value": 36.58},
-                        {"Name": "pricing_method", "Value": "Price"}]}]}]}]}
+    good = {
+        "Name": "JobContractPricing",
+        "UseCodeValues": False,
+        "Transactions": [
+            {
+                "Status": "New",
+                "DataElements": [
+                    {
+                        "Name": "FORM.d_dw_job_price_hdr",
+                        "Type": "Form",
+                        "Keys": [],
+                        "Rows": [
+                            {
+                                "Edits": [
+                                    {"Name": "contract_no", "Value": "JOB-1001"},
+                                    {"Name": "end_date", "Value": "2030-01-01"},
+                                ]
+                            }
+                        ],
+                    },
+                    {
+                        "Name": "JOBPRICELINE.jobpriceline",
+                        "Type": "List",
+                        "Keys": ["item_id"],
+                        "Rows": [
+                            {
+                                "Edits": [
+                                    {"Name": "item_id", "Value": "WIDGET-001"},
+                                    {"Name": "pricing_method", "Value": "Price"},
+                                    {"Name": "price", "Value": "36.58"},
+                                ]
+                            }
+                        ],
+                    },
+                ],
+            }
+        ],
+    }
+    bad = {
+        "Name": "JobContractPricing",
+        "UseCodeValues": "false",
+        "Transactions": [
+            {
+                "Status": "Existing",
+                "IgnoreDisabled": True,
+                "DataElements": [
+                    {
+                        "Name": "JOBPRICELINE.jobpriceline",
+                        "Type": "List",
+                        "Keys": "item_id",
+                        "Rows": [
+                            {
+                                "Edits": [
+                                    {"Name": "item_id", "Value": "WIDGET-001"},
+                                    {"Name": "price", "Value": 36.58},
+                                    {"Name": "pricing_method", "Value": "Price"},
+                                ]
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
     print("--- self-test: GOOD payload (expect 0 errors) ---")
     rpt = Report()
     validate_payload_dict(good, DEFAULT_DEFINITIONS, rpt)
     good_rc = rpt.dump()
-    print("\n--- self-test: BAD payload (expect errors: string UseCodeValues, "
-          "Existing status, misplaced IgnoreDisabled, Keys string, "
-          "field order) ---")
+    print(
+        "\n--- self-test: BAD payload (expect errors: string UseCodeValues, "
+        "Existing status, misplaced IgnoreDisabled, Keys string, "
+        "field order) ---"
+    )
     rpt = Report()
     validate_payload_dict(bad, DEFAULT_DEFINITIONS, rpt)
     bad_rc = rpt.dump()
@@ -568,10 +742,16 @@ def self_test() -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("payload", nargs="?", help="Payload file (.json or .xml)")
-    parser.add_argument("--definitions", default=str(DEFAULT_DEFINITIONS),
-                        help="Directory of definition JSONs (default: definitions/)")
-    parser.add_argument("--self-test", action="store_true",
-                        help="Validate built-in good/bad payloads and exit")
+    parser.add_argument(
+        "--definitions",
+        default=str(DEFAULT_DEFINITIONS),
+        help="Directory of definition JSONs (default: definitions/)",
+    )
+    parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="Validate built-in good/bad payloads and exit",
+    )
     args = parser.parse_args()
 
     if args.self_test:
@@ -594,8 +774,10 @@ def main() -> int:
         try:
             payload = json.loads(text)
         except json.JSONDecodeError as exc:
-            rpt.error("$", f"JSON parse error at line {exc.lineno}, column "
-                           f"{exc.colno}: {exc.msg}")
+            rpt.error(
+                "$",
+                f"JSON parse error at line {exc.lineno}, column {exc.colno}: {exc.msg}",
+            )
             return rpt.dump()
         validate_payload_dict(payload, definitions_dir, rpt)
     return rpt.dump()

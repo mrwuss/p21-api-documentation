@@ -22,6 +22,7 @@ from common.auth import get_token, get_auth_headers
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -29,7 +30,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Cross-entity part lookup (docs/15 inventory/partscan)"
     )
-    parser.add_argument("part_search", help="Scan term, item id, or customer/supplier part number")
+    parser.add_argument(
+        "part_search", help="Scan term, item id, or customer/supplier part number"
+    )
     parser.add_argument("--company-id", default="")
     parser.add_argument("--location-id", default="")
     parser.add_argument("--customer-id", default="")
@@ -48,18 +51,27 @@ def main() -> None:
     # form without it 307-redirects.
     response = httpx.get(
         f"{config.base_url}/api/inventory/partscan/",
-        params={"partSearch": args.part_search, "companyId": args.company_id,
-                "locationId": args.location_id, "customerId": args.customer_id,
-                "supplierId": args.supplier_id},
-        headers=headers, verify=config.verify_ssl, follow_redirects=True, timeout=40.0,
+        params={
+            "partSearch": args.part_search,
+            "companyId": args.company_id,
+            "locationId": args.location_id,
+            "customerId": args.customer_id,
+            "supplierId": args.supplier_id,
+        },
+        headers=headers,
+        verify=config.verify_ssl,
+        follow_redirects=True,
+        timeout=40.0,
     )
     response.raise_for_status()
 
     print(f"\nMatches for {args.part_search!r}:")
     print("-" * 50)
     for match in response.json():
-        print(f"  ItemId={match['ItemId']:20} Source={match['Source']!r:20} "
-              f"InvMastUid={match['InvMastUid']}")
+        print(
+            f"  ItemId={match['ItemId']:20} Source={match['Source']!r:20} "
+            f"InvMastUid={match['InvMastUid']}"
+        )
 
 
 if __name__ == "__main__":

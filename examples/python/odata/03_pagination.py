@@ -17,11 +17,18 @@ from common.auth import get_token, get_auth_headers
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
-def get_page(base_url: str, table: str, headers: dict,
-             page_num: int, page_size: int, verify_ssl: bool = False) -> dict:
+def get_page(
+    base_url: str,
+    table: str,
+    headers: dict,
+    page_num: int,
+    page_size: int,
+    verify_ssl: bool = False,
+) -> dict:
     """Fetch a specific page of results."""
     skip = (page_num - 1) * page_size
 
@@ -32,19 +39,24 @@ def get_page(base_url: str, table: str, headers: dict,
             "$top": page_size,
             "$count": "true",
             "$select": "supplier_id,supplier_name",
-            "$orderby": "supplier_id"
+            "$orderby": "supplier_id",
         },
         headers=headers,
         verify=verify_ssl,
-        follow_redirects=True
+        follow_redirects=True,
     )
     response.raise_for_status()
     return response.json()
 
 
-def get_all_records(base_url: str, table: str, headers: dict,
-                    filter_expr: str = None, page_size: int = 100,
-                    verify_ssl: bool = False) -> list:
+def get_all_records(
+    base_url: str,
+    table: str,
+    headers: dict,
+    filter_expr: str = None,
+    page_size: int = 100,
+    verify_ssl: bool = False,
+) -> list:
     """Fetch all records with automatic pagination.
 
     Note: for real bulk preloads use page sizes of 5,000-25,000 -- the
@@ -54,11 +66,7 @@ def get_all_records(base_url: str, table: str, headers: dict,
     skip = 0
 
     while True:
-        params = {
-            "$skip": skip,
-            "$top": page_size,
-            "$count": "true"
-        }
+        params = {"$skip": skip, "$top": page_size, "$count": "true"}
         if filter_expr:
             params["$filter"] = filter_expr
 
@@ -67,7 +75,7 @@ def get_all_records(base_url: str, table: str, headers: dict,
             params=params,
             headers=headers,
             verify=verify_ssl,
-            follow_redirects=True
+            follow_redirects=True,
         )
         response.raise_for_status()
         data = response.json()
@@ -97,11 +105,19 @@ def main():
     print("-" * 40)
 
     page_size = 5
-    data = get_page(config.odata_url, "supplier", headers,
-                    page_num=1, page_size=page_size, verify_ssl=config.verify_ssl)
+    data = get_page(
+        config.odata_url,
+        "supplier",
+        headers,
+        page_num=1,
+        page_size=page_size,
+        verify_ssl=config.verify_ssl,
+    )
 
     total = data.get("@odata.count", "?")
-    total_pages = (int(total) + page_size - 1) // page_size if isinstance(total, int) else "?"
+    total_pages = (
+        (int(total) + page_size - 1) // page_size if isinstance(total, int) else "?"
+    )
 
     print(f"  Total records: {total}")
     print(f"  Page size: {page_size}")
@@ -114,8 +130,14 @@ def main():
     print("\n2. Page 2 of suppliers:")
     print("-" * 40)
 
-    data = get_page(config.odata_url, "supplier", headers,
-                    page_num=2, page_size=page_size, verify_ssl=config.verify_ssl)
+    data = get_page(
+        config.odata_url,
+        "supplier",
+        headers,
+        page_num=2,
+        page_size=page_size,
+        verify_ssl=config.verify_ssl,
+    )
 
     print("  Page 2 results:")
     for supplier in data["value"]:
@@ -131,14 +153,16 @@ def main():
         headers,
         filter_expr="supplier_id eq 10050 and row_status_flag eq 704",
         page_size=50,
-        verify_ssl=config.verify_ssl
+        verify_ssl=config.verify_ssl,
     )
 
     print(f"\n  Total records fetched: {len(records)}")
     if records:
         print("  Sample records:")
         for page in records[:3]:
-            print(f"    {page.get('price_page_uid')}: {page.get('description', 'N/A')[:40]}")
+            print(
+                f"    {page.get('price_page_uid')}: {page.get('description', 'N/A')[:40]}"
+            )
 
     # Example 4: Count only (without fetching data)
     print("\n4. Count only (no data fetch):")
@@ -148,11 +172,11 @@ def main():
         f"{config.odata_url}/table/price_page",
         params={
             "$count": "true",
-            "$top": 0  # Fetch count but no records
+            "$top": 0,  # Fetch count but no records
         },
         headers=headers,
         verify=config.verify_ssl,
-        follow_redirects=True
+        follow_redirects=True,
     )
     response.raise_for_status()
     data = response.json()

@@ -18,6 +18,7 @@ from common.auth import get_token, get_auth_headers
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -56,7 +57,7 @@ def main():
                 headers=headers,
                 verify=config.verify_ssl,
                 follow_redirects=True,
-                timeout=30.0
+                timeout=30.0,
             )
 
             if response.status_code == 200:
@@ -80,7 +81,7 @@ def main():
             headers=headers,
             verify=config.verify_ssl,
             follow_redirects=True,
-            timeout=30.0
+            timeout=30.0,
         )
 
         if response.status_code == 200:
@@ -113,7 +114,7 @@ def main():
             headers=headers,
             verify=config.verify_ssl,
             follow_redirects=True,
-            timeout=30.0
+            timeout=30.0,
         )
 
         if response.status_code == 200:

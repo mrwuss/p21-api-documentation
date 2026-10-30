@@ -19,9 +19,14 @@ import sys
 import os
 
 # Add the Python examples tree to the path so we can import common
-sys.path.insert(0, os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "examples", "python"))
+sys.path.insert(
+    0,
+    os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "examples",
+        "python",
+    ),
+)
 
 from common.client import P21Client
 
@@ -51,8 +56,10 @@ def main():
             print(f"   OK — {len(services)} services found")
             if services:
                 # Show first 5 service names
-                names = [s if isinstance(s, str) else s.get("Name", s.get("name", str(s)))
-                         for s in services[:5]]
+                names = [
+                    s if isinstance(s, str) else s.get("Name", s.get("name", str(s)))
+                    for s in services[:5]
+                ]
                 print(f"   First 5: {names}")
         except Exception as e:
             print(f"   FAIL — {e}")
@@ -75,12 +82,16 @@ def main():
             print(f"   FAIL — {e}")
 
         # --- 4. OData API: query (may 401 if the key lacks OData scope) ---
-        print("\n4. OData API — query supplier (may 401 if the key lacks OData scope)...")
+        print(
+            "\n4. OData API — query supplier (may 401 if the key lacks OData scope)..."
+        )
         try:
             result = client.odata.query("supplier", top=1)
             print(f"   Unexpected OK — {result}")
         except httpx.HTTPStatusError as e:
-            print(f"   Expected error — {e.response.status_code}: {e.response.text[:200]}")
+            print(
+                f"   Expected error — {e.response.status_code}: {e.response.text[:200]}"
+            )
         except Exception as e:
             print(f"   Error — {e}")
 

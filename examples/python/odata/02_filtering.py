@@ -17,6 +17,7 @@ from common.auth import get_token, get_auth_headers
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -37,11 +38,11 @@ def main():
         params={
             "$filter": "supplier_id eq 10050",
             "$select": "price_page_uid,description,supplier_id",
-            "$top": 5
+            "$top": 5,
         },
         headers=headers,
         verify=config.verify_ssl,
-        follow_redirects=True
+        follow_redirects=True,
     )
     response.raise_for_status()
     data = response.json()
@@ -59,11 +60,11 @@ def main():
         params={
             "$filter": "supplier_id eq 10050 and row_status_flag eq 704",
             "$select": "price_page_uid,description,row_status_flag",
-            "$top": 5
+            "$top": 5,
         },
         headers=headers,
         verify=config.verify_ssl,
-        follow_redirects=True
+        follow_redirects=True,
     )
     response.raise_for_status()
     data = response.json()
@@ -82,11 +83,11 @@ def main():
             "$filter": "startswith(supplier_name,'A')",
             "$select": "supplier_id,supplier_name",
             "$top": 5,
-            "$orderby": "supplier_name"
+            "$orderby": "supplier_name",
         },
         headers=headers,
         verify=config.verify_ssl,
-        follow_redirects=True
+        follow_redirects=True,
     )
     response.raise_for_status()
     data = response.json()
@@ -104,18 +105,20 @@ def main():
         params={
             "$filter": "contains(product_group_id,'F')",
             "$select": "product_group_id,product_group_desc",
-            "$top": 5
+            "$top": 5,
         },
         headers=headers,
         verify=config.verify_ssl,
-        follow_redirects=True
+        follow_redirects=True,
     )
     response.raise_for_status()
     data = response.json()
 
     print("  Product groups containing 'F':")
     for group in data["value"]:
-        print(f"    {group['product_group_id']}: {group.get('product_group_desc', 'N/A')}")
+        print(
+            f"    {group['product_group_id']}: {group.get('product_group_desc', 'N/A')}"
+        )
 
     # Example 5: Comparison operators
     print("\n5. Comparison operators (greater than):")
@@ -127,19 +130,21 @@ def main():
             "$filter": "calculation_value1 gt 0.5 and calculation_value1 lt 1.0",
             "$select": "price_page_uid,description,calculation_value1",
             "$top": 5,
-            "$orderby": "calculation_value1 desc"
+            "$orderby": "calculation_value1 desc",
         },
         headers=headers,
         verify=config.verify_ssl,
-        follow_redirects=True
+        follow_redirects=True,
     )
     response.raise_for_status()
     data = response.json()
 
     print("  Pages with multiplier between 0.5 and 1.0:")
     for page in data["value"]:
-        val = page.get('calculation_value1', 0)
-        print(f"    {page['price_page_uid']}: {val:.3f} - {page.get('description', 'N/A')[:30]}")
+        val = page.get("calculation_value1", 0)
+        print(
+            f"    {page['price_page_uid']}: {val:.3f} - {page.get('description', 'N/A')[:30]}"
+        )
 
     print("\n" + "=" * 50)
     print("Filtering examples complete!")

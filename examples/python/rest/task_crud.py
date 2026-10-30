@@ -35,6 +35,7 @@ from common.auth import get_token, get_auth_headers
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -42,7 +43,10 @@ def get_new_template(base_url: str, headers: dict, verify_ssl: bool) -> dict:
     """GET the server-defaulted template for a new task."""
     response = httpx.get(
         f"{base_url}/api/sales/tasks/new",
-        headers=headers, verify=verify_ssl, follow_redirects=True, timeout=30.0,
+        headers=headers,
+        verify=verify_ssl,
+        follow_redirects=True,
+        timeout=30.0,
     )
     response.raise_for_status()
     return response.json()
@@ -53,7 +57,10 @@ def create_task(base_url: str, headers: dict, verify_ssl: bool, task: dict) -> d
     response = httpx.post(
         f"{base_url}/api/sales/tasks/",
         headers={**headers, "Content-Type": "application/json"},
-        json=task, verify=verify_ssl, follow_redirects=True, timeout=60.0,
+        json=task,
+        verify=verify_ssl,
+        follow_redirects=True,
+        timeout=60.0,
     )
     response.raise_for_status()
     return response.json()
@@ -63,20 +70,27 @@ def get_task(base_url: str, headers: dict, verify_ssl: bool, task_no: str) -> di
     """GET one task by ActivityTransNo."""
     response = httpx.get(
         f"{base_url}/api/sales/tasks/{task_no}",
-        headers=headers, verify=verify_ssl, follow_redirects=True, timeout=30.0,
+        headers=headers,
+        verify=verify_ssl,
+        follow_redirects=True,
+        timeout=30.0,
     )
     response.raise_for_status()
     return response.json()
 
 
-def update_task(base_url: str, headers: dict, verify_ssl: bool, task_no: str,
-                 task: dict) -> dict:
+def update_task(
+    base_url: str, headers: dict, verify_ssl: bool, task_no: str, task: dict
+) -> dict:
     """PUT the task back. Send the record you read, not one you built by hand --
     the server fills in fields (ActivityDesc, ContactAddressName) a PUT expects."""
     response = httpx.put(
         f"{base_url}/api/sales/tasks/{task_no}",
         headers={**headers, "Content-Type": "application/json"},
-        json=task, verify=verify_ssl, follow_redirects=True, timeout=60.0,
+        json=task,
+        verify=verify_ssl,
+        follow_redirects=True,
+        timeout=60.0,
     )
     response.raise_for_status()
     return response.json()
@@ -86,12 +100,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="CRM task create/read/update round trip (docs/15 sales/tasks)"
     )
-    parser.add_argument("--execute", action="store_true",
-                        help="Actually POST/PUT (default: dry run)")
+    parser.add_argument(
+        "--execute", action="store_true", help="Actually POST/PUT (default: dry run)"
+    )
     parser.add_argument("--contact-id", default="300", help="activity_trans.contact_id")
-    parser.add_argument("--customer-id", default="100198",
-                        help="Customer id -> LinkId. This is what \"Customer ID is "
-                             "required\" actually means.")
+    parser.add_argument(
+        "--customer-id",
+        default="100198",
+        help='Customer id -> LinkId. This is what "Customer ID is '
+        'required" actually means.',
+    )
     parser.add_argument("--subject", default="ZZ API DOC TEST - safe to delete")
     args = parser.parse_args()
 
@@ -104,18 +122,24 @@ def main() -> None:
     print(f"Server: {config.base_url}")
 
     template = get_new_template(config.base_url, headers, config.verify_ssl)
-    print(f"\nServer template (/new): AssignedById={template['AssignedById']!r} "
-          f"LinkTypeCd={template['LinkTypeCd']}")
+    print(
+        f"\nServer template (/new): AssignedById={template['AssignedById']!r} "
+        f"LinkTypeCd={template['LinkTypeCd']}"
+    )
 
     task = dict(template)
-    task.update({
-        "ActivityId": "FOLLOW UP",
-        "ContactId": args.contact_id,
-        "LinkId": int(args.customer_id),   # the field "Customer ID is required" means
-        "Subject": args.subject,
-        "Comments": "Created by examples/python/rest/task_crud.py",
-        "TargetCompleteDate": "2026-09-30T15:00:00",
-    })
+    task.update(
+        {
+            "ActivityId": "FOLLOW UP",
+            "ContactId": args.contact_id,
+            "LinkId": int(
+                args.customer_id
+            ),  # the field "Customer ID is required" means
+            "Subject": args.subject,
+            "Comments": "Created by examples/python/rest/task_crud.py",
+            "TargetCompleteDate": "2026-09-30T15:00:00",
+        }
+    )
 
     if not args.execute:
         print("\nDRY RUN - payload that would be POSTed to /api/sales/tasks/:")
@@ -132,8 +156,10 @@ def main() -> None:
     print("\n2. Read back:")
     print("-" * 50)
     current = get_task(config.base_url, headers, config.verify_ssl, task_no)
-    print(f"  ContactAddressName (server-derived from LinkId): "
-          f"{current['ContactAddressName']!r}")
+    print(
+        f"  ContactAddressName (server-derived from LinkId): "
+        f"{current['ContactAddressName']!r}"
+    )
 
     print("\n3. Update (mark complete):")
     print("-" * 50)
@@ -143,8 +169,10 @@ def main() -> None:
     print(f"  Completed={updated['Completed']!r}")
 
     print("\n" + "=" * 60)
-    print(f"Round trip complete. Task {task_no} left Completed=Y "
-          f"(there is no delete route on this family).")
+    print(
+        f"Round trip complete. Task {task_no} left Completed=Y "
+        f"(there is no delete route on this family)."
+    )
 
 
 if __name__ == "__main__":

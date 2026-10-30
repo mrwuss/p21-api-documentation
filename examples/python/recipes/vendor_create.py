@@ -41,16 +41,21 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from common.tapi import connect, edit, odata, post_transaction, result_value, succeeded
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # --- Configuration (generic placeholders -- substitute your own) ------------
 COMPANY_ID = "ACME"
 VENDOR_NAME = "Example Vendor"
-AP_ACCOUNT = "2222200"             # stored form, no dashes
-TERMS = "Net 30 Days"              # the terms description, not the terms ID
-ADDRESS = {"mail_address1": "100 Main St", "mail_city": "Springfield",
-           "mail_state": "IL", "mail_postal_code": "62701"}
-REBATE_ACCOUNT = "1111100"         # used only with --track-rebates
+AP_ACCOUNT = "2222200"  # stored form, no dashes
+TERMS = "Net 30 Days"  # the terms description, not the terms ID
+ADDRESS = {
+    "mail_address1": "100 Main St",
+    "mail_city": "Springfield",
+    "mail_state": "IL",
+    "mail_postal_code": "62701",
+}
+REBATE_ACCOUNT = "1111100"  # used only with --track-rebates
 REBATE_ALLOWANCE_ACCOUNT = "3333300"
 
 HEADER = "TABPAGE_1.tp_1_dw_1"
@@ -67,9 +72,9 @@ def build_payload(args: argparse.Namespace) -> dict:
     """
     header = [edit("company_id", args.company)]
     if args.id:
-        header.append(edit("id", args.id))       # must already exist in address
+        header.append(edit("id", args.id))  # must already exist in address
     header += [
-        edit("vendor", "ON"),                     # required for a vendor create
+        edit("vendor", "ON"),  # required for a vendor create
         edit("name", args.name),
         *(edit(field, value) for field, value in ADDRESS.items()),
         edit("ap_account_no", args.ap_account),
@@ -77,43 +82,73 @@ def build_payload(args: argparse.Namespace) -> dict:
     ]
     if args.track_rebates:
         header.append(edit("track_rebates", "ON"))
-    elements = [{"Name": HEADER, "Type": "Form", "Keys": ["company_id", "id"],
-                 "Rows": [{"Edits": header, "RelativeDateEdits": []}]}]
+    elements = [
+        {
+            "Name": HEADER,
+            "Type": "Form",
+            "Keys": ["company_id", "id"],
+            "Rows": [{"Edits": header, "RelativeDateEdits": []}],
+        }
+    ]
     if args.track_rebates:
-        elements.append({
-            "Name": "REBATE_ACCOUNTS.d_vendor_rebate_accounts", "Type": "Form", "Keys": [],
-            "Rows": [{"Edits": [
-                edit("rebate_account_no", args.rebate_account),
-                edit("rebate_allowance_account_no", args.rebate_allowance_account),
-            ], "RelativeDateEdits": []}],
-        })
-    return {"Name": "Vendor", "UseCodeValues": False,
-            "Transactions": [{"Status": "New", "DataElements": elements}]}
+        elements.append(
+            {
+                "Name": "REBATE_ACCOUNTS.d_vendor_rebate_accounts",
+                "Type": "Form",
+                "Keys": [],
+                "Rows": [
+                    {
+                        "Edits": [
+                            edit("rebate_account_no", args.rebate_account),
+                            edit(
+                                "rebate_allowance_account_no",
+                                args.rebate_allowance_account,
+                            ),
+                        ],
+                        "RelativeDateEdits": [],
+                    }
+                ],
+            }
+        )
+    return {
+        "Name": "Vendor",
+        "UseCodeValues": False,
+        "Transactions": [{"Status": "New", "DataElements": elements}],
+    }
 
 
 def main() -> None:
     """Entry point: dry run prints the payload; --execute creates and reads back."""
     parser = argparse.ArgumentParser(
         description="Create a vendor and its supplier "
-                    "(docs/03-Transaction-API.md#vendor-service-creating-a-vendor-and-its-supplier)")
+        "(docs/03-Transaction-API.md#vendor-service-creating-a-vendor-and-its-supplier)"
+    )
     parser.add_argument("--company", default=COMPANY_ID)
-    parser.add_argument("--id", default="",
-                        help="Existing address ID to use (default: blank, P21 assigns one)")
+    parser.add_argument(
+        "--id",
+        default="",
+        help="Existing address ID to use (default: blank, P21 assigns one)",
+    )
     parser.add_argument("--name", default=VENDOR_NAME)
     parser.add_argument("--ap-account", default=AP_ACCOUNT)
     parser.add_argument("--terms", default=TERMS, help="Terms description")
     parser.add_argument("--track-rebates", action="store_true")
     parser.add_argument("--rebate-account", default=REBATE_ACCOUNT)
     parser.add_argument("--rebate-allowance-account", default=REBATE_ALLOWANCE_ACCOUNT)
-    parser.add_argument("--execute", action="store_true",
-                        help="Actually POST the transaction (default: dry run)")
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Actually POST the transaction (default: dry run)",
+    )
     args = parser.parse_args()
 
     print("Recipe - Create a Vendor and Its Supplier (Vendor service)")
     print("=" * 60)
     payload = build_payload(args)
     if not args.execute:
-        print("\nDRY RUN - payload that would be POSTed to {ui_server}/api/v2/transaction:")
+        print(
+            "\nDRY RUN - payload that would be POSTed to {ui_server}/api/v2/transaction:"
+        )
         print(json.dumps(payload, indent=2))
         print("\nRe-run with --execute to POST it.")
         return
@@ -131,12 +166,22 @@ def main() -> None:
     print("\nVerify (OData read-back):")
     checks = [
         ("address", f"id eq {vendor_id}", "id,name,delete_flag"),
-        ("vendor", f"vendor_id eq {vendor_id}",
-         "vendor_id,ap_account_no,default_terms_id,track_rebates,"
-         "rebate_account_no,rebate_allowance_account_no,delete_flag"),
-        ("supplier", f"supplier_id eq {vendor_id}", "supplier_id,supplier_name,delete_flag"),
-        ("vendor_supplier", f"vendor_id eq {vendor_id}",
-         "vendor_id,supplier_id,primary_vendor,delete_flag"),
+        (
+            "vendor",
+            f"vendor_id eq {vendor_id}",
+            "vendor_id,ap_account_no,default_terms_id,track_rebates,"
+            "rebate_account_no,rebate_allowance_account_no,delete_flag",
+        ),
+        (
+            "supplier",
+            f"supplier_id eq {vendor_id}",
+            "supplier_id,supplier_name,delete_flag",
+        ),
+        (
+            "vendor_supplier",
+            f"vendor_id eq {vendor_id}",
+            "vendor_id,supplier_id,primary_vendor,delete_flag",
+        ),
     ]
     missing = 0
     for table, filter_expr, select in checks:

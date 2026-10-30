@@ -85,64 +85,103 @@ class InteractiveSession:
             verify_ssl: Whether to verify SSL certificates.
         """
         self.base = f"{ui_server}/api/ui/interactive"
-        self.http = httpx.Client(headers=headers, verify=verify_ssl,
-                                 follow_redirects=True, timeout=180)
+        self.http = httpx.Client(
+            headers=headers, verify=verify_ssl, follow_redirects=True, timeout=180
+        )
 
     def _check(self, response: httpx.Response, what: str) -> dict:
         """Raise on HTTP errors (with the body) and on Status 2 (Failure)."""
         if response.status_code >= 400:
-            raise RuntimeError(f"{what}: HTTP {response.status_code} {response.text[:400]}")
+            raise RuntimeError(
+                f"{what}: HTTP {response.status_code} {response.text[:400]}"
+            )
         result = response.json() if response.text else {}
         if isinstance(result, dict) and status_code(result) == FAILURE:
-            texts = [m.get("Text", m) if isinstance(m, dict) else m
-                     for m in result.get("Messages") or []]
+            texts = [
+                m.get("Text", m) if isinstance(m, dict) else m
+                for m in result.get("Messages") or []
+            ]
             raise RuntimeError(f"{what}: {texts}")
         return result
 
     def start(self, response_windows: bool = True) -> None:
         """Start the session. ``True`` makes popups come back as windows to answer."""
-        self._check(self.http.post(f"{self.base}/sessions/",
-                                   json={"ResponseWindowHandlingEnabled": response_windows}),
-                    "start session")
+        self._check(
+            self.http.post(
+                f"{self.base}/sessions/",
+                json={"ResponseWindowHandlingEnabled": response_windows},
+            ),
+            "start session",
+        )
 
     def open_window(self, service_name: str) -> str:
         """Open a window by service name and return its window ID."""
-        return self._check(self.http.post(f"{self.base}/v2/window",
-                                          json={"ServiceName": service_name}),
-                           f"open {service_name}")["WindowId"]
+        return self._check(
+            self.http.post(
+                f"{self.base}/v2/window", json={"ServiceName": service_name}
+            ),
+            f"open {service_name}",
+        )["WindowId"]
 
-    def change(self, window_id: str, tab: str, datawindow: str, field: str,
-               value: str) -> dict:
+    def change(
+        self, window_id: str, tab: str, datawindow: str, field: str, value: str
+    ) -> dict:
         """Change one field (``DatawindowName`` is required on 25.2+)."""
-        return self._check(self.http.put(f"{self.base}/v2/change", json={
-            "WindowId": window_id,
-            "List": [{"TabName": tab, "DatawindowName": datawindow,
-                      "FieldName": field, "Value": value}],
-        }), f"change {field}={value}")
+        return self._check(
+            self.http.put(
+                f"{self.base}/v2/change",
+                json={
+                    "WindowId": window_id,
+                    "List": [
+                        {
+                            "TabName": tab,
+                            "DatawindowName": datawindow,
+                            "FieldName": field,
+                            "Value": value,
+                        }
+                    ],
+                },
+            ),
+            f"change {field}={value}",
+        )
 
     def select_tab(self, window_id: str, page_name: str) -> dict:
         """Make ``page_name`` the active tab page."""
-        return self._check(self.http.put(f"{self.base}/v2/tab",
-                                         json={"WindowId": window_id, "PageName": page_name}),
-                           f"tab {page_name}")
+        return self._check(
+            self.http.put(
+                f"{self.base}/v2/tab",
+                json={"WindowId": window_id, "PageName": page_name},
+            ),
+            f"tab {page_name}",
+        )
 
     def select_row(self, window_id: str, datawindow: str, row: int) -> dict:
         """Make ``row`` (1-based) the active row. Changes land on the ACTIVE row."""
-        return self._check(self.http.put(f"{self.base}/v2/row", json={
-            "WindowId": window_id, "DatawindowName": datawindow, "Row": row}),
-            f"select row {row} of {datawindow}")
+        return self._check(
+            self.http.put(
+                f"{self.base}/v2/row",
+                json={"WindowId": window_id, "DatawindowName": datawindow, "Row": row},
+            ),
+            f"select row {row} of {datawindow}",
+        )
 
     def add_row(self, window_id: str, datawindow: str) -> dict:
         """Append a row to a grid datawindow and make it active."""
-        return self._check(self.http.post(f"{self.base}/v2/row", json={
-            "WindowId": window_id, "DatawindowName": datawindow}),
-            f"add row to {datawindow}")
+        return self._check(
+            self.http.post(
+                f"{self.base}/v2/row",
+                json={"WindowId": window_id, "DatawindowName": datawindow},
+            ),
+            f"add row to {datawindow}",
+        )
 
     def datawindows(self, window_id: str) -> list[dict]:
         """Datawindows on the window's active surface (``GET /v2/data``)."""
         response = self.http.get(f"{self.base}/v2/data", params={"id": window_id})
         if response.status_code >= 400:
-            raise RuntimeError(f"get data: HTTP {response.status_code} {response.text[:400]}")
+            raise RuntimeError(
+                f"get data: HTTP {response.status_code} {response.text[:400]}"
+            )
         return response.json()
 
     def rows(self, window_id: str, datawindow: str) -> list[dict]:
@@ -162,15 +201,24 @@ class InteractiveSession:
 
     def tools(self, window_id: str) -> list[str]:
         """Tool/button names of a window or popup (``?windowId=``, not ``?id=``)."""
-        response = self.http.get(f"{self.base}/v2/tools", params={"windowId": window_id})
+        response = self.http.get(
+            f"{self.base}/v2/tools", params={"windowId": window_id}
+        )
         if response.status_code >= 400:
-            raise RuntimeError(f"get tools: HTTP {response.status_code} {response.text[:400]}")
+            raise RuntimeError(
+                f"get tools: HTTP {response.status_code} {response.text[:400]}"
+            )
         return [t.get("ToolName") for t in response.json()]
 
     def run_tool(self, window_id: str, tool_name: str) -> dict:
         """Click a button or run a tool on a window or popup."""
-        return self._check(self.http.post(f"{self.base}/v2/tools", json={
-            "WindowId": window_id, "ToolName": tool_name}), f"tool {tool_name}")
+        return self._check(
+            self.http.post(
+                f"{self.base}/v2/tools",
+                json={"WindowId": window_id, "ToolName": tool_name},
+            ),
+            f"tool {tool_name}",
+        )
 
     def window_name(self, window_id: str) -> str:
         """Window class name from ``GET /v2/window`` (e.g. ``w_message``)."""
@@ -181,7 +229,9 @@ class InteractiveSession:
 
     def save(self, window_id: str) -> dict:
         """Save. The v2 body is the bare window-ID string (an object is a 422)."""
-        return self._check(self.http.put(f"{self.base}/v2/data", json=window_id), "save")
+        return self._check(
+            self.http.put(f"{self.base}/v2/data", json=window_id), "save"
+        )
 
     def close_window(self, window_id: str) -> None:
         """Close a window. Errors are ignored so cleanup always continues."""

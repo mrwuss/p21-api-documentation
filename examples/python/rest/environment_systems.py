@@ -23,6 +23,7 @@ from common.auth import get_token, get_auth_headers
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -37,7 +38,10 @@ def main() -> None:
 
     response = httpx.get(
         f"{config.base_url}/api/environment/systems/",  # trailing slash: no 307
-        headers=headers, verify=config.verify_ssl, follow_redirects=True, timeout=30.0,
+        headers=headers,
+        verify=config.verify_ssl,
+        follow_redirects=True,
+        timeout=30.0,
     )
     response.raise_for_status()
     systems = response.json()["list"]

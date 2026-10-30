@@ -17,6 +17,7 @@ from common.auth import get_token, get_auth_headers
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -44,19 +45,19 @@ def main():
             "$filter": "supplier_id eq 10050 and row_status_flag eq 704",
             "$select": "price_page_uid,description,effective_date,expiration_date,calculation_value1",
             "$orderby": "effective_date desc",
-            "$top": 5
+            "$top": 5,
         },
         headers=headers,
         verify=config.verify_ssl,
-        follow_redirects=True
+        follow_redirects=True,
     )
     response.raise_for_status()
     data = response.json()
 
     for page in data["value"]:
-        eff = str(page.get('effective_date', 'N/A'))[:10]
-        exp = str(page.get('expiration_date', 'N/A'))[:10]
-        val = page.get('calculation_value1', 0)
+        eff = str(page.get("effective_date", "N/A"))[:10]
+        exp = str(page.get("expiration_date", "N/A"))[:10]
+        val = page.get("calculation_value1", 0)
         print(f"  {page['price_page_uid']}: {eff} to {exp} (mult: {val:.3f})")
 
     # Example 2: OR conditions on same field
@@ -69,18 +70,20 @@ def main():
             "$filter": "(supplier_id eq 10 or supplier_id eq 10050) and row_status_flag eq 704",
             "$select": "price_page_uid,supplier_id,description",
             "$top": 10,
-            "$count": "true"
+            "$count": "true",
         },
         headers=headers,
         verify=config.verify_ssl,
-        follow_redirects=True
+        follow_redirects=True,
     )
     response.raise_for_status()
     data = response.json()
 
     print(f"  Total matching: {data.get('@odata.count', 'N/A')}")
     for page in data["value"]:
-        print(f"  Supplier {page['supplier_id']}: {page.get('description', 'N/A')[:40]}")
+        print(
+            f"  Supplier {page['supplier_id']}: {page.get('description', 'N/A')[:40]}"
+        )
 
     # Example 3: String contains with other conditions
     print("\n3. String contains with other conditions:")
@@ -91,11 +94,11 @@ def main():
         params={
             "$filter": "contains(description,'ACME_BOOK_A') and row_status_flag eq 704",
             "$select": "price_page_uid,description,supplier_id",
-            "$top": 5
+            "$top": 5,
         },
         headers=headers,
         verify=config.verify_ssl,
-        follow_redirects=True
+        follow_redirects=True,
     )
     response.raise_for_status()
     data = response.json()
@@ -114,18 +117,18 @@ def main():
             "$filter": "expiration_date ne null and row_status_flag eq 704",
             "$select": "price_page_uid,description,expiration_date",
             "$orderby": "expiration_date asc",
-            "$top": 5
+            "$top": 5,
         },
         headers=headers,
         verify=config.verify_ssl,
-        follow_redirects=True
+        follow_redirects=True,
     )
     response.raise_for_status()
     data = response.json()
 
     print("  Pages with earliest expiration dates:")
     for page in data["value"]:
-        exp = str(page.get('expiration_date', 'N/A'))[:10]
+        exp = str(page.get("expiration_date", "N/A"))[:10]
         print(f"    {page['price_page_uid']}: expires {exp}")
 
     # Example 5: Multiple orderby fields
@@ -138,18 +141,18 @@ def main():
             "$filter": "row_status_flag eq 704",
             "$select": "price_page_uid,supplier_id,description,effective_date",
             "$orderby": "supplier_id asc,effective_date desc",
-            "$top": 8
+            "$top": 8,
         },
         headers=headers,
         verify=config.verify_ssl,
-        follow_redirects=True
+        follow_redirects=True,
     )
     response.raise_for_status()
     data = response.json()
 
     print("  Pages ordered by supplier, then by date (newest first):")
     for page in data["value"]:
-        eff = str(page.get('effective_date', 'N/A'))[:10]
+        eff = str(page.get("effective_date", "N/A"))[:10]
         print(f"    Supplier {page['supplier_id']}: {page['price_page_uid']} ({eff})")
 
     # Example 6: Join-like query (related data)
@@ -162,11 +165,11 @@ def main():
         params={
             "$filter": "row_status_flag eq 704",
             "$select": "price_page_uid,description,supplier_id",
-            "$top": 1
+            "$top": 1,
         },
         headers=headers,
         verify=config.verify_ssl,
-        follow_redirects=True
+        follow_redirects=True,
     )
     response.raise_for_status()
     data = response.json()
@@ -183,11 +186,11 @@ def main():
                 f"{config.odata_url}/table/supplier",
                 params={
                     "$filter": f"supplier_id eq {supplier_id}",
-                    "$select": "supplier_id,supplier_name"
+                    "$select": "supplier_id,supplier_name",
                 },
                 headers=headers,
                 verify=config.verify_ssl,
-                follow_redirects=True
+                follow_redirects=True,
             )
             response.raise_for_status()
             supplier_data = response.json()

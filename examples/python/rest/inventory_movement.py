@@ -39,6 +39,7 @@ from common.auth import get_token, get_auth_headers
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -46,14 +47,22 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Bin-to-bin inventory movement (docs/15 inventory/inventorymovement)"
     )
-    parser.add_argument("--execute", action="store_true", help="Actually POST (default: dry run)")
+    parser.add_argument(
+        "--execute", action="store_true", help="Actually POST (default: dry run)"
+    )
     parser.add_argument("--item-id", default="WIDGET-001")
     parser.add_argument("--location-id", default="10")
-    parser.add_argument("--from-bin", default="A01-01-01",
-                        help="Must be a bin this item/location currently holds stock in")
-    parser.add_argument("--to-bin", default="A01-01-02",
-                        help="Must be a bin this item/location already has a stock "
-                             "association with -- not just any bin at the location")
+    parser.add_argument(
+        "--from-bin",
+        default="A01-01-01",
+        help="Must be a bin this item/location currently holds stock in",
+    )
+    parser.add_argument(
+        "--to-bin",
+        default="A01-01-02",
+        help="Must be a bin this item/location already has a stock "
+        "association with -- not just any bin at the location",
+    )
     parser.add_argument("--quantity", default="1")
     args = parser.parse_args()
 
@@ -66,35 +75,51 @@ def main() -> None:
     print(f"Server: {config.base_url}")
 
     params = {
-        "location": args.location_id, "itemId": args.item_id,
-        "toBin": args.to_bin, "fromBin": args.from_bin,
-        "lot": "", "uom": "EA", "quantity": args.quantity,
-        "moveAvailable": "Y", "moveAllocations": "N",  # Y/N, NOT true/false -- see docstring
+        "location": args.location_id,
+        "itemId": args.item_id,
+        "toBin": args.to_bin,
+        "fromBin": args.from_bin,
+        "lot": "",
+        "uom": "EA",
+        "quantity": args.quantity,
+        "moveAvailable": "Y",
+        "moveAllocations": "N",  # Y/N, NOT true/false -- see docstring
     }
 
     if not args.execute:
-        print("\nDRY RUN - would POST to /api/inventory/inventorymovement/moveinventory")
+        print(
+            "\nDRY RUN - would POST to /api/inventory/inventorymovement/moveinventory"
+        )
         print("  with query parameters:")
         for k, v in params.items():
             print(f"    {k}={v!r}")
         print("\nRe-run with --execute to actually move it.")
         return
 
-    r = httpx.post(f"{config.base_url}/api/inventory/inventorymovement/moveinventory",
-                   params=params, headers=headers, verify=config.verify_ssl,
-                   follow_redirects=True, timeout=60.0)
+    r = httpx.post(
+        f"{config.base_url}/api/inventory/inventorymovement/moveinventory",
+        params=params,
+        headers=headers,
+        verify=config.verify_ssl,
+        follow_redirects=True,
+        timeout=60.0,
+    )
     if r.status_code != 200:
         print(f"\nMove failed: HTTP {r.status_code}\n{r.text[:500]}")
         raise SystemExit(1)
 
     result = r.json()
     moved = result["TransactionDetail"]["QuantityMoved"]
-    print(f"\n{result['ResponseMessage']}: moved {moved} "
-          f"{result['TransactionDetail']['QuantityMovedUOM']} "
-          f"from {args.from_bin} to {args.to_bin}")
+    print(
+        f"\n{result['ResponseMessage']}: moved {moved} "
+        f"{result['TransactionDetail']['QuantityMovedUOM']} "
+        f"from {args.from_bin} to {args.to_bin}"
+    )
     if float(moved) == 0:
-        print("  WARNING: QuantityMoved is 0 -- \"success\" here does not mean anything "
-              "actually relocated. The source bin likely had no real stock to move.")
+        print(
+            '  WARNING: QuantityMoved is 0 -- "success" here does not mean anything '
+            "actually relocated. The source bin likely had no real stock to move."
+        )
 
 
 if __name__ == "__main__":

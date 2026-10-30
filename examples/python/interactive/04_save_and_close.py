@@ -29,6 +29,7 @@ from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -39,20 +40,21 @@ class InteractiveSession:
         self.ui_server_url = ui_server_url
         self.headers = headers
         self.verify_ssl = verify_ssl
-        self.client = httpx.Client(verify=verify_ssl, timeout=60.0, follow_redirects=True)
+        self.client = httpx.Client(
+            verify=verify_ssl, timeout=60.0, follow_redirects=True
+        )
 
     def start(self):
         response = self.client.post(
             f"{self.ui_server_url}/api/ui/interactive/sessions/",
             headers=self.headers,
-            json={"ResponseWindowHandlingEnabled": False}
+            json={"ResponseWindowHandlingEnabled": False},
         )
         response.raise_for_status()
 
     def end(self):
         self.client.delete(
-            f"{self.ui_server_url}/api/ui/interactive/sessions/",
-            headers=self.headers
+            f"{self.ui_server_url}/api/ui/interactive/sessions/", headers=self.headers
         )
         self.client.close()
 
@@ -60,7 +62,7 @@ class InteractiveSession:
         response = self.client.post(
             f"{self.ui_server_url}/api/ui/interactive/v2/window",
             headers=self.headers,
-            json={"ServiceName": service_name}
+            json={"ServiceName": service_name},
         )
         response.raise_for_status()
         return response.json()
@@ -70,7 +72,7 @@ class InteractiveSession:
         self.client.delete(
             f"{self.ui_server_url}/api/ui/interactive/v2/window",
             params={"id": window_id},
-            headers=self.headers
+            headers=self.headers,
         )
 
     def change_data(self, window_id: str, changes: list) -> dict:
@@ -83,7 +85,7 @@ class InteractiveSession:
         response = self.client.put(
             f"{self.ui_server_url}/api/ui/interactive/v2/change",
             headers=self.headers,
-            json={"WindowId": window_id, "List": changes}
+            json={"WindowId": window_id, "List": changes},
         )
         response.raise_for_status()
         return response.json()
@@ -93,7 +95,7 @@ class InteractiveSession:
         response = self.client.put(
             f"{self.ui_server_url}/api/ui/interactive/v2/tab",
             headers=self.headers,
-            json={"WindowId": window_id, "PageName": tab_name}
+            json={"WindowId": window_id, "PageName": tab_name},
         )
         response.raise_for_status()
         return response.json()
@@ -106,7 +108,7 @@ class InteractiveSession:
         response = self.client.put(
             f"{self.ui_server_url}/api/ui/interactive/v2/data",
             headers=self.headers,
-            json=window_id  # v2: just the GUID string
+            json=window_id,  # v2: just the GUID string
         )
         response.raise_for_status()
         return response.json()
@@ -117,15 +119,20 @@ class InteractiveSession:
         response = self.client.get(
             f"{self.ui_server_url}/api/ui/interactive/v2/data",
             params={"id": window_id},
-            headers=self.headers
+            headers=self.headers,
         )
         response.raise_for_status()
         return response.json()
 
 
-def create_price_page(session: InteractiveSession, supplier_id: int,
-                       product_group: str, description: str, multiplier: float,
-                       execute: bool = False) -> dict:
+def create_price_page(
+    session: InteractiveSession,
+    supplier_id: int,
+    product_group: str,
+    description: str,
+    multiplier: float,
+    execute: bool = False,
+) -> dict:
     """
     Create a price page using the Interactive API v2.
 
@@ -149,52 +156,118 @@ def create_price_page(session: InteractiveSession, supplier_id: int,
         window_id = window_data["WindowId"]
 
         # Step 2: Set page type first (triggers validation rules)
-        session.change_data(window_id, [
-            {"TabName": "FORM", "DatawindowName": "form",
-             "FieldName": "price_page_type_cd", "Value": "Supplier / Product Group"}
-        ])
+        session.change_data(
+            window_id,
+            [
+                {
+                    "TabName": "FORM",
+                    "DatawindowName": "form",
+                    "FieldName": "price_page_type_cd",
+                    "Value": "Supplier / Product Group",
+                }
+            ],
+        )
 
         # Step 3: Fill in required fields (order matters!)
-        session.change_data(window_id, [
-            {"TabName": "FORM", "DatawindowName": "form",
-             "FieldName": "company_id", "Value": "ACME"},
-        ])
+        session.change_data(
+            window_id,
+            [
+                {
+                    "TabName": "FORM",
+                    "DatawindowName": "form",
+                    "FieldName": "company_id",
+                    "Value": "ACME",
+                },
+            ],
+        )
 
-        session.change_data(window_id, [
-            {"TabName": "FORM", "DatawindowName": "form",
-             "FieldName": "product_group_id", "Value": product_group},
-        ])
+        session.change_data(
+            window_id,
+            [
+                {
+                    "TabName": "FORM",
+                    "DatawindowName": "form",
+                    "FieldName": "product_group_id",
+                    "Value": product_group,
+                },
+            ],
+        )
 
-        session.change_data(window_id, [
-            {"TabName": "FORM", "DatawindowName": "form",
-             "FieldName": "supplier_id", "Value": str(supplier_id)},
-        ])
+        session.change_data(
+            window_id,
+            [
+                {
+                    "TabName": "FORM",
+                    "DatawindowName": "form",
+                    "FieldName": "supplier_id",
+                    "Value": str(supplier_id),
+                },
+            ],
+        )
 
-        session.change_data(window_id, [
-            {"TabName": "FORM", "DatawindowName": "form",
-             "FieldName": "description", "Value": description},
-            {"TabName": "FORM", "DatawindowName": "form",
-             "FieldName": "pricing_method_cd", "Value": "Source"},
-            {"TabName": "FORM", "DatawindowName": "form",
-             "FieldName": "source_price_cd", "Value": "Supplier List Price"},
-            {"TabName": "FORM", "DatawindowName": "form",
-             "FieldName": "effective_date", "Value": datetime.now().strftime("%Y-%m-%d")},
-            {"TabName": "FORM", "DatawindowName": "form",
-             "FieldName": "expiration_date", "Value": "2030-12-31"},
-            {"TabName": "FORM", "DatawindowName": "form",
-             "FieldName": "row_status_flag", "Value": "Active"},
-        ])
+        session.change_data(
+            window_id,
+            [
+                {
+                    "TabName": "FORM",
+                    "DatawindowName": "form",
+                    "FieldName": "description",
+                    "Value": description,
+                },
+                {
+                    "TabName": "FORM",
+                    "DatawindowName": "form",
+                    "FieldName": "pricing_method_cd",
+                    "Value": "Source",
+                },
+                {
+                    "TabName": "FORM",
+                    "DatawindowName": "form",
+                    "FieldName": "source_price_cd",
+                    "Value": "Supplier List Price",
+                },
+                {
+                    "TabName": "FORM",
+                    "DatawindowName": "form",
+                    "FieldName": "effective_date",
+                    "Value": datetime.now().strftime("%Y-%m-%d"),
+                },
+                {
+                    "TabName": "FORM",
+                    "DatawindowName": "form",
+                    "FieldName": "expiration_date",
+                    "Value": "2030-12-31",
+                },
+                {
+                    "TabName": "FORM",
+                    "DatawindowName": "form",
+                    "FieldName": "row_status_flag",
+                    "Value": "Active",
+                },
+            ],
+        )
 
         # Step 4: Switch to VALUES tab
         session.change_tab(window_id, "VALUES")
 
         # Step 5: Set calculation method and value
-        session.change_data(window_id, [
-            {"TabName": "VALUES", "DatawindowName": "values",
-             "FieldName": "calculation_method_cd", "Value": "Multiplier"},
-            {"TabName": "VALUES", "DatawindowName": "values",
-             "FieldName": "calculation_value1", "Value": str(multiplier)},
-        ])
+        session.change_data(
+            window_id,
+            [
+                {
+                    "TabName": "VALUES",
+                    "DatawindowName": "values",
+                    "FieldName": "calculation_method_cd",
+                    "Value": "Multiplier",
+                },
+                {
+                    "TabName": "VALUES",
+                    "DatawindowName": "values",
+                    "FieldName": "calculation_value1",
+                    "Value": str(multiplier),
+                },
+            ],
+        )
 
         # Step 6: Save (gated - skipped on dry runs)
         if not execute:
@@ -215,7 +288,9 @@ def create_price_page(session: InteractiveSession, supplier_id: int,
                 print(f"      - {msg}")
             raise RuntimeError(f"Save failed: {messages or 'no messages returned'}")
         if status == 3:
-            raise RuntimeError("Save blocked by response window - manual intervention needed")
+            raise RuntimeError(
+                "Save blocked by response window - manual intervention needed"
+            )
 
         # Get the saved data to retrieve UID
         data = session.get_data(window_id)
@@ -236,9 +311,14 @@ def create_price_page(session: InteractiveSession, supplier_id: int,
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Interactive API save-and-close workflow")
-    parser.add_argument("--execute", action="store_true",
-                        help="Actually save the record (default: drive the window read-only, skip save)")
+    parser = argparse.ArgumentParser(
+        description="Interactive API save-and-close workflow"
+    )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Actually save the record (default: drive the window read-only, skip save)",
+    )
     args = parser.parse_args()
 
     print("Interactive API - Save and Close (v2)")
@@ -249,7 +329,9 @@ def main():
     config = load_config()
     token_data = get_token(config)
     headers = get_auth_headers(token_data["AccessToken"])
-    ui_server_url = get_ui_server_url(config.base_url, token_data["AccessToken"], config.verify_ssl)
+    ui_server_url = get_ui_server_url(
+        config.base_url, token_data["AccessToken"], config.verify_ssl
+    )
 
     print(f"UI Server: {ui_server_url}")
 
@@ -274,7 +356,7 @@ def main():
             product_group="MISC",
             description=description,
             multiplier=0.80,
-            execute=args.execute
+            execute=args.execute,
         )
 
         if result["success"] and result.get("saved"):

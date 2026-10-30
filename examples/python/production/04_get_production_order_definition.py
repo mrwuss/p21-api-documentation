@@ -22,6 +22,7 @@ from common.config import load_config
 from common.transaction import get_service_definition
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 SERVICE_NAME = "ProductionOrder"
@@ -29,8 +30,17 @@ OUTPUT_DIR = Path(__file__).parent
 
 # Keywords for highlighting labor/completion-related DataElements and fields
 LABOR_KEYWORDS = [
-    "labor", "time", "technician", "hours", "worked", "rate",
-    "cost", "completion", "complete", "finish", "quantity",
+    "labor",
+    "time",
+    "technician",
+    "hours",
+    "worked",
+    "rate",
+    "cost",
+    "completion",
+    "complete",
+    "finish",
+    "quantity",
 ]
 
 
@@ -172,9 +182,7 @@ def main() -> None:
                 print_field_definition(field, indent=2)
 
             # Summary of required fields
-            required_fields = [
-                f.get("Name") for f in field_defs if f.get("Required")
-            ]
+            required_fields = [f.get("Name") for f in field_defs if f.get("Required")]
             if required_fields:
                 print(f"\n  Required: {required_fields}")
 
