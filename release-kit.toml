@@ -1,0 +1,3 @@
+# release-kit settings: `rk-release tag` cuts each release from the changelog section.
+branch = "master"
+changelog = "docs/10-Changelog.md"
