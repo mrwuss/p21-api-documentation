@@ -2320,23 +2320,24 @@ When item IDs contain special characters, URL encoding is required:
 | Character | Encoding | Status |
 |-----------|----------|--------|
 | `#` | `%23` | **Works** — e.g., `ORDER%23TEST` |
-| `/` | `%2F` | **Route-dependent** — `/api/inventory/parts/{ItemId}...` returns 404; two other routes work (below) |
+| `/` | `%2F` | **Route-dependent** — `/api/inventory/parts/{ItemId}...` returns 404; three other routes work (below) |
 | `&` | `%26` | Use standard URL encoding |
 | `+` | `%2B` | Use standard URL encoding |
 
 > **Known Issue**: Forward slash (`/`) in item IDs cannot be URL-encoded on the `/api/inventory/parts/{ItemId}` routes. `%2F` is read as a path separator, and the request returns an HTML 404. (Credit: John Kennedy, confirmed by Felipe Maurer)
 >
-> **Two routes do reach such items** (play 26.1.5950.0, 2026-10-29, with an item ID of the form `ABC123/X0950`):
+> **Three routes do reach such items** (play 26.1.5950.0, 2026-10-29, with an item ID of the form `ABC123/X0950`):
 >
 > | Route | Result |
 > |---|---|
 > | `GET /api/inventory/v2/parts/v2/price/{ItemId}` with `%2F` | 200, the item's price. Needs `companyId`, `customerId`, `salesLocId` **and `sourceLocId`**; without `sourceLocId` it is HTTP 500 *"Please provide a value for required parameter sourceLocId."* Double-encoding (`%252F`) is HTTP 500 *"Item is not valid or not defined at this location"* |
 > | `GET /api/inventory/v2/parts/availability?itemId={ItemId}` | 200, the item's availability rows; the ID is a query value, so `%2F` is safe |
+> | `GET /api/inventory/parts/?$query=ItemId eq '{ItemId}'` | 200, a one-element array holding the full part object (locations, suppliers, units of measure); the ID is a query value |
 > | `GET /api/inventory/parts/{ItemId}`, `.../{ItemId}/v2/price`, `.../{ItemId}/availability` with `%2F` | 404 |
 >
 > *(Community lead: Felipe Maurer, [P21WWUG topic](https://forums.p21ww.org/Topic241059.aspx); verified here.)*
 >
-> **The update path is blocked too.** `GET /api/inventory/parts/{ItemId}` returns 404 for an item ID containing `/` (sent as `%2F`), so the GET → modify → PUT update path cannot reach such items; the two routes above only read. For supplier cost and other item edits on them, use the Interactive `Item` window. *(@mrwuss, production 26.1, October 2026 — [#171](https://github.com/mrwuss/p21-api-documentation/issues/171).)*
+> **The update path is blocked too.** `GET /api/inventory/parts/{ItemId}` returns 404 for an item ID containing `/` (sent as `%2F`), so the GET → modify → PUT update path cannot reach such items. The `$query` read above returns the same object, but a PUT from it was not tested; the three routes above are reads. For supplier cost and other item edits on them, use the Interactive `Item` window. *(@mrwuss, production 26.1, October 2026 — [#171](https://github.com/mrwuss/p21-api-documentation/issues/171).)*
 
 ---
 

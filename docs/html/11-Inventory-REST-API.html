@@ -3322,7 +3322,7 @@
 <tr>
 <td><code>/</code></td>
 <td><code>%2F</code></td>
-<td><strong>Route-dependent</strong> — <code>/api/inventory/parts/{ItemId}...</code> returns 404; two other routes work (below)</td>
+<td><strong>Route-dependent</strong> — <code>/api/inventory/parts/{ItemId}...</code> returns 404; three other routes work (below)</td>
 </tr>
 <tr>
 <td><code>&amp;</code></td>
@@ -3338,7 +3338,7 @@
 </table></div>
 <blockquote>
 <p><strong>Known Issue</strong>: Forward slash (<code>/</code>) in item IDs cannot be URL-encoded on the <code>/api/inventory/parts/{ItemId}</code> routes. <code>%2F</code> is read as a path separator, and the request returns an HTML 404. (Credit: John Kennedy, confirmed by Felipe Maurer)</p>
-<p><strong>Two routes do reach such items</strong> (play 26.1.5950.0, 2026-10-29, with an item ID of the form <code>ABC123/X0950</code>):</p>
+<p><strong>Three routes do reach such items</strong> (play 26.1.5950.0, 2026-10-29, with an item ID of the form <code>ABC123/X0950</code>):</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -3356,13 +3356,17 @@
 <td>200, the item's availability rows; the ID is a query value, so <code>%2F</code> is safe</td>
 </tr>
 <tr>
+<td><code>GET /api/inventory/parts/?$query=ItemId eq '{ItemId}'</code></td>
+<td>200, a one-element array holding the full part object (locations, suppliers, units of measure); the ID is a query value</td>
+</tr>
+<tr>
 <td><code>GET /api/inventory/parts/{ItemId}</code>, <code>.../{ItemId}/v2/price</code>, <code>.../{ItemId}/availability</code> with <code>%2F</code></td>
 <td>404</td>
 </tr>
 </tbody>
 </table></div>
 <p><em>(Community lead: Felipe Maurer, <a href="https://forums.p21ww.org/Topic241059.aspx">P21WWUG topic</a>; verified here.)</em></p>
-<p><strong>The update path is blocked too.</strong> <code>GET /api/inventory/parts/{ItemId}</code> returns 404 for an item ID containing <code>/</code> (sent as <code>%2F</code>), so the GET → modify → PUT update path cannot reach such items; the two routes above only read. For supplier cost and other item edits on them, use the Interactive <code>Item</code> window. <em>(@mrwuss, production 26.1, October 2026 — <a href="https://github.com/mrwuss/p21-api-documentation/issues/171">#171</a>.)</em></p>
+<p><strong>The update path is blocked too.</strong> <code>GET /api/inventory/parts/{ItemId}</code> returns 404 for an item ID containing <code>/</code> (sent as <code>%2F</code>), so the GET → modify → PUT update path cannot reach such items. The <code>$query</code> read above returns the same object, but a PUT from it was not tested; the three routes above are reads. For supplier cost and other item edits on them, use the Interactive <code>Item</code> window. <em>(@mrwuss, production 26.1, October 2026 — <a href="https://github.com/mrwuss/p21-api-documentation/issues/171">#171</a>.)</em></p>
 </blockquote>
 <hr />
 <h3 id="batch-pricing">Batch Pricing</h3>
