@@ -1455,12 +1455,12 @@
 <tr>
 <td>User-defined tables (UDT) rows</td>
 <td>—</td>
-<td><a href="13-UDT-Service-API.html#insert">13 § Insert</a> · <a href="13-UDT-Service-API.html#update">13 § Update</a> · <a href="13-UDT-Service-API.html#delete">13 § Delete</a> — <strong>update/delete need a <code>row_uid</code> column; 2026.1-created UDTs don't have one</strong></td>
+<td><a href="13-UDT-Service-API.html#insert">13 § Insert</a> · <a href="13-UDT-Service-API.html#update">13 § Update</a> · <a href="13-UDT-Service-API.html#delete">13 § Delete</a> — <strong>update/delete select a row by primary key with <code>{"rowuid": N}</code>; a <code>name</code>/<code>value</code> condition is a 400 or a silent no-op</strong></td>
 </tr>
 <tr>
 <td>UDT delete "succeeds" but nothing is deleted</td>
 <td>—</td>
-<td><a href="06-Error-Handling.html#0-rows-deleted-successfully-a-delete-that-deletes-nothing-20261">06 § <code>[0] rows deleted</code></a> · <a href="14-Breaking-Changes.html#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261">14 § entry 7</a></td>
+<td><a href="06-Error-Handling.html#0-rows-deleted-successfully-a-delete-that-deletes-nothing-20261">06 § <code>[0] rows deleted</code></a> · <a href="14-Breaking-Changes.html#7-udt-service-updatedelete-ignore-a-namevalue-condition-on-a-udt-created-on-20261">14 § entry 7</a></td>
 </tr>
 <tr>
 <td>Bulk-load a UDT from CSV (2026.1+)</td>

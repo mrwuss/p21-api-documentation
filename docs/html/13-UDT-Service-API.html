@@ -754,7 +754,7 @@
 <li><strong>Write-only</strong> — Three endpoints for insert, update, and delete</li>
 <li><strong>Stateless</strong> — No session management required</li>
 <li><strong>Column-based payloads</strong> — Data is sent as column name/value pairs</li>
-<li><strong>Condition-based targeting</strong> — Updates and deletes identify rows via conditions (typically <code>row_uid</code>)</li>
+<li><strong>Condition-based targeting</strong> — Updates and deletes identify rows with a <code>{"rowuid": N}</code> condition, where N is the row's primary-key value (see <a href="#update">Update</a>)</li>
 <li><strong>Shared auth</strong> — Uses the same Bearer token as all other P21 APIs</li>
 </ul>
 <h3 id="when-to-use">When to Use</h3>
@@ -769,7 +769,7 @@
 <li><strong>Write only</strong> — No read/query endpoints; use OData for reads</li>
 <li><strong>No endpoint-based schema discovery</strong> — no service endpoint lists tables or columns, but the catalog is readable over OData: <code>master_udt_definition</code> (one row per UDT: <code>udt_table_name</code>, <code>udt_view_name</code>) and <code>master_udt_definition_column</code> (per-column name, <code>datatype_cd</code>, <code>length</code>, <code>precision</code>/<code>scale</code>, <code>nullable_flag</code>, <code>df_value</code>). Verified on 2026.1.</li>
 <li><strong>SQL keyword filtering</strong> — Values containing SQL keywords (e.g., "drop", "insert") may be rejected even in legitimate data</li>
-<li><strong>UID-based conditions only</strong> — Updates and deletes require a literal <strong><code>row_uid</code> column</strong>, which UDTs created on 2026.1 <strong>do not have</strong> (their PK is <code>udt_{tablename}_uid</code>). On such tables update always 400s and delete silently deletes nothing — see the <a href="#update">warning under Update</a></li>
+<li><strong>Primary-key targeting only</strong> — the one condition the service honors is <code>{"rowuid": N}</code>, the row's <code>udt_{tablename}_uid</code> value. A <code>{"name": ..., "value": ...}</code> condition on any column, <code>row_uid</code> included, is a 400 on update and deletes nothing on delete — see the <a href="#update">warning under Update</a></li>
 <li><strong>Bulk upload is insert-only</strong> — the <a href="#bulk-data-api-20261">Bulk Data API</a> has no update or delete counterpart</li>
 </ul>
 <hr />
@@ -869,7 +869,7 @@
 <tr>
 <td><code>rows[].conditions</code></td>
 <td>array</td>
-<td>Column name/value pairs for WHERE clause (update/delete)</td>
+<td>Row selectors for update: <code>{"rowuid": N}</code>, the row's primary-key value. Delete takes <code>conditions</code> at the top level instead</td>
 </tr>
 </tbody>
 </table></div>
@@ -891,12 +891,12 @@
 <tr>
 <td><strong>Update</strong></td>
 <td>Required (new values)</td>
-<td>Required (identifies target rows, typically <code>row_uid</code>)</td>
+<td>Required, inside each row: <code>[{"rowuid": N}]</code></td>
 </tr>
 <tr>
 <td><strong>Delete</strong></td>
-<td>Empty array <code>[]</code></td>
-<td>Required (identifies target rows, typically <code>row_uid</code>)</td>
+<td>Not used</td>
+<td>Required, at the <strong>top level</strong>: <code>[{"rowuid": N}]</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1139,16 +1139,69 @@
 </div>
 <hr />
 <h2 id="update">Update</h2>
-<p>Update existing rows in a UDT table. Use <code>conditions</code> to identify which rows to update (typically by <code>row_uid</code>) and <code>columns</code> to specify the new values.</p>
+<p>Update existing rows in a UDT table. Each row object carries the new values in <code>columns</code> and the target row in <code>conditions</code>, as <code>{"rowuid": N}</code>.</p>
 <blockquote>
-<p>⚠️ <strong>Update and Delete require a literal <code>row_uid</code> column — and UDTs created on 2026.1 don't have one.</strong> Both endpoints are hard-wired to a column named exactly <code>row_uid</code>. P21's <strong>User Defined Table Maintenance</strong> window on 2026.1 names the primary key <strong><code>udt_{tablename}_uid</code></strong> (e.g. <code>udt_custom_orders_uid</code>) and creates <strong>no</strong> <code>row_uid</code>, which makes both endpoints unable to target any row on such a table:</p>
-<ul>
-<li><strong>Update</strong> returns <code>400 {"error":["Invalid Row Uid!"]}</code> for <strong>every</strong> condition — <code>row_uid</code>, the real PK name, or any other column; casing and string-vs-int variants all fail identically.</li>
-<li><strong>Delete</strong> is worse: it returns <strong>HTTP 200 <code>{"errorNo": 0, "errorMessage": "[0] rows deleted from [table] table successfully!"}</code></strong> and deletes nothing. The word <em>"successfully"</em> with <code>errorNo: 0</code> reads as a clean delete — <strong>only the <code>[0]</code> row count reveals the no-op.</strong></li>
-</ul>
-<p><strong>The maintenance window's "Row ID" is not the API's <code>row_uid</code>.</strong> P21's generated UDT maintenance windows expose a searchable <strong>Row ID</strong> used to recall, edit and delete a row — but it sits over the <code>udt_{tablename}_uid</code> primary key, and the service accepts only a column named literally <code>row_uid</code>. The identifier exists; the two surfaces disagree on its name. See <a href="14-Breaking-Changes.html#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261">Breaking Changes entry 7</a>. For bulk row entry without the API, those same windows support <strong>mass update</strong>.</p>
-<p><strong>Before relying on update/delete, confirm your UDT actually has a <code>row_uid</code> column</strong> (<code>GET /odataservice/odata/table/{udt}?$select=row_uid</code> — a 404 saying <em>"Could not find a property named 'row_uid'"</em> means it doesn't). If it doesn't, these endpoints cannot reach your data; use P21's maintenance UI or direct SQL. <strong>Always check the row count in <code>errorMessage</code></strong> rather than trusting <code>errorNo: 0</code>.</p>
-<p>The <code>row_uid</code> convention is well-attested by the contributors who documented these endpoints, so tables that predate 2026.1 evidently do have the column. We could not A/B this against a pre-2026.1 tenant — verified July 2026 on one 2026.1-created UDT.</p>
+<p>⚠️ <strong>Target the row with <code>{"rowuid": N}</code>, not with a <code>name</code>/<code>value</code> pair.</strong> <code>N</code> is the row's primary-key value. On a UDT created in P21's <strong>User Defined Table Maintenance</strong> window that key is <strong><code>udt_{tablename}_uid</code></strong> (for example <code>udt_custom_orders_uid</code>), and the table has no <code>row_uid</code> column. A <code>{"name": "row_uid", "value": "12345"}</code> condition does not reach those rows:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Call</th>
+<th>Body</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Update</td>
+<td><code>rows[].conditions: [{"name": "row_uid", "value": "5"}]</code></td>
+<td>400 <code>{"error":["Invalid Row Uid!"]}</code></td>
+</tr>
+<tr>
+<td>Update</td>
+<td><code>rows[].conditions: [{"name": "udt_{tablename}_uid", "value": "5"}]</code></td>
+<td>400 <code>Invalid Row Uid!</code></td>
+</tr>
+<tr>
+<td>Update</td>
+<td><code>rows[].conditions: [{"rowuid": 5}]</code></td>
+<td>200 <code>[1] row updated ...</code>; the new value reads back</td>
+</tr>
+<tr>
+<td>Update</td>
+<td><code>rows[].conditions: [{"rowuid": "6"}]</code></td>
+<td>200 <code>[1] row updated ...</code>; a string value works</td>
+</tr>
+<tr>
+<td>Update</td>
+<td><code>rows[].conditions: [{"RowUid": 7}]</code></td>
+<td>200 <code>[1] row updated ...</code>; the key name is not case-sensitive</td>
+</tr>
+<tr>
+<td>Update</td>
+<td>two row objects, each with its own <code>rowuid</code></td>
+<td>200 <code>[2] rows updated ...</code>; each row gets its own values</td>
+</tr>
+<tr>
+<td>Update</td>
+<td>one row object, <code>conditions: [{"rowuid": 5}, {"rowuid": 6}]</code></td>
+<td>200 <code>[2] rows updated ...</code>; both rows get the same values</td>
+</tr>
+<tr>
+<td>Update</td>
+<td><code>conditions: [{"name": "{column}", "value": "nomatch", "rowuid": 5}]</code></td>
+<td>200 <code>[1] row updated ...</code>; the <code>name</code>/<code>value</code> pair is <strong>ignored</strong></td>
+</tr>
+<tr>
+<td>Update</td>
+<td><code>rows[].conditions: [{"rowuid": 999999}]</code> (no such row)</td>
+<td>200 <code>[0] rows updated ... successfully!</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><em>(Verified on play 26.1.5950.0, 2026-10-29, on a UDT created there, with every result read back over OData on rows added for the test.)</em></p>
+<p><strong>The service selects rows by primary key only.</strong> A condition is not a WHERE clause on a column: the service reads <code>rowuid</code> and ignores <code>name</code> and <code>value</code>. To change rows by some other column's value, read their primary keys over OData first, then send one <code>rowuid</code> per row.</p>
+<p><strong>A miss still says "successfully".</strong> <code>errorNo</code> is <code>0</code> whether or not a row matched; <strong>read the <code>[N]</code> count in <code>errorMessage</code></strong> and treat <code>[0]</code> as a failure.</p>
+<p><strong>Find the primary-key column before you start.</strong> <code>master_udt_definition</code> over OData gives the table name; the key is <code>udt_{tablename}_uid</code>, which you can confirm with <code>GET /odataservice/odata/table/{udt}?$top=1</code>. <code>GET /odataservice/odata/table/{udt}?$select=row_uid</code> returns 404 <em>"Could not find a property named 'row_uid'"</em> on these tables. Whether <code>rowuid</code> maps to a literal <code>row_uid</code> column on a table that has one could not be tested: no such UDT was available. See <a href="14-Breaking-Changes.html#7-udt-service-updatedelete-ignore-a-namevalue-condition-on-a-udt-created-on-20261">Breaking Changes entry 7</a>.</p>
 </blockquote>
 <h3 id="request_1">Request</h3>
 <div class="highlight"><pre><span></span><code><span class="err">PUT /udtservice/api/udtdata/updateudtdata</span>
@@ -1167,7 +1220,7 @@
 <span class="w">        </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;order_total&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1300.00&quot;</span><span class="p">}</span>
 <span class="w">      </span><span class="p">],</span>
 <span class="w">      </span><span class="nt">&quot;conditions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">        </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;row_uid&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;12345&quot;</span><span class="p">}</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;rowuid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">12345</span><span class="p">}</span>
 <span class="w">      </span><span class="p">]</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">]</span>
@@ -1176,7 +1229,7 @@
 
 <h3 id="example_1">Example</h3>
 <blockquote>
-<p>The <code>ROW_UID</code> constant below must be a value from the table's real <code>row_uid</code> column — see the note under <a href="#limitations">Limitations</a>: UDTs created on 2026.1 have no such column, and this call always 400s against them.</p>
+<p><code>ROW_UID</code> is the row's primary-key value, read from the <code>udt_{tablename}_uid</code> column over OData (see <a href="#reading-udt-data-odata">Reading UDT Data</a>). The read-back filters on that column, so set <code>UID_COLUMN</code> to match your table.</p>
 </blockquote>
 <div class="code-tabs">
   <div class="tab-buttons">
@@ -1184,7 +1237,7 @@
     <button class="tab-btn" data-lang="csharp">C#</button>
   </div>
   <div class="tab-panel active" data-lang="python">
-<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Update a UDT row identified by row_uid via the UDT Service API.&quot;&quot;&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Update one UDT row, selected by its primary key, via the UDT Service API.&quot;&quot;&quot;</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
@@ -1195,7 +1248,8 @@
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
 <span class="n">TABLE</span> <span class="o">=</span> <span class="s2">&quot;udt_custom_orders&quot;</span>               <span class="c1"># UDT table name</span>
-<span class="n">ROW_UID</span> <span class="o">=</span> <span class="s2">&quot;12345&quot;</span>                         <span class="c1"># row_uid of the record to update</span>
+<span class="n">UID_COLUMN</span> <span class="o">=</span> <span class="s2">&quot;udt_custom_orders_uid&quot;</span>     <span class="c1"># the table&#39;s primary key: udt_{tablename}_uid</span>
+<span class="n">ROW_UID</span> <span class="o">=</span> <span class="mi">12345</span>                           <span class="c1"># that key&#39;s value for the row to update</span>
 <span class="c1"># ---------------------------------------------------------------------------</span>
 
 
@@ -1232,8 +1286,9 @@
                     <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;status&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;completed&quot;</span><span class="p">},</span>
                     <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;order_total&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;1300.00&quot;</span><span class="p">},</span>
                 <span class="p">],</span>
+                <span class="c1"># rowuid takes the primary-key value; a name/value pair is ignored.</span>
                 <span class="s2">&quot;conditions&quot;</span><span class="p">:</span> <span class="p">[</span>
-                    <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;row_uid&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">ROW_UID</span><span class="p">},</span>
+                    <span class="p">{</span><span class="s2">&quot;rowuid&quot;</span><span class="p">:</span> <span class="n">ROW_UID</span><span class="p">},</span>
                 <span class="p">],</span>
             <span class="p">}</span>
         <span class="p">],</span>
@@ -1246,15 +1301,16 @@
     <span class="p">)</span>
     <span class="n">result</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 
-    <span class="k">if</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;errorNo&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="c1"># Read the [N] count: errorNo is 0 even when no row matched.</span>
+    <span class="k">if</span> <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">200</span> <span class="ow">and</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;errorNo&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Update: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;errorMessage&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;errorNo&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;errorMessage&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error (HTTP </span><span class="si">{</span><span class="n">resp</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="c1"># Read-back — confirm the new values actually landed via OData.</span>
     <span class="n">check</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
         <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/table/</span><span class="si">{</span><span class="n">TABLE</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;row_uid eq </span><span class="si">{</span><span class="n">ROW_UID</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
+        <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">UID_COLUMN</span><span class="si">}</span><span class="s2"> eq </span><span class="si">{</span><span class="n">ROW_UID</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
         <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">check</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
@@ -1262,7 +1318,7 @@
     <span class="k">if</span> <span class="n">rows</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Read-back: status=</span><span class="si">{</span><span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">, order_total=</span><span class="si">{</span><span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;order_total&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Read-back: row_uid not found&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Read-back: no row with </span><span class="si">{</span><span class="n">UID_COLUMN</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">ROW_UID</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 </div>
   <div class="tab-panel" data-lang="csharp">
@@ -1275,7 +1331,8 @@
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Table</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;udt_custom_orders&quot;</span><span class="p">;</span><span class="w">               </span><span class="c1">// UDT table name</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">RowUid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;12345&quot;</span><span class="p">;</span><span class="w">                          </span><span class="c1">// row_uid of the record to update</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">UidColumn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;udt_custom_orders_uid&quot;</span><span class="p">;</span><span class="w">       </span><span class="c1">// the table&#39;s primary key: udt_{tablename}_uid</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">RowUid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">12345</span><span class="p">;</span><span class="w">                               </span><span class="c1">// that key&#39;s value for the row to update</span>
 <span class="c1">// ---------------------------------------------------------------------------</span>
 
 <span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
@@ -1302,9 +1359,10 @@
 <span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;status&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;completed&quot;</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;order_total&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;1300.00&quot;</span><span class="w"> </span><span class="p">},</span>
 <span class="w">            </span><span class="p">},</span>
+<span class="w">            </span><span class="c1">// rowuid takes the primary-key value; a name/value pair is ignored.</span>
 <span class="w">            </span><span class="n">conditions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="kt">object</span><span class="p">[]</span>
 <span class="w">            </span><span class="p">{</span>
-<span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;row_uid&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">RowUid</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">rowuid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">RowUid</span><span class="w"> </span><span class="p">},</span>
 <span class="w">            </span><span class="p">},</span>
 <span class="w">        </span><span class="p">},</span>
 <span class="w">    </span><span class="p">},</span>
@@ -1313,21 +1371,22 @@
 <span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span>
 <span class="w">    </span><span class="s">$&quot;{BaseUrl}/udtservice/api/udtdata/updateudtdata&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="n">payload</span><span class="p">),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
-<span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">()).</span><span class="n">RootElement</span><span class="p">;</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">body</span><span class="p">).</span><span class="n">RootElement</span><span class="p">;</span>
 
-<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;errorNo&quot;</span><span class="p">).</span><span class="n">GetInt32</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="c1">// Read the [N] count: errorNo is 0 even when no row matched.</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">resp</span><span class="p">.</span><span class="n">IsSuccessStatusCode</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">result</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;errorNo&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">errorNo</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">errorNo</span><span class="p">.</span><span class="n">GetInt32</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
 <span class="p">{</span>
 <span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Update: {result.GetProperty(&quot;</span><span class="n">errorMessage</span><span class="s">&quot;).GetString()}&quot;</span><span class="p">);</span>
 <span class="p">}</span>
 <span class="k">else</span>
 <span class="p">{</span>
-<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span>
-<span class="w">        </span><span class="s">$&quot;Error {result.GetProperty(&quot;</span><span class="n">errorNo</span><span class="s">&quot;).GetInt32()}: {result.GetProperty(&quot;</span><span class="n">errorMessage</span><span class="s">&quot;).GetString()}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Error (HTTP {(int)resp.StatusCode}): {body}&quot;</span><span class="p">);</span>
 <span class="p">}</span>
 
 <span class="c1">// Read-back — confirm the new values actually landed via OData.</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">checkResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
-<span class="w">    </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/table/{Table}?$filter=row_uid eq {RowUid}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/table/{Table}?$filter={UidColumn} eq {RowUid}&quot;</span><span class="p">);</span>
 <span class="n">checkResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">checkResult</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">checkResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">()).</span><span class="n">RootElement</span><span class="p">;</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">checkRows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">checkResult</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;value&quot;</span><span class="p">);</span>
@@ -1339,7 +1398,7 @@
 <span class="p">}</span>
 <span class="k">else</span>
 <span class="p">{</span>
-<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">&quot;Read-back: row_uid not found&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Read-back: no row with {UidColumn} = {RowUid}&quot;</span><span class="p">);</span>
 <span class="p">}</span>
 
 <span class="c1">// --- helpers ---------------------------------------------------------------</span>
@@ -1375,17 +1434,44 @@
 </div>
 </div>
 <blockquote>
-<p><strong>Note:</strong> To get the <code>row_uid</code> for existing records, query the UDT table via OData first (see <a href="#reading-udt-data-odata">Reading UDT Data</a>).</p>
+<p><strong>Note:</strong> To get a row's primary-key value, query the UDT table via OData first (see <a href="#reading-udt-data-odata">Reading UDT Data</a>).</p>
 </blockquote>
 <hr />
 <h2 id="delete">Delete</h2>
-<p>Delete rows from a UDT table. Use <code>conditions</code> to identify which rows to remove (typically by <code>row_uid</code>).</p>
+<p>Delete rows from a UDT table. Send <code>conditions</code> at the <strong>top level</strong> of the payload, one <code>{"rowuid": N}</code> per row, where N is the row's primary-key value.</p>
 <blockquote>
-<p>⚠️ <strong>Delete reports success even when it deletes nothing</strong> — and on a 2026.1-created UDT (no <code>row_uid</code> column) it deletes nothing at all. See the <a href="#update">warning under Update</a>; check the <code>[N]</code> row count in <code>errorMessage</code>, never <code>errorNo</code> alone.</p>
-<p><strong>Payload note — <code>conditions</code> placement differs from Update.</strong> Delete reads <code>conditions</code> from the <strong>top level</strong> of the payload; nesting it inside <code>rows[]</code> (the shape Update uses, and the shape shown below) returns <code>400 {"error":["Conditions cannot be blank or none!"]}</code> on 2026.1. Both forms are documented here because the nested form is what the endpoint's original contributors used successfully — if the documented payload below returns that error, move <code>conditions</code> up a level:</p>
-<p><strong>Re-verification status (2026-08-11):</strong> this one could <strong>not</strong> be re-tested. The test tenant has no user-defined tables at all, and creating a UDT is UI-only — there is no API path to make one (a UI-only operation — see the note under <a href="#overview">Overview</a>). Both shapes therefore stand on the original reports rather than a fresh run; if you have a UDT to hand, try the top-level form first and treat the nested form as the fallback.</p>
-<p><code>json
-{"table": "udt_custom_orders", "conditions": [{"name": "row_uid", "value": "12345"}]}</code></p>
+<p>⚠️ <strong>Delete reports success even when it deletes nothing.</strong> Check the <code>[N]</code> row count in <code>errorMessage</code>, never <code>errorNo</code> alone. What each delete body returns (the first two are HTTP 200 and delete nothing; the last two work):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Body</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{"table": "...", "conditions": [{"name": "row_uid", "value": "9"}]}</code></td>
+<td>200 <code>[0] rows deleted ... successfully!</code>; the row is still there</td>
+</tr>
+<tr>
+<td><code>{"table": "...", "conditions": [{"rowuid": 999999}]}</code> (no such row)</td>
+<td>200 <code>[0] rows deleted ... successfully!</code></td>
+</tr>
+<tr>
+<td><code>{"table": "...", "rows": [{"columns": [], "conditions": [{"rowuid": 9}]}]}</code></td>
+<td>400 <code>{"error":["Conditions cannot be blank or none!"]}</code>; delete does not read <code>rows[]</code></td>
+</tr>
+<tr>
+<td><code>{"table": "...", "conditions": [{"rowuid": 9}]}</code></td>
+<td>200 <code>[1] row deleted ...</code>; the row is gone on read-back</td>
+</tr>
+<tr>
+<td><code>{"table": "...", "conditions": [{"rowuid": 7}, {"rowuid": 8}]}</code></td>
+<td>200 <code>[2] rows deleted ...</code>; both rows are gone</td>
+</tr>
+</tbody>
+</table></div>
+<p><em>(Verified on play 26.1.5950.0, 2026-10-29, on a UDT created there, with each result read back over OData on rows added for the test.)</em> As with update, the service selects rows by primary key only, so read the keys over OData before a delete by any other column. See the <a href="#update">warning under Update</a>.</p>
 </blockquote>
 <h3 id="request_2">Request</h3>
 <div class="highlight"><pre><span></span><code><span class="err">DELETE /udtservice/api/udtdata/deleteudtdata</span>
@@ -1397,28 +1483,20 @@
 <h3 id="payload_2">Payload</h3>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;table&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;udt_custom_orders&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;columns&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
-<span class="w">      </span><span class="nt">&quot;conditions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">        </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;row_uid&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;12345&quot;</span><span class="p">}</span>
-<span class="w">      </span><span class="p">]</span>
-<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="nt">&quot;conditions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;rowuid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">12345</span><span class="p">}</span>
 <span class="w">  </span><span class="p">]</span>
 <span class="p">}</span>
 </code></pre></div>
 
 <h3 id="example_2">Example</h3>
-<blockquote>
-<p><code>conditions</code> is sent at the <strong>top level</strong> of the payload, not nested inside <code>rows[]</code> — see the payload note above. This example intentionally differs from the <code>### Payload</code> block for that reason.</p>
-</blockquote>
 <div class="code-tabs">
   <div class="tab-buttons">
     <button class="tab-btn active" data-lang="python">Python</button>
     <button class="tab-btn" data-lang="csharp">C#</button>
   </div>
   <div class="tab-panel active" data-lang="python">
-<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Delete a UDT row identified by row_uid via the UDT Service API.&quot;&quot;&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Delete one UDT row, selected by its primary key, via the UDT Service API.&quot;&quot;&quot;</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
@@ -1429,7 +1507,8 @@
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
 <span class="n">TABLE</span> <span class="o">=</span> <span class="s2">&quot;udt_custom_orders&quot;</span>               <span class="c1"># UDT table name</span>
-<span class="n">ROW_UID</span> <span class="o">=</span> <span class="s2">&quot;12345&quot;</span>                         <span class="c1"># row_uid of the record to delete</span>
+<span class="n">UID_COLUMN</span> <span class="o">=</span> <span class="s2">&quot;udt_custom_orders_uid&quot;</span>     <span class="c1"># the table&#39;s primary key: udt_{tablename}_uid</span>
+<span class="n">ROW_UID</span> <span class="o">=</span> <span class="mi">12345</span>                           <span class="c1"># that key&#39;s value for the row to delete</span>
 <span class="c1"># ---------------------------------------------------------------------------</span>
 
 
@@ -1458,11 +1537,11 @@
         <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 
-    <span class="c1"># conditions is TOP-LEVEL for delete, not nested in rows[] — see warning above.</span>
+    <span class="c1"># conditions is TOP-LEVEL for delete, and rowuid takes the primary-key value.</span>
     <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;table&quot;</span><span class="p">:</span> <span class="n">TABLE</span><span class="p">,</span>
         <span class="s2">&quot;conditions&quot;</span><span class="p">:</span> <span class="p">[</span>
-            <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;row_uid&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">ROW_UID</span><span class="p">},</span>
+            <span class="p">{</span><span class="s2">&quot;rowuid&quot;</span><span class="p">:</span> <span class="n">ROW_UID</span><span class="p">},</span>
         <span class="p">],</span>
     <span class="p">}</span>
 
@@ -1475,20 +1554,20 @@
     <span class="n">result</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 
     <span class="c1"># Check the row count in errorMessage — errorNo == 0 lies when 0 rows were deleted.</span>
-    <span class="k">if</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;errorNo&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">200</span> <span class="ow">and</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;errorNo&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Delete: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;errorMessage&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;errorNo&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;errorMessage&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error (HTTP </span><span class="si">{</span><span class="n">resp</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="c1"># Read-back — confirm the row is actually gone via OData.</span>
     <span class="n">check</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
         <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/table/</span><span class="si">{</span><span class="n">TABLE</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;row_uid eq </span><span class="si">{</span><span class="n">ROW_UID</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
+        <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">UID_COLUMN</span><span class="si">}</span><span class="s2"> eq </span><span class="si">{</span><span class="n">ROW_UID</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
         <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">check</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
     <span class="n">rows</span> <span class="o">=</span> <span class="n">check</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="p">[])</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Read-back: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span><span class="si">}</span><span class="s2"> row(s) remain with row_uid=</span><span class="si">{</span><span class="n">ROW_UID</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Read-back: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span><span class="si">}</span><span class="s2"> row(s) remain with </span><span class="si">{</span><span class="n">UID_COLUMN</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">ROW_UID</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 </div>
   <div class="tab-panel" data-lang="csharp">
@@ -1501,7 +1580,8 @@
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Table</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;udt_custom_orders&quot;</span><span class="p">;</span><span class="w">               </span><span class="c1">// UDT table name</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">RowUid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;12345&quot;</span><span class="p">;</span><span class="w">                          </span><span class="c1">// row_uid of the record to delete</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">UidColumn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;udt_custom_orders_uid&quot;</span><span class="p">;</span><span class="w">       </span><span class="c1">// the table&#39;s primary key: udt_{tablename}_uid</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">RowUid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">12345</span><span class="p">;</span><span class="w">                               </span><span class="c1">// that key&#39;s value for the row to delete</span>
 <span class="c1">// ---------------------------------------------------------------------------</span>
 
 <span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
@@ -1516,13 +1596,13 @@
 <span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">client</span><span class="p">);</span>
 <span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
 
-<span class="c1">// conditions is TOP-LEVEL for delete, not nested in rows[] — see warning above.</span>
+<span class="c1">// conditions is TOP-LEVEL for delete, and rowuid takes the primary-key value.</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span>
 <span class="p">{</span>
 <span class="w">    </span><span class="n">table</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Table</span><span class="p">,</span>
 <span class="w">    </span><span class="n">conditions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="kt">object</span><span class="p">[]</span>
 <span class="w">    </span><span class="p">{</span>
-<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;row_uid&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">RowUid</span><span class="w"> </span><span class="p">},</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">rowuid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">RowUid</span><span class="w"> </span><span class="p">},</span>
 <span class="w">    </span><span class="p">},</span>
 <span class="p">};</span>
 
@@ -1532,26 +1612,26 @@
 <span class="w">    </span><span class="n">Content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="n">payload</span><span class="p">),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">),</span>
 <span class="p">};</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">SendAsync</span><span class="p">(</span><span class="n">request</span><span class="p">);</span>
-<span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">()).</span><span class="n">RootElement</span><span class="p">;</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">body</span><span class="p">).</span><span class="n">RootElement</span><span class="p">;</span>
 
 <span class="c1">// Check the row count in errorMessage — errorNo == 0 lies when 0 rows were deleted.</span>
-<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;errorNo&quot;</span><span class="p">).</span><span class="n">GetInt32</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">resp</span><span class="p">.</span><span class="n">IsSuccessStatusCode</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">result</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;errorNo&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">errorNo</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">errorNo</span><span class="p">.</span><span class="n">GetInt32</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
 <span class="p">{</span>
 <span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Delete: {result.GetProperty(&quot;</span><span class="n">errorMessage</span><span class="s">&quot;).GetString()}&quot;</span><span class="p">);</span>
 <span class="p">}</span>
 <span class="k">else</span>
 <span class="p">{</span>
-<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span>
-<span class="w">        </span><span class="s">$&quot;Error {result.GetProperty(&quot;</span><span class="n">errorNo</span><span class="s">&quot;).GetInt32()}: {result.GetProperty(&quot;</span><span class="n">errorMessage</span><span class="s">&quot;).GetString()}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Error (HTTP {(int)resp.StatusCode}): {body}&quot;</span><span class="p">);</span>
 <span class="p">}</span>
 
 <span class="c1">// Read-back — confirm the row is actually gone via OData.</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">checkResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
-<span class="w">    </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/table/{Table}?$filter=row_uid eq {RowUid}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/table/{Table}?$filter={UidColumn} eq {RowUid}&quot;</span><span class="p">);</span>
 <span class="n">checkResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">checkResult</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">checkResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">()).</span><span class="n">RootElement</span><span class="p">;</span>
 <span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span>
-<span class="w">    </span><span class="s">$&quot;Read-back: {checkResult.GetProperty(&quot;</span><span class="k">value</span><span class="s">&quot;).GetArrayLength()} row(s) remain with row_uid={RowUid}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="s">$&quot;Read-back: {checkResult.GetProperty(&quot;</span><span class="k">value</span><span class="s">&quot;).GetArrayLength()} row(s) remain with {UidColumn} = {RowUid}&quot;</span><span class="p">);</span>
 
 <span class="c1">// --- helpers ---------------------------------------------------------------</span>
 
@@ -1924,6 +2004,7 @@ A1,First order,1.5,2026-01-15
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
 <span class="n">TABLE</span> <span class="o">=</span> <span class="s2">&quot;udt_custom_orders&quot;</span>               <span class="c1"># UDT table name</span>
+<span class="n">UID_COLUMN</span> <span class="o">=</span> <span class="s2">&quot;udt_custom_orders_uid&quot;</span>     <span class="c1"># the table&#39;s primary key: udt_{tablename}_uid</span>
 <span class="c1"># ---------------------------------------------------------------------------</span>
 
 
@@ -1961,8 +2042,8 @@ A1,First order,1.5,2026-01-15
 
     <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="p">[]):</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Order: </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;order_ref&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, Total: </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;order_total&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="c1"># row_uid is available for subsequent update/delete operations</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  row_uid: </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;row_uid&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1"># The primary key is the rowuid value for update and delete.</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">UID_COLUMN</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="n">UID_COLUMN</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 </div>
   <div class="tab-panel" data-lang="csharp">
@@ -1975,6 +2056,7 @@ A1,First order,1.5,2026-01-15
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Table</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;udt_custom_orders&quot;</span><span class="p">;</span><span class="w">               </span><span class="c1">// UDT table name</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">UidColumn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;udt_custom_orders_uid&quot;</span><span class="p">;</span><span class="w">       </span><span class="c1">// the table&#39;s primary key: udt_{tablename}_uid</span>
 <span class="c1">// ---------------------------------------------------------------------------</span>
 
 <span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
@@ -1998,8 +2080,8 @@ A1,First order,1.5,2026-01-15
 <span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">data</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;value&quot;</span><span class="p">).</span><span class="n">EnumerateArray</span><span class="p">())</span>
 <span class="p">{</span>
 <span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Order: {row.GetProperty(&quot;</span><span class="n">order_ref</span><span class="s">&quot;)}, Total: {row.GetProperty(&quot;</span><span class="n">order_total</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
-<span class="w">    </span><span class="c1">// row_uid is available for subsequent update/delete operations</span>
-<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  row_uid: {row.GetProperty(&quot;</span><span class="n">row_uid</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="c1">// The primary key is the rowuid value for update and delete.</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  {UidColumn}: {row.GetProperty(UidColumn)}&quot;</span><span class="p">);</span>
 <span class="p">}</span>
 
 <span class="c1">// --- helpers ---------------------------------------------------------------</span>
@@ -2035,7 +2117,7 @@ A1,First order,1.5,2026-01-15
 </div>
 </div>
 <blockquote>
-<p><strong>Tip:</strong> The <code>row_uid</code> column returned by OData is the primary identifier used in <code>conditions</code> for update and delete operations.</p>
+<p><strong>Tip:</strong> The <code>udt_{tablename}_uid</code> column returned by OData is the primary key. Its value is what update and delete take as <code>{"rowuid": N}</code>.</p>
 </blockquote>
 <hr />
 <h2 id="response-format">Response Format</h2>
@@ -2392,11 +2474,11 @@ A1,First order,1.5,2026-01-15
 </tr>
 <tr>
 <td><strong>Workaround</strong></td>
-<td>Query via OData first to obtain <code>row_uid</code></td>
+<td>Query via OData first to obtain each row's primary key, then send <code>{"rowuid": N}</code></td>
 </tr>
 </tbody>
 </table></div>
-<p>The <code>conditions</code> array for update and delete operations only reliably works with <code>row_uid</code>. Attempting to use other column values as conditions may produce unexpected results or errors. Always query via OData first to obtain the <code>row_uid</code> of the target row.</p>
+<p>Update and delete select rows by primary key only. The service reads the <code>rowuid</code> value in each condition and ignores <code>name</code> and <code>value</code>, so a condition on any other column cannot select rows: on update it returns <code>400 Invalid Row Uid!</code>, and on delete it deletes nothing. Query via OData first to obtain the <code>udt_{tablename}_uid</code> value of each target row. See the <a href="#update">warning under Update</a> <em>(verified on play 26.1.5950.0, 2026-10-29)</em>.</p>
 <h3 id="4-all-non-nullable-columns-required-on-insert">4. All Non-Nullable Columns Required on Insert</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -2502,6 +2584,7 @@ A1,First order,1.5,2026-01-15
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
 <span class="n">TABLE</span> <span class="o">=</span> <span class="s2">&quot;udt_custom_orders&quot;</span>               <span class="c1"># UDT table name</span>
+<span class="n">UID_COLUMN</span> <span class="o">=</span> <span class="s2">&quot;udt_custom_orders_uid&quot;</span>     <span class="c1"># the table&#39;s primary key: udt_{tablename}_uid</span>
 <span class="c1"># ---------------------------------------------------------------------------</span>
 
 
@@ -2553,7 +2636,7 @@ A1,First order,1.5,2026-01-15
     <span class="n">result</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Insert: errorNo=</span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;errorNo&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;errorMessage&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-    <span class="c1"># 2. READ via OData to get row_uid</span>
+    <span class="c1"># 2. READ via OData to get the row&#39;s primary key</span>
     <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
         <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/table/</span><span class="si">{</span><span class="n">TABLE</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
         <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="s2">&quot;order_ref eq &#39;ORD-2026-100&#39;&quot;</span><span class="p">},</span>
@@ -2564,8 +2647,8 @@ A1,First order,1.5,2026-01-15
     <span class="k">if</span> <span class="ow">not</span> <span class="n">rows</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Row not found via OData&quot;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">row_uid</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;row_uid&quot;</span><span class="p">])</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found row_uid: </span><span class="si">{</span><span class="n">row_uid</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">row_uid</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">UID_COLUMN</span><span class="p">]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="n">UID_COLUMN</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">row_uid</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="c1"># 3. UPDATE the row</span>
         <span class="n">update_payload</span> <span class="o">=</span> <span class="p">{</span>
@@ -2576,8 +2659,9 @@ A1,First order,1.5,2026-01-15
                         <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;status&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;confirmed&quot;</span><span class="p">},</span>
                         <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;order_total&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;525.00&quot;</span><span class="p">},</span>
                     <span class="p">],</span>
+                    <span class="c1"># rowuid takes the primary-key value; a name/value pair is ignored.</span>
                     <span class="s2">&quot;conditions&quot;</span><span class="p">:</span> <span class="p">[</span>
-                        <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;row_uid&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">row_uid</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;rowuid&quot;</span><span class="p">:</span> <span class="n">row_uid</span><span class="p">},</span>
                     <span class="p">],</span>
                 <span class="p">}</span>
             <span class="p">],</span>
@@ -2587,14 +2671,21 @@ A1,First order,1.5,2026-01-15
             <span class="n">json</span><span class="o">=</span><span class="n">update_payload</span><span class="p">,</span>
             <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Update: errorNo=</span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;errorNo&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;errorMessage&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Update: HTTP </span><span class="si">{</span><span class="n">resp</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;errorMessage&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">resp</span><span class="o">.</span><span class="n">text</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">check</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/table/</span><span class="si">{</span><span class="n">TABLE</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">UID_COLUMN</span><span class="si">}</span><span class="s2"> eq </span><span class="si">{</span><span class="n">row_uid</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
+            <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">check</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">updated</span> <span class="o">=</span> <span class="n">check</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Read-back after update: status=</span><span class="si">{</span><span class="n">updated</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">updated</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="kc">None</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="c1"># 4. DELETE the row — conditions is TOP-LEVEL for delete, not nested in rows[].</span>
         <span class="n">delete_payload</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;table&quot;</span><span class="p">:</span> <span class="n">TABLE</span><span class="p">,</span>
             <span class="s2">&quot;conditions&quot;</span><span class="p">:</span> <span class="p">[</span>
-                <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;row_uid&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">row_uid</span><span class="p">},</span>
+                <span class="p">{</span><span class="s2">&quot;rowuid&quot;</span><span class="p">:</span> <span class="n">row_uid</span><span class="p">},</span>
             <span class="p">],</span>
         <span class="p">}</span>
         <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">request</span><span class="p">(</span>
@@ -2603,8 +2694,14 @@ A1,First order,1.5,2026-01-15
             <span class="n">json</span><span class="o">=</span><span class="n">delete_payload</span><span class="p">,</span>
             <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Delete: errorNo=</span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;errorNo&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;errorMessage&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Delete: HTTP </span><span class="si">{</span><span class="n">resp</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;errorMessage&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">resp</span><span class="o">.</span><span class="n">text</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">check</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/table/</span><span class="si">{</span><span class="n">TABLE</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">UID_COLUMN</span><span class="si">}</span><span class="s2"> eq </span><span class="si">{</span><span class="n">row_uid</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
+            <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">check</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Read-back after delete: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">check</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">[]))</span><span class="si">}</span><span class="s2"> row(s) remain&quot;</span><span class="p">)</span>
 </code></pre></div>
 </div>
   <div class="tab-panel" data-lang="csharp">
@@ -2617,6 +2714,7 @@ A1,First order,1.5,2026-01-15
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Table</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;udt_custom_orders&quot;</span><span class="p">;</span><span class="w">               </span><span class="c1">// UDT table name</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">UidColumn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;udt_custom_orders_uid&quot;</span><span class="p">;</span><span class="w">       </span><span class="c1">// the table&#39;s primary key: udt_{tablename}_uid</span>
 <span class="c1">// ---------------------------------------------------------------------------</span>
 
 <span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
@@ -2657,7 +2755,7 @@ A1,First order,1.5,2026-01-15
 <span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span>
 <span class="w">    </span><span class="s">$&quot;Insert: errorNo={result.GetProperty(&quot;</span><span class="n">errorNo</span><span class="s">&quot;).GetInt32()}, {result.GetProperty(&quot;</span><span class="n">errorMessage</span><span class="s">&quot;).GetString()}&quot;</span><span class="p">);</span>
 
-<span class="c1">// 2. READ via OData to get row_uid</span>
+<span class="c1">// 2. READ via OData to get the row&#39;s primary key</span>
 <span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
 <span class="w">    </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/table/{Table}?$filter=order_ref eq &#39;ORD-2026-100&#39;&quot;</span><span class="p">);</span>
 <span class="n">resp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
@@ -2670,8 +2768,8 @@ A1,First order,1.5,2026-01-15
 <span class="p">}</span>
 <span class="k">else</span>
 <span class="p">{</span>
-<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">rowUid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;row_uid&quot;</span><span class="p">).</span><span class="n">ToString</span><span class="p">();</span>
-<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Found row_uid: {rowUid}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">rowUid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">GetProperty</span><span class="p">(</span><span class="n">UidColumn</span><span class="p">).</span><span class="n">GetInt32</span><span class="p">();</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Found {UidColumn}: {rowUid}&quot;</span><span class="p">);</span>
 
 <span class="w">    </span><span class="c1">// 3. UPDATE the row</span>
 <span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">updatePayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span>
@@ -2686,9 +2784,10 @@ A1,First order,1.5,2026-01-15
 <span class="w">                    </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;status&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;confirmed&quot;</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                    </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;order_total&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;525.00&quot;</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                </span><span class="p">},</span>
+<span class="w">                </span><span class="c1">// rowuid takes the primary-key value; a name/value pair is ignored.</span>
 <span class="w">                </span><span class="n">conditions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="kt">object</span><span class="p">[]</span>
 <span class="w">                </span><span class="p">{</span>
-<span class="w">                    </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;row_uid&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">rowUid</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                    </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">rowuid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">rowUid</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                </span><span class="p">},</span>
 <span class="w">            </span><span class="p">},</span>
 <span class="w">        </span><span class="p">},</span>
@@ -2696,9 +2795,11 @@ A1,First order,1.5,2026-01-15
 <span class="w">    </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span>
 <span class="w">        </span><span class="s">$&quot;{BaseUrl}/udtservice/api/udtdata/updateudtdata&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="n">updatePayload</span><span class="p">),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
-<span class="w">    </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">()).</span><span class="n">RootElement</span><span class="p">;</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Update: HTTP {(int)resp.StatusCode}, {await resp.Content.ReadAsStringAsync()}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">updated</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetStringAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/table/{Table}?$filter={UidColumn} eq {rowUid}&quot;</span><span class="p">)).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;value&quot;</span><span class="p">);</span>
 <span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span>
-<span class="w">        </span><span class="s">$&quot;Update: errorNo={result.GetProperty(&quot;</span><span class="n">errorNo</span><span class="s">&quot;).GetInt32()}, {result.GetProperty(&quot;</span><span class="n">errorMessage</span><span class="s">&quot;).GetString()}&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="s">$&quot;Read-back after update: status={(updated.GetArrayLength() &gt; 0 ? updated[0].GetProperty(&quot;</span><span class="n">status</span><span class="s">&quot;).GetString() : null)}&quot;</span><span class="p">);</span>
 
 <span class="w">    </span><span class="c1">// 4. DELETE the row — conditions is TOP-LEVEL for delete, not nested in rows[].</span>
 <span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">deletePayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span>
@@ -2706,7 +2807,7 @@ A1,First order,1.5,2026-01-15
 <span class="w">        </span><span class="n">table</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Table</span><span class="p">,</span>
 <span class="w">        </span><span class="n">conditions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="kt">object</span><span class="p">[]</span>
 <span class="w">        </span><span class="p">{</span>
-<span class="w">            </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;row_uid&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">rowUid</span><span class="w"> </span><span class="p">},</span>
+<span class="w">            </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">rowuid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">rowUid</span><span class="w"> </span><span class="p">},</span>
 <span class="w">        </span><span class="p">},</span>
 <span class="w">    </span><span class="p">};</span>
 <span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">deleteRequest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpRequestMessage</span><span class="p">(</span>
@@ -2715,9 +2816,10 @@ A1,First order,1.5,2026-01-15
 <span class="w">        </span><span class="n">Content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="n">deletePayload</span><span class="p">),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">),</span>
 <span class="w">    </span><span class="p">};</span>
 <span class="w">    </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">SendAsync</span><span class="p">(</span><span class="n">deleteRequest</span><span class="p">);</span>
-<span class="w">    </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">()).</span><span class="n">RootElement</span><span class="p">;</span>
-<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span>
-<span class="w">        </span><span class="s">$&quot;Delete: errorNo={result.GetProperty(&quot;</span><span class="n">errorNo</span><span class="s">&quot;).GetInt32()}, {result.GetProperty(&quot;</span><span class="n">errorMessage</span><span class="s">&quot;).GetString()}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Delete: HTTP {(int)resp.StatusCode}, {await resp.Content.ReadAsStringAsync()}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">remaining</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetStringAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/table/{Table}?$filter={UidColumn} eq {rowUid}&quot;</span><span class="p">)).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;value&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Read-back after delete: {remaining.GetArrayLength()} row(s) remain&quot;</span><span class="p">);</span>
 <span class="p">}</span>
 
 <span class="c1">// --- helpers ---------------------------------------------------------------</span>

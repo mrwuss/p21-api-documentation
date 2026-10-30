@@ -27,7 +27,7 @@ On **2026.1 and later** there is a second, differently-shaped endpoint for high-
 - **Write-only** — Three endpoints for insert, update, and delete
 - **Stateless** — No session management required
 - **Column-based payloads** — Data is sent as column name/value pairs
-- **Condition-based targeting** — Updates and deletes identify rows via conditions (typically `row_uid`)
+- **Condition-based targeting** — Updates and deletes identify rows with a `{"rowuid": N}` condition, where N is the row's primary-key value (see [Update](#update))
 - **Shared auth** — Uses the same Bearer token as all other P21 APIs
 
 ### When to Use
@@ -42,7 +42,7 @@ On **2026.1 and later** there is a second, differently-shaped endpoint for high-
 - **Write only** — No read/query endpoints; use OData for reads
 - **No endpoint-based schema discovery** — no service endpoint lists tables or columns, but the catalog is readable over OData: `master_udt_definition` (one row per UDT: `udt_table_name`, `udt_view_name`) and `master_udt_definition_column` (per-column name, `datatype_cd`, `length`, `precision`/`scale`, `nullable_flag`, `df_value`). Verified on 2026.1.
 - **SQL keyword filtering** — Values containing SQL keywords (e.g., "drop", "insert") may be rejected even in legitimate data
-- **UID-based conditions only** — Updates and deletes require a literal **`row_uid` column**, which UDTs created on 2026.1 **do not have** (their PK is `udt_{tablename}_uid`). On such tables update always 400s and delete silently deletes nothing — see the [warning under Update](#update)
+- **Primary-key targeting only** — the one condition the service honors is `{"rowuid": N}`, the row's `udt_{tablename}_uid` value. A `{"name": ..., "value": ...}` condition on any column, `row_uid` included, is a 400 on update and deletes nothing on delete — see the [warning under Update](#update)
 - **Bulk upload is insert-only** — the [Bulk Data API](#bulk-data-api-20261) has no update or delete counterpart
 
 ---
@@ -112,15 +112,15 @@ All three endpoints use a common JSON structure with `table`, `rows`, `columns`,
 | `table` | string | UDT table name (e.g., `udt_custom_orders`) |
 | `rows` | array | Array of row objects to process |
 | `rows[].columns` | array | Column name/value pairs for data |
-| `rows[].conditions` | array | Column name/value pairs for WHERE clause (update/delete) |
+| `rows[].conditions` | array | Row selectors for update: `{"rowuid": N}`, the row's primary-key value. Delete takes `conditions` at the top level instead |
 
 ### Insert vs Update vs Delete
 
 | Operation | `columns` | `conditions` |
 |-----------|-----------|-------------|
 | **Insert** | Required (data to write) | Empty array `[]` |
-| **Update** | Required (new values) | Required (identifies target rows, typically `row_uid`) |
-| **Delete** | Empty array `[]` | Required (identifies target rows, typically `row_uid`) |
+| **Update** | Required (new values) | Required, inside each row: `[{"rowuid": N}]` |
+| **Delete** | Not used | Required, at the **top level**: `[{"rowuid": N}]` |
 
 ---
 
@@ -374,18 +374,29 @@ static string ReadField(string payload, string field)
 
 ## Update
 
-Update existing rows in a UDT table. Use `conditions` to identify which rows to update (typically by `row_uid`) and `columns` to specify the new values.
+Update existing rows in a UDT table. Each row object carries the new values in `columns` and the target row in `conditions`, as `{"rowuid": N}`.
 
-> ⚠️ **Update and Delete require a literal `row_uid` column — and UDTs created on 2026.1 don't have one.** Both endpoints are hard-wired to a column named exactly `row_uid`. P21's **User Defined Table Maintenance** window on 2026.1 names the primary key **`udt_{tablename}_uid`** (e.g. `udt_custom_orders_uid`) and creates **no** `row_uid`, which makes both endpoints unable to target any row on such a table:
+> ⚠️ **Target the row with `{"rowuid": N}`, not with a `name`/`value` pair.** `N` is the row's primary-key value. On a UDT created in P21's **User Defined Table Maintenance** window that key is **`udt_{tablename}_uid`** (for example `udt_custom_orders_uid`), and the table has no `row_uid` column. A `{"name": "row_uid", "value": "12345"}` condition does not reach those rows:
 >
-> - **Update** returns `400 {"error":["Invalid Row Uid!"]}` for **every** condition — `row_uid`, the real PK name, or any other column; casing and string-vs-int variants all fail identically.
-> - **Delete** is worse: it returns **HTTP 200 `{"errorNo": 0, "errorMessage": "[0] rows deleted from [table] table successfully!"}`** and deletes nothing. The word *"successfully"* with `errorNo: 0` reads as a clean delete — **only the `[0]` row count reveals the no-op.**
+> | Call | Body | Result |
+> |---|---|---|
+> | Update | `rows[].conditions: [{"name": "row_uid", "value": "5"}]` | 400 `{"error":["Invalid Row Uid!"]}` |
+> | Update | `rows[].conditions: [{"name": "udt_{tablename}_uid", "value": "5"}]` | 400 `Invalid Row Uid!` |
+> | Update | `rows[].conditions: [{"rowuid": 5}]` | 200 `[1] row updated ...`; the new value reads back |
+> | Update | `rows[].conditions: [{"rowuid": "6"}]` | 200 `[1] row updated ...`; a string value works |
+> | Update | `rows[].conditions: [{"RowUid": 7}]` | 200 `[1] row updated ...`; the key name is not case-sensitive |
+> | Update | two row objects, each with its own `rowuid` | 200 `[2] rows updated ...`; each row gets its own values |
+> | Update | one row object, `conditions: [{"rowuid": 5}, {"rowuid": 6}]` | 200 `[2] rows updated ...`; both rows get the same values |
+> | Update | `conditions: [{"name": "{column}", "value": "nomatch", "rowuid": 5}]` | 200 `[1] row updated ...`; the `name`/`value` pair is **ignored** |
+> | Update | `rows[].conditions: [{"rowuid": 999999}]` (no such row) | 200 `[0] rows updated ... successfully!` |
 >
-> **The maintenance window's "Row ID" is not the API's `row_uid`.** P21's generated UDT maintenance windows expose a searchable **Row ID** used to recall, edit and delete a row — but it sits over the `udt_{tablename}_uid` primary key, and the service accepts only a column named literally `row_uid`. The identifier exists; the two surfaces disagree on its name. See [Breaking Changes entry 7](14-Breaking-Changes.md#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261). For bulk row entry without the API, those same windows support **mass update**.
+> *(Verified on play 26.1.5950.0, 2026-10-29, on a UDT created there, with every result read back over OData on rows added for the test.)*
 >
-> **Before relying on update/delete, confirm your UDT actually has a `row_uid` column** (`GET /odataservice/odata/table/{udt}?$select=row_uid` — a 404 saying *"Could not find a property named 'row_uid'"* means it doesn't). If it doesn't, these endpoints cannot reach your data; use P21's maintenance UI or direct SQL. **Always check the row count in `errorMessage`** rather than trusting `errorNo: 0`.
+> **The service selects rows by primary key only.** A condition is not a WHERE clause on a column: the service reads `rowuid` and ignores `name` and `value`. To change rows by some other column's value, read their primary keys over OData first, then send one `rowuid` per row.
 >
-> The `row_uid` convention is well-attested by the contributors who documented these endpoints, so tables that predate 2026.1 evidently do have the column. We could not A/B this against a pre-2026.1 tenant — verified July 2026 on one 2026.1-created UDT.
+> **A miss still says "successfully".** `errorNo` is `0` whether or not a row matched; **read the `[N]` count in `errorMessage`** and treat `[0]` as a failure.
+>
+> **Find the primary-key column before you start.** `master_udt_definition` over OData gives the table name; the key is `udt_{tablename}_uid`, which you can confirm with `GET /odataservice/odata/table/{udt}?$top=1`. `GET /odataservice/odata/table/{udt}?$select=row_uid` returns 404 *"Could not find a property named 'row_uid'"* on these tables. Whether `rowuid` maps to a literal `row_uid` column on a table that has one could not be tested: no such UDT was available. See [Breaking Changes entry 7](14-Breaking-Changes.md#7-udt-service-updatedelete-ignore-a-namevalue-condition-on-a-udt-created-on-20261).
 
 ### Request
 
@@ -408,7 +419,7 @@ Accept: application/json
         {"name": "order_total", "value": "1300.00"}
       ],
       "conditions": [
-        {"name": "row_uid", "value": "12345"}
+        {"rowuid": 12345}
       ]
     }
   ]
@@ -417,13 +428,13 @@ Accept: application/json
 
 ### Example
 
-> The `ROW_UID` constant below must be a value from the table's real `row_uid` column — see the note under [Limitations](#limitations): UDTs created on 2026.1 have no such column, and this call always 400s against them.
+> `ROW_UID` is the row's primary-key value, read from the `udt_{tablename}_uid` column over OData (see [Reading UDT Data](#reading-udt-data-odata)). The read-back filters on that column, so set `UID_COLUMN` to match your table.
 
 <!-- tabs -->
 
 **Python:**
 ```python
-"""Update a UDT row identified by row_uid via the UDT Service API."""
+"""Update one UDT row, selected by its primary key, via the UDT Service API."""
 import re
 
 import httpx
@@ -434,7 +445,8 @@ USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
 TABLE = "udt_custom_orders"               # UDT table name
-ROW_UID = "12345"                         # row_uid of the record to update
+UID_COLUMN = "udt_custom_orders_uid"     # the table's primary key: udt_{tablename}_uid
+ROW_UID = 12345                           # that key's value for the row to update
 # ---------------------------------------------------------------------------
 
 
@@ -471,8 +483,9 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
                     {"name": "status", "value": "completed"},
                     {"name": "order_total", "value": "1300.00"},
                 ],
+                # rowuid takes the primary-key value; a name/value pair is ignored.
                 "conditions": [
-                    {"name": "row_uid", "value": ROW_UID},
+                    {"rowuid": ROW_UID},
                 ],
             }
         ],
@@ -485,15 +498,16 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     )
     result = resp.json()
 
-    if result["errorNo"] == 0:
+    # Read the [N] count: errorNo is 0 even when no row matched.
+    if resp.status_code == 200 and result.get("errorNo") == 0:
         print(f"Update: {result['errorMessage']}")
     else:
-        print(f"Error {result['errorNo']}: {result['errorMessage']}")
+        print(f"Error (HTTP {resp.status_code}): {result}")
 
     # Read-back — confirm the new values actually landed via OData.
     check = client.get(
         f"{BASE_URL}/odataservice/odata/table/{TABLE}",
-        params={"$filter": f"row_uid eq {ROW_UID}"},
+        params={"$filter": f"{UID_COLUMN} eq {ROW_UID}"},
         headers=headers,
     )
     check.raise_for_status()
@@ -501,7 +515,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     if rows:
         print(f"Read-back: status={rows[0].get('status')}, order_total={rows[0].get('order_total')}")
     else:
-        print("Read-back: row_uid not found")
+        print(f"Read-back: no row with {UID_COLUMN} = {ROW_UID}")
 ```
 
 **C#:**
@@ -515,7 +529,8 @@ const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string Table = "udt_custom_orders";               // UDT table name
-const string RowUid = "12345";                          // row_uid of the record to update
+const string UidColumn = "udt_custom_orders_uid";       // the table's primary key: udt_{tablename}_uid
+const int RowUid = 12345;                               // that key's value for the row to update
 // ---------------------------------------------------------------------------
 
 var handler = new HttpClientHandler
@@ -542,9 +557,10 @@ var payload = new
                 new { name = "status", value = "completed" },
                 new { name = "order_total", value = "1300.00" },
             },
+            // rowuid takes the primary-key value; a name/value pair is ignored.
             conditions = new object[]
             {
-                new { name = "row_uid", value = RowUid },
+                new { rowuid = RowUid },
             },
         },
     },
@@ -553,21 +569,22 @@ var payload = new
 var resp = await client.PutAsync(
     $"{BaseUrl}/udtservice/api/udtdata/updateudtdata",
     new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
-var result = JsonDocument.Parse(await resp.Content.ReadAsStringAsync()).RootElement;
+var body = await resp.Content.ReadAsStringAsync();
+var result = JsonDocument.Parse(body).RootElement;
 
-if (result.GetProperty("errorNo").GetInt32() == 0)
+// Read the [N] count: errorNo is 0 even when no row matched.
+if (resp.IsSuccessStatusCode && result.TryGetProperty("errorNo", out var errorNo) && errorNo.GetInt32() == 0)
 {
     Console.WriteLine($"Update: {result.GetProperty("errorMessage").GetString()}");
 }
 else
 {
-    Console.WriteLine(
-        $"Error {result.GetProperty("errorNo").GetInt32()}: {result.GetProperty("errorMessage").GetString()}");
+    Console.WriteLine($"Error (HTTP {(int)resp.StatusCode}): {body}");
 }
 
 // Read-back — confirm the new values actually landed via OData.
 var checkResp = await client.GetAsync(
-    $"{BaseUrl}/odataservice/odata/table/{Table}?$filter=row_uid eq {RowUid}");
+    $"{BaseUrl}/odataservice/odata/table/{Table}?$filter={UidColumn} eq {RowUid}");
 checkResp.EnsureSuccessStatusCode();
 var checkResult = JsonDocument.Parse(await checkResp.Content.ReadAsStringAsync()).RootElement;
 var checkRows = checkResult.GetProperty("value");
@@ -579,7 +596,7 @@ if (checkRows.GetArrayLength() > 0)
 }
 else
 {
-    Console.WriteLine("Read-back: row_uid not found");
+    Console.WriteLine($"Read-back: no row with {UidColumn} = {RowUid}");
 }
 
 // --- helpers ---------------------------------------------------------------
@@ -615,23 +632,25 @@ static string ReadField(string payload, string field)
 
 <!-- /tabs -->
 
-> **Note:** To get the `row_uid` for existing records, query the UDT table via OData first (see [Reading UDT Data](#reading-udt-data-odata)).
+> **Note:** To get a row's primary-key value, query the UDT table via OData first (see [Reading UDT Data](#reading-udt-data-odata)).
 
 ---
 
 ## Delete
 
-Delete rows from a UDT table. Use `conditions` to identify which rows to remove (typically by `row_uid`).
+Delete rows from a UDT table. Send `conditions` at the **top level** of the payload, one `{"rowuid": N}` per row, where N is the row's primary-key value.
 
-> ⚠️ **Delete reports success even when it deletes nothing** — and on a 2026.1-created UDT (no `row_uid` column) it deletes nothing at all. See the [warning under Update](#update); check the `[N]` row count in `errorMessage`, never `errorNo` alone.
-
-> **Payload note — `conditions` placement differs from Update.** Delete reads `conditions` from the **top level** of the payload; nesting it inside `rows[]` (the shape Update uses, and the shape shown below) returns `400 {"error":["Conditions cannot be blank or none!"]}` on 2026.1. Both forms are documented here because the nested form is what the endpoint's original contributors used successfully — if the documented payload below returns that error, move `conditions` up a level:
+> ⚠️ **Delete reports success even when it deletes nothing.** Check the `[N]` row count in `errorMessage`, never `errorNo` alone. What each delete body returns (the first two are HTTP 200 and delete nothing; the last two work):
 >
-> **Re-verification status (2026-08-11):** this one could **not** be re-tested. The test tenant has no user-defined tables at all, and creating a UDT is UI-only — there is no API path to make one (a UI-only operation — see the note under [Overview](#overview)). Both shapes therefore stand on the original reports rather than a fresh run; if you have a UDT to hand, try the top-level form first and treat the nested form as the fallback.
+> | Body | Result |
+> |---|---|
+> | `{"table": "...", "conditions": [{"name": "row_uid", "value": "9"}]}` | 200 `[0] rows deleted ... successfully!`; the row is still there |
+> | `{"table": "...", "conditions": [{"rowuid": 999999}]}` (no such row) | 200 `[0] rows deleted ... successfully!` |
+> | `{"table": "...", "rows": [{"columns": [], "conditions": [{"rowuid": 9}]}]}` | 400 `{"error":["Conditions cannot be blank or none!"]}`; delete does not read `rows[]` |
+> | `{"table": "...", "conditions": [{"rowuid": 9}]}` | 200 `[1] row deleted ...`; the row is gone on read-back |
+> | `{"table": "...", "conditions": [{"rowuid": 7}, {"rowuid": 8}]}` | 200 `[2] rows deleted ...`; both rows are gone |
 >
-> ```json
-> {"table": "udt_custom_orders", "conditions": [{"name": "row_uid", "value": "12345"}]}
-> ```
+> *(Verified on play 26.1.5950.0, 2026-10-29, on a UDT created there, with each result read back over OData on rows added for the test.)* As with update, the service selects rows by primary key only, so read the keys over OData before a delete by any other column. See the [warning under Update](#update).
 
 ### Request
 
@@ -647,26 +666,20 @@ Accept: application/json
 ```json
 {
   "table": "udt_custom_orders",
-  "rows": [
-    {
-      "columns": [],
-      "conditions": [
-        {"name": "row_uid", "value": "12345"}
-      ]
-    }
+  "conditions": [
+    {"rowuid": 12345}
   ]
 }
 ```
 
 ### Example
 
-> `conditions` is sent at the **top level** of the payload, not nested inside `rows[]` — see the payload note above. This example intentionally differs from the `### Payload` block for that reason.
 
 <!-- tabs -->
 
 **Python:**
 ```python
-"""Delete a UDT row identified by row_uid via the UDT Service API."""
+"""Delete one UDT row, selected by its primary key, via the UDT Service API."""
 import re
 
 import httpx
@@ -677,7 +690,8 @@ USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
 TABLE = "udt_custom_orders"               # UDT table name
-ROW_UID = "12345"                         # row_uid of the record to delete
+UID_COLUMN = "udt_custom_orders_uid"     # the table's primary key: udt_{tablename}_uid
+ROW_UID = 12345                           # that key's value for the row to delete
 # ---------------------------------------------------------------------------
 
 
@@ -706,11 +720,11 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
         "Content-Type": "application/json",
     }
 
-    # conditions is TOP-LEVEL for delete, not nested in rows[] — see warning above.
+    # conditions is TOP-LEVEL for delete, and rowuid takes the primary-key value.
     payload = {
         "table": TABLE,
         "conditions": [
-            {"name": "row_uid", "value": ROW_UID},
+            {"rowuid": ROW_UID},
         ],
     }
 
@@ -723,20 +737,20 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     result = resp.json()
 
     # Check the row count in errorMessage — errorNo == 0 lies when 0 rows were deleted.
-    if result["errorNo"] == 0:
+    if resp.status_code == 200 and result.get("errorNo") == 0:
         print(f"Delete: {result['errorMessage']}")
     else:
-        print(f"Error {result['errorNo']}: {result['errorMessage']}")
+        print(f"Error (HTTP {resp.status_code}): {result}")
 
     # Read-back — confirm the row is actually gone via OData.
     check = client.get(
         f"{BASE_URL}/odataservice/odata/table/{TABLE}",
-        params={"$filter": f"row_uid eq {ROW_UID}"},
+        params={"$filter": f"{UID_COLUMN} eq {ROW_UID}"},
         headers=headers,
     )
     check.raise_for_status()
     rows = check.json().get("value", [])
-    print(f"Read-back: {len(rows)} row(s) remain with row_uid={ROW_UID}")
+    print(f"Read-back: {len(rows)} row(s) remain with {UID_COLUMN} = {ROW_UID}")
 ```
 
 **C#:**
@@ -750,7 +764,8 @@ const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string Table = "udt_custom_orders";               // UDT table name
-const string RowUid = "12345";                          // row_uid of the record to delete
+const string UidColumn = "udt_custom_orders_uid";       // the table's primary key: udt_{tablename}_uid
+const int RowUid = 12345;                               // that key's value for the row to delete
 // ---------------------------------------------------------------------------
 
 var handler = new HttpClientHandler
@@ -765,13 +780,13 @@ client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("app
 var token = await GetTokenAsync(client);
 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-// conditions is TOP-LEVEL for delete, not nested in rows[] — see warning above.
+// conditions is TOP-LEVEL for delete, and rowuid takes the primary-key value.
 var payload = new
 {
     table = Table,
     conditions = new object[]
     {
-        new { name = "row_uid", value = RowUid },
+        new { rowuid = RowUid },
     },
 };
 
@@ -781,26 +796,26 @@ var request = new HttpRequestMessage(
     Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"),
 };
 var resp = await client.SendAsync(request);
-var result = JsonDocument.Parse(await resp.Content.ReadAsStringAsync()).RootElement;
+var body = await resp.Content.ReadAsStringAsync();
+var result = JsonDocument.Parse(body).RootElement;
 
 // Check the row count in errorMessage — errorNo == 0 lies when 0 rows were deleted.
-if (result.GetProperty("errorNo").GetInt32() == 0)
+if (resp.IsSuccessStatusCode && result.TryGetProperty("errorNo", out var errorNo) && errorNo.GetInt32() == 0)
 {
     Console.WriteLine($"Delete: {result.GetProperty("errorMessage").GetString()}");
 }
 else
 {
-    Console.WriteLine(
-        $"Error {result.GetProperty("errorNo").GetInt32()}: {result.GetProperty("errorMessage").GetString()}");
+    Console.WriteLine($"Error (HTTP {(int)resp.StatusCode}): {body}");
 }
 
 // Read-back — confirm the row is actually gone via OData.
 var checkResp = await client.GetAsync(
-    $"{BaseUrl}/odataservice/odata/table/{Table}?$filter=row_uid eq {RowUid}");
+    $"{BaseUrl}/odataservice/odata/table/{Table}?$filter={UidColumn} eq {RowUid}");
 checkResp.EnsureSuccessStatusCode();
 var checkResult = JsonDocument.Parse(await checkResp.Content.ReadAsStringAsync()).RootElement;
 Console.WriteLine(
-    $"Read-back: {checkResult.GetProperty("value").GetArrayLength()} row(s) remain with row_uid={RowUid}");
+    $"Read-back: {checkResult.GetProperty("value").GetArrayLength()} row(s) remain with {UidColumn} = {RowUid}");
 
 // --- helpers ---------------------------------------------------------------
 
@@ -1134,6 +1149,7 @@ USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
 TABLE = "udt_custom_orders"               # UDT table name
+UID_COLUMN = "udt_custom_orders_uid"     # the table's primary key: udt_{tablename}_uid
 # ---------------------------------------------------------------------------
 
 
@@ -1171,8 +1187,8 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
 
     for row in data.get("value", []):
         print(f"Order: {row['order_ref']}, Total: {row['order_total']}")
-        # row_uid is available for subsequent update/delete operations
-        print(f"  row_uid: {row['row_uid']}")
+        # The primary key is the rowuid value for update and delete.
+        print(f"  {UID_COLUMN}: {row[UID_COLUMN]}")
 ```
 
 **C#:**
@@ -1186,6 +1202,7 @@ const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string Table = "udt_custom_orders";               // UDT table name
+const string UidColumn = "udt_custom_orders_uid";       // the table's primary key: udt_{tablename}_uid
 // ---------------------------------------------------------------------------
 
 var handler = new HttpClientHandler
@@ -1209,8 +1226,8 @@ var data = JsonDocument.Parse(await resp.Content.ReadAsStringAsync()).RootElemen
 foreach (var row in data.GetProperty("value").EnumerateArray())
 {
     Console.WriteLine($"Order: {row.GetProperty("order_ref")}, Total: {row.GetProperty("order_total")}");
-    // row_uid is available for subsequent update/delete operations
-    Console.WriteLine($"  row_uid: {row.GetProperty("row_uid")}");
+    // The primary key is the rowuid value for update and delete.
+    Console.WriteLine($"  {UidColumn}: {row.GetProperty(UidColumn)}");
 }
 
 // --- helpers ---------------------------------------------------------------
@@ -1246,7 +1263,7 @@ static string ReadField(string payload, string field)
 
 <!-- /tabs -->
 
-> **Tip:** The `row_uid` column returned by OData is the primary identifier used in `conditions` for update and delete operations.
+> **Tip:** The `udt_{tablename}_uid` column returned by OData is the primary key. Its value is what update and delete take as `{"rowuid": N}`.
 
 ---
 
@@ -1517,9 +1534,9 @@ Values containing SQL keywords like `"drop"`, `"insert"`, `"delete"`, `"update"`
 | **Discovery** | April 2026 (community-reported) |
 | **Affected versions** | All known versions with UDT support |
 | **Tested endpoints** | `updateudtdata`, `deleteudtdata` |
-| **Workaround** | Query via OData first to obtain `row_uid` |
+| **Workaround** | Query via OData first to obtain each row's primary key, then send `{"rowuid": N}` |
 
-The `conditions` array for update and delete operations only reliably works with `row_uid`. Attempting to use other column values as conditions may produce unexpected results or errors. Always query via OData first to obtain the `row_uid` of the target row.
+Update and delete select rows by primary key only. The service reads the `rowuid` value in each condition and ignores `name` and `value`, so a condition on any other column cannot select rows: on update it returns `400 Invalid Row Uid!`, and on delete it deletes nothing. Query via OData first to obtain the `udt_{tablename}_uid` value of each target row. See the [warning under Update](#update) *(verified on play 26.1.5950.0, 2026-10-29)*.
 
 ### 4. All Non-Nullable Columns Required on Insert
 
@@ -1579,6 +1596,7 @@ USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
 TABLE = "udt_custom_orders"               # UDT table name
+UID_COLUMN = "udt_custom_orders_uid"     # the table's primary key: udt_{tablename}_uid
 # ---------------------------------------------------------------------------
 
 
@@ -1630,7 +1648,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     result = resp.json()
     print(f"Insert: errorNo={result['errorNo']}, {result['errorMessage']}")
 
-    # 2. READ via OData to get row_uid
+    # 2. READ via OData to get the row's primary key
     resp = client.get(
         f"{BASE_URL}/odataservice/odata/table/{TABLE}",
         params={"$filter": "order_ref eq 'ORD-2026-100'"},
@@ -1641,8 +1659,8 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     if not rows:
         print("Row not found via OData")
     else:
-        row_uid = str(rows[0]["row_uid"])
-        print(f"Found row_uid: {row_uid}")
+        row_uid = rows[0][UID_COLUMN]
+        print(f"Found {UID_COLUMN}: {row_uid}")
 
         # 3. UPDATE the row
         update_payload = {
@@ -1653,8 +1671,9 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
                         {"name": "status", "value": "confirmed"},
                         {"name": "order_total", "value": "525.00"},
                     ],
+                    # rowuid takes the primary-key value; a name/value pair is ignored.
                     "conditions": [
-                        {"name": "row_uid", "value": row_uid},
+                        {"rowuid": row_uid},
                     ],
                 }
             ],
@@ -1664,14 +1683,21 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
             json=update_payload,
             headers=headers,
         )
-        result = resp.json()
-        print(f"Update: errorNo={result['errorNo']}, {result['errorMessage']}")
+        print(f"Update: HTTP {resp.status_code}, {resp.json().get('errorMessage', resp.text)}")
+        check = client.get(
+            f"{BASE_URL}/odataservice/odata/table/{TABLE}",
+            params={"$filter": f"{UID_COLUMN} eq {row_uid}"},
+            headers=headers,
+        )
+        check.raise_for_status()
+        updated = check.json().get("value", [])
+        print(f"Read-back after update: status={updated[0].get('status') if updated else None}")
 
         # 4. DELETE the row — conditions is TOP-LEVEL for delete, not nested in rows[].
         delete_payload = {
             "table": TABLE,
             "conditions": [
-                {"name": "row_uid", "value": row_uid},
+                {"rowuid": row_uid},
             ],
         }
         resp = client.request(
@@ -1680,8 +1706,14 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
             json=delete_payload,
             headers=headers,
         )
-        result = resp.json()
-        print(f"Delete: errorNo={result['errorNo']}, {result['errorMessage']}")
+        print(f"Delete: HTTP {resp.status_code}, {resp.json().get('errorMessage', resp.text)}")
+        check = client.get(
+            f"{BASE_URL}/odataservice/odata/table/{TABLE}",
+            params={"$filter": f"{UID_COLUMN} eq {row_uid}"},
+            headers=headers,
+        )
+        check.raise_for_status()
+        print(f"Read-back after delete: {len(check.json().get('value', []))} row(s) remain")
 ```
 
 **C#:**
@@ -1695,6 +1727,7 @@ const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string Table = "udt_custom_orders";               // UDT table name
+const string UidColumn = "udt_custom_orders_uid";       // the table's primary key: udt_{tablename}_uid
 // ---------------------------------------------------------------------------
 
 var handler = new HttpClientHandler
@@ -1735,7 +1768,7 @@ var result = JsonDocument.Parse(await resp.Content.ReadAsStringAsync()).RootElem
 Console.WriteLine(
     $"Insert: errorNo={result.GetProperty("errorNo").GetInt32()}, {result.GetProperty("errorMessage").GetString()}");
 
-// 2. READ via OData to get row_uid
+// 2. READ via OData to get the row's primary key
 resp = await client.GetAsync(
     $"{BaseUrl}/odataservice/odata/table/{Table}?$filter=order_ref eq 'ORD-2026-100'");
 resp.EnsureSuccessStatusCode();
@@ -1748,8 +1781,8 @@ if (rows.GetArrayLength() == 0)
 }
 else
 {
-    var rowUid = rows[0].GetProperty("row_uid").ToString();
-    Console.WriteLine($"Found row_uid: {rowUid}");
+    var rowUid = rows[0].GetProperty(UidColumn).GetInt32();
+    Console.WriteLine($"Found {UidColumn}: {rowUid}");
 
     // 3. UPDATE the row
     var updatePayload = new
@@ -1764,9 +1797,10 @@ else
                     new { name = "status", value = "confirmed" },
                     new { name = "order_total", value = "525.00" },
                 },
+                // rowuid takes the primary-key value; a name/value pair is ignored.
                 conditions = new object[]
                 {
-                    new { name = "row_uid", value = rowUid },
+                    new { rowuid = rowUid },
                 },
             },
         },
@@ -1774,9 +1808,11 @@ else
     resp = await client.PutAsync(
         $"{BaseUrl}/udtservice/api/udtdata/updateudtdata",
         new StringContent(JsonSerializer.Serialize(updatePayload), Encoding.UTF8, "application/json"));
-    result = JsonDocument.Parse(await resp.Content.ReadAsStringAsync()).RootElement;
+    Console.WriteLine($"Update: HTTP {(int)resp.StatusCode}, {await resp.Content.ReadAsStringAsync()}");
+    var updated = JsonDocument.Parse(await client.GetStringAsync(
+        $"{BaseUrl}/odataservice/odata/table/{Table}?$filter={UidColumn} eq {rowUid}")).RootElement.GetProperty("value");
     Console.WriteLine(
-        $"Update: errorNo={result.GetProperty("errorNo").GetInt32()}, {result.GetProperty("errorMessage").GetString()}");
+        $"Read-back after update: status={(updated.GetArrayLength() > 0 ? updated[0].GetProperty("status").GetString() : null)}");
 
     // 4. DELETE the row — conditions is TOP-LEVEL for delete, not nested in rows[].
     var deletePayload = new
@@ -1784,7 +1820,7 @@ else
         table = Table,
         conditions = new object[]
         {
-            new { name = "row_uid", value = rowUid },
+            new { rowuid = rowUid },
         },
     };
     var deleteRequest = new HttpRequestMessage(
@@ -1793,9 +1829,10 @@ else
         Content = new StringContent(JsonSerializer.Serialize(deletePayload), Encoding.UTF8, "application/json"),
     };
     resp = await client.SendAsync(deleteRequest);
-    result = JsonDocument.Parse(await resp.Content.ReadAsStringAsync()).RootElement;
-    Console.WriteLine(
-        $"Delete: errorNo={result.GetProperty("errorNo").GetInt32()}, {result.GetProperty("errorMessage").GetString()}");
+    Console.WriteLine($"Delete: HTTP {(int)resp.StatusCode}, {await resp.Content.ReadAsStringAsync()}");
+    var remaining = JsonDocument.Parse(await client.GetStringAsync(
+        $"{BaseUrl}/odataservice/odata/table/{Table}?$filter={UidColumn} eq {rowUid}")).RootElement.GetProperty("value");
+    Console.WriteLine($"Read-back after delete: {remaining.GetArrayLength()} row(s) remain");
 }
 
 // --- helpers ---------------------------------------------------------------

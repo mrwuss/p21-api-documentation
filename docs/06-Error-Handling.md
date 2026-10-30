@@ -570,16 +570,16 @@ The message changes as each required block ([Minimum Create Payload](11-Inventor
 400 {"error": ["Invalid Row Uid!"]}
 ```
 
-The update and delete endpoints identify rows by a column named **exactly `row_uid`**. A UDT created by 2026.1's User Defined Table Maintenance has its primary key named `udt_{tablename}_uid` and **no `row_uid`** — so this error comes back for *every* condition you try, including the real PK name.
+The update and delete endpoints select rows by primary key, from a `rowuid` value in each condition. A condition written as a `name`/`value` pair carries no `rowuid`, so update returns this error for *every* such condition, including one on the table's real primary key. A UDT created by 2026.1's User Defined Table Maintenance names that key `udt_{tablename}_uid` and has **no `row_uid`** column.
 
-**Check whether the column exists at all**:
+**Confirm the table has no `row_uid` column**:
 
 ```http
 GET /odataservice/odata/table/{udt}?$select=row_uid
 → 404 "Could not find a property named 'row_uid' on type 'dbo.{udt}'."
 ```
 
-**Solution**: if there's no `row_uid`, these endpoints cannot reach your data — use P21's maintenance UI or direct SQL. Details: [UDT Service API § Update](13-UDT-Service-API.md#update) · [Breaking Changes § 2026.1](14-Breaking-Changes.md#p21-20261).
+**Solution**: read the row's `udt_{tablename}_uid` value over OData and send it as `"conditions": [{"rowuid": N}]`. On play 26.1.5950.0 (2026-10-29) that returned `[1] row updated` on a 2026.1-created UDT. Details: [UDT Service API § Update](13-UDT-Service-API.md#update) · [Breaking Changes entry 7](14-Breaking-Changes.md#7-udt-service-updatedelete-ignore-a-namevalue-condition-on-a-udt-created-on-20261).
 
 ### `"[0] rows deleted ... successfully!"` — a Delete That Deletes Nothing (2026.1)
 
@@ -588,9 +588,9 @@ GET /odataservice/odata/table/{udt}?$select=row_uid
      "errorMessage": "[0] rows deleted from [udt_example] table successfully!"}
 ```
 
-> ⚠️ **This is a success response that did nothing.** `errorNo: 0` and the word *"successfully"* pass every ordinary status check — only the `[0]` row count betrays it. On a UDT without `row_uid` (see above), **every** delete returns this. A purge or retention job built on it reports success forever while the table grows without bound.
+> ⚠️ **This is a success response that did nothing.** `errorNo: 0` and the word *"successfully"* pass every ordinary status check — only the `[0]` row count betrays it. A `name`/`value` condition (see above) always returns this, and so does a `rowuid` that matches no row. A purge or retention job built on it reports success forever while the table grows without bound.
 
-**Solution**: parse the `[N]` count out of `errorMessage` and treat `[0]` as a failure — never trust `errorNo: 0` alone. Confirm with a row-count read-back over OData.
+**Solution**: send `"conditions": [{"rowuid": N}]` at the top level, parse the `[N]` count out of `errorMessage` and treat `[0]` as a failure — never trust `errorNo: 0` alone. Confirm with a row-count read-back over OData.
 
 ### `"Conditions cannot be blank or none!"` on Delete (2026.1)
 

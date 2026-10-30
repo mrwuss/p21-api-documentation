@@ -192,8 +192,8 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Append locations **at scale** (supplier-x-loc primary, GL requireds, kit Buy, OP/OQ, retries, PrimaryBin, discount groups from location defaults) | — | [11 § Location-Append & Update Gotchas](11-Inventory-REST-API.md#location-append-update-gotchas-verified-at-scale) |
 | Customer-specific **price + availability** lookup | — | [11 § Pricing Endpoints](11-Inventory-REST-API.md#pricing-endpoints) |
 | **Batch** price + availability lookup (multiple items in one call, JSON *or* XML) | — | [11 § Batch Pricing](11-Inventory-REST-API.md#batch-pricing) |
-| User-defined tables (UDT) rows | — | [13 § Insert](13-UDT-Service-API.md#insert) · [13 § Update](13-UDT-Service-API.md#update) · [13 § Delete](13-UDT-Service-API.md#delete) — **update/delete need a `row_uid` column; 2026.1-created UDTs don't have one** |
-| UDT delete "succeeds" but nothing is deleted | — | [06 § `[0] rows deleted`](06-Error-Handling.md#0-rows-deleted-successfully-a-delete-that-deletes-nothing-20261) · [14 § entry 7](14-Breaking-Changes.md#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261) |
+| User-defined tables (UDT) rows | — | [13 § Insert](13-UDT-Service-API.md#insert) · [13 § Update](13-UDT-Service-API.md#update) · [13 § Delete](13-UDT-Service-API.md#delete) — **update/delete select a row by primary key with `{"rowuid": N}`; a `name`/`value` condition is a 400 or a silent no-op** |
+| UDT delete "succeeds" but nothing is deleted | — | [06 § `[0] rows deleted`](06-Error-Handling.md#0-rows-deleted-successfully-a-delete-that-deletes-nothing-20261) · [14 § entry 7](14-Breaking-Changes.md#7-udt-service-updatedelete-ignore-a-namevalue-condition-on-a-udt-created-on-20261) |
 | Bulk-load a UDT from CSV (2026.1+) | — | [13 § Bulk Data API](13-UDT-Service-API.md#bulk-data-api-20261) — CSV upload; **headerless file silently inserts nothing** |
 
 ## Drive a window (Interactive API)

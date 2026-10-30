@@ -665,7 +665,7 @@
 <li><a href="#4-put-v2tab-binds-only-pagename-tabname-is-ignored">4. PUT /v2/tab binds only PageName; TabName is ignored</a></li>
 <li><a href="#5-silent-false-success-loading-a-nonexistent-record-returns-status-2-with-an-empty-window">5. Silent false success: loading a nonexistent record returns Status: 2 with an empty window</a></li>
 <li><a href="#6-batched-v2change-is-not-atomic-it-is-sequential-and-fail-fast">6. Batched /v2/change is not atomic — it is sequential and fail-fast</a></li>
-<li><a href="#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261">7. UDT Service update/delete cannot target rows in a UDT created on 2026.1</a></li>
+<li><a href="#7-udt-service-updatedelete-ignore-a-namevalue-condition-on-a-udt-created-on-20261">7. UDT Service update/delete ignore a name/value condition on a UDT created on 2026.1</a></li>
 <li><a href="#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">8. IgnoreDisabled: true reports success on writes that write nothing</a></li>
 <li><a href="#9-a-bad-datawindowname-eats-the-next-request-on-that-window-empty-http-500">9. A bad DatawindowName eats the next request on that window (empty HTTP 500)</a></li>
 <li><a href="#related-20261-observations-not-breaking-changes">Related 2026.1 observations (not breaking changes)</a></li>
@@ -707,7 +707,7 @@
 <tbody>
 <tr>
 <td><a href="#p21-20261">2026.1</a></td>
-<td><code>SessionId</code> → <code>Id</code> · <code>/v2/tab</code> binds only <code>PageName</code> (<code>TabName</code> ignored) · <strong>silent-false-success on nonexistent-record loads</strong> · <strong>batched changes are sequential and fail-fast</strong> · <strong>UDT update/delete can't target rows (delete silently no-ops)</strong> · <strong><code>IgnoreDisabled</code> reports success on writes that write nothing</strong> · <strong>a bad <code>DatawindowName</code> eats the next request on that window</strong></td>
+<td><code>SessionId</code> → <code>Id</code> · <code>/v2/tab</code> binds only <code>PageName</code> (<code>TabName</code> ignored) · <strong>silent-false-success on nonexistent-record loads</strong> · <strong>batched changes are sequential and fail-fast</strong> · <strong>UDT update/delete ignore a <code>name</code>/<code>value</code> condition (delete silently no-ops; use <code>rowuid</code>)</strong> · <strong><code>IgnoreDisabled</code> reports success on writes that write nothing</strong> · <strong>a bad <code>DatawindowName</code> eats the next request on that window</strong></td>
 <td><a href="#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header">Empty 500 without <code>Accept: application/json</code></a> and the <a href="#2-ghost-sessions-the-failed-create-still-half-creates-the-session-alternating-500409">ghost sessions</a> it caused — both fixed in <strong>26.1.5940.0</strong></td>
 <td>High — four data-integrity hazards</td>
 </tr>
@@ -833,35 +833,50 @@
 <p><strong>The 5894.1 repro is also dead as of 5940.0, for an unrelated reason.</strong> That example used <code>TABPAGE_18.extended_info.extended_desc</code> as its disabled field; on 5940.0 that column is <strong>no longer disabled</strong> and writes cleanly (<code>Status: 1</code>, value in the buffer). Nothing about entry 6 changed — the field did. The table above re-establishes the behavior with <code>company_id</code>, which is disabled on a saved PO on every build we have tested. Worth noting generally: <strong>which columns a window disables shifts between builds</strong>, so a repro pinned to one field name has a shorter shelf life than the behavior it demonstrates.</p>
 <p><strong>Write tab-by-tab anyway.</strong> The client that filed the original report still groups its field writes by tab and switches before each group, and that remains the right shape regardless of which build you are on: it costs one <code>/v2/tab</code> call per tab, removes the question entirely, and matches how the window behaves for a human. Treat it as cheap insurance, not as a workaround for a bug we can currently demonstrate.</p>
 </blockquote>
-<h3 id="7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261">7. UDT Service update/delete cannot target rows in a UDT created on 2026.1</h3>
+<h3 id="7-udt-service-updatedelete-ignore-a-namevalue-condition-on-a-udt-created-on-20261">7. UDT Service update/delete ignore a name/value condition on a UDT created on 2026.1</h3>
 <p><strong>Data-integrity hazard — silent false success on delete.</strong></p>
 <blockquote>
-<p><strong>Verification scope:</strong> unlike entries 1–6, this one has <strong>no prior-version comparison</strong> — by the time it was found, no pre-2026.1 tenant remained available. What follows is verified on 2026.1; whether it is a <em>regression</em> or has always depended on how the table was created is <strong>unproven</strong>. Treated as a 2026.1 hazard because 2026.1's table-creation UI is what produces the incompatible shape.</p>
-<p><strong>Partially re-verified on 26.1.5940.0 (August 2026) and again on 26.1.5950.0 (September 2026).</strong> The <code>row_uid</code> existence probe, the update <code>400 {"error":["Invalid Row Uid!"]}</code> for <em>every</em> condition name — including the table's real primary key — and the nested-<code>conditions</code> payload trap all reproduce verbatim on both builds. <strong>The delete half still could not be re-tested</strong>: the tenant available for the re-run carries no user-created UDT (its only <code>udt_*</code> table is a P21 system table), so the <code>[0] rows deleted ... successfully!</code> silent no-op is carried forward on the original July 2026 verification rather than re-confirmed. Flagged rather than quietly restated, because that half is the dangerous one.</p>
-<p><strong>And a P21 system <code>udt_*</code> table is not a substitute target.</strong> Pointing delete at one returns <code>400 {"errorNo": 4001, "errorMessage": "Invalid UDT table"}</code> — the service distinguishes user-defined tables from the system tables that happen to share the prefix, so you cannot rehearse the delete path against <code>udt_column_visual_profile</code> or its siblings. Re-testing this half needs a UDT created through User Defined Table Maintenance.</p>
+<p><strong>Verification scope:</strong> this entry has <strong>no prior-version comparison</strong>; by the time it was found, no pre-2026.1 tenant remained available. Whether it is a <em>regression</em> or has always depended on how the table was created is <strong>unproven</strong>. It is treated as a 2026.1 hazard because 2026.1's table-creation window produces the table shape that triggers it.</p>
+<p><strong>Re-run in full on 26.1.5950.0 (2026-10-29)</strong> on a UDT created through User Defined Table Maintenance, with every result read back over OData on rows added for the test. Both halves reproduce, delete included, and the run found the condition shape that works: <code>{"rowuid": N}</code>.</p>
 </blockquote>
-<p><code>PUT /udtservice/api/udtdata/updateudtdata</code> and <code>DELETE .../deleteudtdata</code> identify rows by a column named <strong>exactly <code>row_uid</code></strong>. P21's <strong>User Defined Table Maintenance</strong> on 2026.1 names the primary key <strong><code>udt_{tablename}_uid</code></strong> and creates <strong>no</strong> <code>row_uid</code> column — so on any UDT built there, neither endpoint can reach a single row:</p>
-<div class="highlight"><pre><span></span><code>// Update — returns this for EVERY condition: the real PK name, any other
-// column, any casing, value as string or int.
+<p><code>PUT /udtservice/api/udtdata/updateudtdata</code> and <code>DELETE .../deleteudtdata</code> select rows by primary key, through a <code>rowuid</code> value in each condition. P21's <strong>User Defined Table Maintenance</strong> on 2026.1 names that key <strong><code>udt_{tablename}_uid</code></strong> and creates <strong>no</strong> <code>row_uid</code> column. A condition written as a <code>name</code>/<code>value</code> pair reaches no row:</p>
+<div class="highlight"><pre><span></span><code>// Update, rows[].conditions: [{&quot;name&quot;: &quot;row_uid&quot;, &quot;value&quot;: &quot;5&quot;}]
+// The same for the table&#39;s real primary-key name, any other column,
+// any casing, the value as a string or an int.
 400 {&quot;error&quot;: [&quot;Invalid Row Uid!&quot;]}
 
-// Delete — HTTP 200, and nothing is deleted.
+// Delete, top-level conditions: [{&quot;name&quot;: &quot;row_uid&quot;, &quot;value&quot;: &quot;9&quot;}]
+// HTTP 200, and nothing is deleted.
 200 {&quot;id&quot;: 0, &quot;errorNo&quot;: 0,
-     &quot;errorMessage&quot;: &quot;[0] rows deleted from [udt_bulk_probe] table successfully!&quot;}
+     &quot;errorMessage&quot;: &quot;[0] rows deleted from [udt_example] table successfully!&quot;}
 </code></pre></div>
 
-<p>The delete is the dangerous half. <code>errorNo: 0</code> and the word <em>"successfully"</em> read as a clean delete to any client checking status or <code>errorNo</code> — <strong>only the <code>[0]</code> row count reveals it did nothing.</strong> A purge or retention job built on this reports success indefinitely while the table grows without bound.</p>
+<p>The delete is the dangerous half. <code>errorNo: 0</code> and the word <em>"successfully"</em> read as a clean delete to any client checking status or <code>errorNo</code>; <strong>only the <code>[0]</code> row count reveals it did nothing.</strong> A purge or retention job built on this reports success indefinitely while the table grows without bound.</p>
+<p><strong>The fix is the condition shape.</strong> Put the row's primary-key value in <code>rowuid</code>:</p>
+<div class="highlight"><pre><span></span><code>// Update: conditions inside each row
+{&quot;table&quot;: &quot;udt_example&quot;, &quot;rows&quot;: [{&quot;columns&quot;: [{&quot;name&quot;: &quot;status&quot;, &quot;value&quot;: &quot;done&quot;}],
+                                   &quot;conditions&quot;: [{&quot;rowuid&quot;: 5}]}]}
+→ 200 &quot;[1] row updated in [udt_example] table successfully!&quot;
+
+// Delete: conditions at the top level
+{&quot;table&quot;: &quot;udt_example&quot;, &quot;conditions&quot;: [{&quot;rowuid&quot;: 9}]}
+→ 200 &quot;[1] row deleted from [udt_example] table successfully!&quot;
+</code></pre></div>
+
+<p>The service reads only <code>rowuid</code>: a condition carrying both a <code>rowuid</code> and a non-matching <code>name</code>/<code>value</code> pair updated the <code>rowuid</code> row. A <code>rowuid</code> with no matching row still returns <code>[0] ... successfully!</code>, so the row-count check stays. The full matrix is in <a href="13-UDT-Service-API.html#update">UDT Service API § Update</a> and <a href="13-UDT-Service-API.html#delete">§ Delete</a>.</p>
 <blockquote>
-<p><strong>This is a naming mismatch, not a missing identifier — which is why it reads as a defect.</strong> P21's own documentation for the maintenance windows this UI generates describes a <strong>Row ID</strong> field at the top of every generated window: <em>"To create a new database entry, populate the fields while leaving Row ID blank and save... To edit an existing entry, enter that row's ID to recall its values... To delete an existing database row, recall it with the Row ID, check Delete Row, and save."</em> It is also <em>"always a searchable field"</em>, unlike the others.</p>
-<p>So the per-row identifier the API says it needs <strong>does exist and the UI uses it for exactly these three operations</strong> — it is simply surfaced as "Row ID" over the <code>udt_{tablename}_uid</code> primary key, while the service accepts only a column named literally <code>row_uid</code>. The window and the service disagree about the name of the same thing. <em>(Source: P21 26.2 help, System Administration &gt; Creating a User-Defined Database Table.)</em></p>
+<p><strong>This is why the maintenance window's Row ID and the API agree after all.</strong> P21's generated UDT maintenance windows recall, edit and delete a row by its <strong>Row ID</strong>, which sits over the <code>udt_{tablename}_uid</code> primary key. The service's <code>rowuid</code> is the same value. <em>(Window behavior: P21 26.2 help, System Administration &gt; Creating a User-Defined Database Table.)</em></p>
 </blockquote>
-<p>Confirm the column is genuinely absent rather than mis-typed:</p>
+<p>Confirm that the table has no <code>row_uid</code> column, and find its key:</p>
 <div class="highlight"><pre><span></span><code><span class="err">GET /odataservice/odata/table/{udt}?$select=row_uid</span>
 <span class="err">→ 404 &quot;Could not find a property named &#39;row_uid&#39; on type &#39;dbo.{udt}&#39;.&quot;</span>
+
+<span class="err">GET /odataservice/odata/table/{udt}?$top=1</span>
+<span class="err">→ the row includes udt_{tablename}_uid</span>
 </code></pre></div>
 
-<p><strong>Mitigation:</strong> before relying on UDT update/delete, <strong>check that <code>row_uid</code> exists</strong> (above). If it doesn't, these endpoints cannot reach your data at all — use P21's maintenance UI or direct SQL, and don't build an integration on them. Where they <em>do</em> work, <strong>parse the <code>[N]</code> row count out of <code>errorMessage</code></strong> and treat <code>[0]</code> as a failure; never trust <code>errorNo: 0</code> alone. The <code>row_uid</code> convention is well-attested by the contributors who first documented these endpoints, so tables predating 2026.1 evidently do carry the column. Full detail: <a href="13-UDT-Service-API.html#update">UDT Service API § Update</a>.</p>
-<p>Related payload trap: <strong>delete reads <code>conditions</code> from the payload's top level</strong>, not nested inside <code>rows[]</code> — the nested form returns <code>400 {"error":["Conditions cannot be blank or none!"]}</code> on 2026.1. See <a href="13-UDT-Service-API.html#delete">UDT Service API § Delete</a>.</p>
+<p><strong>Mitigation:</strong> read the target rows' <code>udt_{tablename}_uid</code> values over OData, send one <code>{"rowuid": N}</code> per row, <strong>parse the <code>[N]</code> row count out of <code>errorMessage</code></strong> and treat <code>[0]</code> as a failure; never trust <code>errorNo: 0</code> alone. Whether <code>rowuid</code> maps to a literal <code>row_uid</code> column on an older table that has one could not be tested.</p>
+<p>Related payload trap: <strong>delete reads <code>conditions</code> from the payload's top level</strong>, not from inside <code>rows[]</code>. The nested form returns <code>400 {"error":["Conditions cannot be blank or none!"]}</code>, re-verified on 26.1.5950.0. See <a href="13-UDT-Service-API.html#delete">UDT Service API § Delete</a>.</p>
 <h3 id="8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">8. <code>IgnoreDisabled: true</code> reports success on writes that write nothing</h3>
 <p><strong>Data-integrity hazard — silent false success.</strong></p>
 <blockquote>
@@ -1183,7 +1198,7 @@ after a SHIP_TO field write → [&#39;SHIP_TO.ship_to&#39;,     &#39;TABPAGE_17.
 <li><a href="#4-put-v2tab-binds-only-pagename-tabname-is-ignored">4. PUT /v2/tab binds only PageName; TabName is ignored</a></li>
 <li><a href="#5-silent-false-success-loading-a-nonexistent-record-returns-status-2-with-an-empty-window">5. Silent false success: loading a nonexistent record returns Status: 2 with an empty window</a></li>
 <li><a href="#6-batched-v2change-is-not-atomic-it-is-sequential-and-fail-fast">6. Batched /v2/change is not atomic — it is sequential and fail-fast</a></li>
-<li><a href="#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261">7. UDT Service update/delete cannot target rows in a UDT created on 2026.1</a></li>
+<li><a href="#7-udt-service-updatedelete-ignore-a-namevalue-condition-on-a-udt-created-on-20261">7. UDT Service update/delete ignore a name/value condition on a UDT created on 2026.1</a></li>
 <li><a href="#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">8. IgnoreDisabled: true reports success on writes that write nothing</a></li>
 <li><a href="#9-a-bad-datawindowname-eats-the-next-request-on-that-window-empty-http-500">9. A bad DatawindowName eats the next request on that window (empty HTTP 500)</a></li>
 <li><a href="#related-20261-observations-not-breaking-changes">Related 2026.1 observations (not breaking changes)</a></li>
