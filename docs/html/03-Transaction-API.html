@@ -1161,7 +1161,30 @@ HTTP 400
 </tbody>
 </table></div>
 <blockquote>
-<p><strong>On the two fields tested, NULL was never stored, and one of them would not take a blank.</strong> On <code>oe_hdr.delivery_instructions</code>, a <code>Value</code> of <code>""</code>, <code>null</code> or a single space each stored an <strong>empty string</strong>, never NULL, with or without <code>IgnoreIfEmpty: false</code>; an OData <code>eq null</code> filter does not find the row afterwards. On <code>oe_hdr.po_no</code> the same three values returned <code>Succeeded: 1</code> and <strong>left the old value in place</strong>. A blank is not a reliable way to clear a field: read the field back, and filter with <code>eq ''</code> as well as <code>eq null</code> when you look for empty values. <em>(Verified on play 26.1.5950.0, 2026-10-29, through the <code>Order</code> service on a test order; other fields and services not checked.)</em></p>
+<p><strong>What a blank stores depends on the field.</strong> A <code>Value</code> of <code>null</code>, <code>""</code> or a single space returned <code>Succeeded: 1</code> on all three fields tested, with or without <code>IgnoreIfEmpty: false</code>, but each field stored something different:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Field (service)</th>
+<th><code>null</code>, <code>""</code> or <code>" "</code> stores</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>inv_mast.extended_desc</code> (<code>Item</code>)</td>
+<td><strong>SQL NULL</strong>: OData <code>eq null</code> finds the row and <code>eq ''</code> does not</td>
+</tr>
+<tr>
+<td><code>oe_hdr.delivery_instructions</code> (<code>Order</code>)</td>
+<td>an <strong>empty string</strong>: <code>eq ''</code> finds the row and <code>eq null</code> does not</td>
+</tr>
+<tr>
+<td><code>oe_hdr.po_no</code> (<code>Order</code>)</td>
+<td>nothing: the <strong>old value stays</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>A blank is not a reliable way to clear a field, and you can't predict the result from the request. Read the field back, and filter with both <code>eq ''</code> and <code>eq null</code> when you look for empty values. <em>(Verified on play 26.1.5950.0, 2026-10-29, on a test item and a test order, each restored afterward; other fields not checked.)</em></p>
 </blockquote>
 <hr />
 <h2 id="payload-anatomy-types-nesting-and-common-mistakes">Payload Anatomy -- Types, Nesting, and Common Mistakes</h2>
@@ -5414,7 +5437,7 @@ successfully. Do you want to continue to retrieve? [Response: No]
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — patterns and gotchas verified in production (July–August 2026).</p>
 </blockquote>
 <ul>
-<li><strong>Creating a brand-new item through the raw <code>Item</code> service alone does not work — use the <a href="11-Inventory-REST-API.html#minimum-create-payload">Inventory REST API</a> instead.</strong> The Units of Measure tab (<code>TABPAGE_2.tp_2_dw_2</code>) is disabled until the item record already exists (<code>General Exception: ... Ignored processing disabled tabpage: TABPAGE_2</code>), but the item header's own save validation refuses to persist without a default sales/purchase unit already set on it (<code>A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified.</code>) — a circular dependency that no field ordering, <code>IgnoreDisabled</code>, or retry resolves, because the Transaction API has no wizard session to sequence the item window's cascading defaults the way the UI does. <code>POST /api/inventory/parts</code> (a separate, higher-level REST endpoint family, not the Transaction API) takes one flat payload — item, locations, suppliers, and units together — and P21 resolves the sequencing server-side in a single call. Verified live, 26.1 (September 2026): every raw-Transaction-API create attempt failed and rolled back atomically (nothing partial persisted); the REST endpoint created the same record cleanly on the first well-formed attempt. The Interactive <code>Item</code> window can also create an item, because it sequences the tabs the way the UI does — see <a href="04-Interactive-API.html#creating-an-item-in-the-item-window">Creating an Item in the Item Window</a>.</li>
+<li><strong>Creating a brand-new item through the raw <code>Item</code> service alone does not work — use the <a href="11-Inventory-REST-API.html#minimum-create-payload">Inventory REST API</a> instead.</strong> The Units of Measure tab (<code>TABPAGE_2.tp_2_dw_2</code>) is disabled until the item record already exists (on 26.1.5950.0, <code>General Exception: Column is disabled: unit_id</code>; with <code>IgnoreDisabled: true</code> the tab is skipped without a message and the save then fails on the missing units), but the item header's own save validation refuses to persist without a default sales/purchase unit already set on it (<code>A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified.</code>) — a circular dependency that no field ordering, <code>IgnoreDisabled</code>, or retry resolves, because the Transaction API has no wizard session to sequence the item window's cascading defaults the way the UI does. <code>POST /api/inventory/parts</code> (a separate, higher-level REST endpoint family, not the Transaction API) takes one flat payload — item, locations, suppliers, and units together — and P21 resolves the sequencing server-side in a single call. Verified live, 26.1 (September 2026): every raw-Transaction-API create attempt failed and rolled back atomically (nothing partial persisted); the REST endpoint created the same record cleanly on the first well-formed attempt. The Interactive <code>Item</code> window can also create an item, because it sequences the tabs the way the UI does — see <a href="04-Interactive-API.html#creating-an-item-in-the-item-window">Creating an Item in the Item Window</a>.</li>
 <li><strong>A soft-deleted item is terminal for the raw <code>Item</code> service — not just for a second <code>delete_flag=ON</code>.</strong> Setting <code>delete_flag=ON</code> (<code>ValidValues: ["ON", "OFF"]</code>, column <code>inv_mast.delete_flag</code>) on an item succeeds the first time; OData then shows <code>delete_flag = 'Y'</code> and the row is still returned (soft delete, not hidden — same pattern as the <a href="#customer-service-removing-a-salesrep-grid-row">Customer salesrep grid</a>). <strong>Any</strong> subsequent <code>Item</code>-service write against that item is then <code>Blocked</code> — not only a repeated <code>delete_flag=ON</code>, but an unrelated field like <code>item_desc</code> fails identically:
   <code>Null filter expression passed to of_Retrieve for Discount Group.
    A valid discount group ID must be entered.

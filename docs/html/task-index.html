@@ -875,7 +875,7 @@
 </tr>
 <tr>
 <td>Clear a field, or write NULL</td>
-<td><a href="03-Transaction-API.html#transactionset-fields">03 § Edit fields</a> — NULL was not stored on the fields tested; a blank may be ignored</td>
+<td><a href="03-Transaction-API.html#transactionset-fields">03 § Edit fields</a> — a blank stores NULL, an empty string or nothing, depending on the field; read it back</td>
 </tr>
 <tr>
 <td>Add a price book to a pricing library at a position</td>
@@ -1410,7 +1410,7 @@
 <tr>
 <td>Price or check availability for an item ID containing <code>/</code></td>
 <td>—</td>
-<td><a href="11-Inventory-REST-API.html#url-encoding-for-special-characters">11 § URL Encoding</a> — <code>v2/parts/v2/price/{id}</code> with <code>%2F</code>, or <code>v2/parts/availability?itemId=</code></td>
+<td><a href="11-Inventory-REST-API.html#url-encoding-for-special-characters">11 § URL Encoding</a> — <code>v2/parts/v2/price/{id}</code> with <code>%2F</code>, <code>v2/parts/availability?itemId=</code>, or <code>parts/?$query=ItemId eq '{id}'</code> to read the part</td>
 </tr>
 <tr>
 <td>Write Clippership tracking rows, or count rows on <code>/data/erp/views/v1</code></td>
