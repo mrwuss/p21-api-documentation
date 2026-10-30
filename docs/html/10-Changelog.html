@@ -660,7 +660,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
-<li><a href="#2026-10-29">2026-10-29</a></li>
+<li><a href="#2026-10-29-v1300">2026-10-29 — v1.30.0</a></li>
 <li><a href="#2026-10-21">2026-10-21</a></li>
 <li><a href="#2026-10-17">2026-10-17</a></li>
 <li><a href="#2026-10-11-v1293">2026-10-11 — v1.29.3</a></li>
@@ -766,7 +766,8 @@
 </ul>
 </blockquote>
 <hr />
-<h2 id="2026-10-29">2026-10-29</h2>
+<h2 id="2026-10-29-v1300">2026-10-29 — v1.30.0</h2>
+<p>This release also includes the 2026-10-21 and 2026-10-17 entries below.</p>
 <ul>
 <li><strong>fix:</strong> <strong><a href="13-UDT-Service-API.html#update">UDT update and delete reach a 2026.1-created UDT's rows with <code>{"rowuid": N}</code></a></strong>, where N is the row's <code>udt_{tablename}_uid</code> value. Verified on play 26.1.5950.0 on a UDT created there, with an OData read-back after every call on rows added for the test: update with <code>rows[].conditions: [{"rowuid": N}]</code> and delete with top-level <code>conditions: [{"rowuid": N}]</code> each changed exactly the named row. The <code>{"name": ..., "value": ...}</code> condition still fails: 400 <code>Invalid Row Uid!</code> on update and a <code>[0] rows deleted ... successfully!</code> no-op on delete, so the delete half of <a href="14-Breaking-Changes.html#7-udt-service-updatedelete-ignore-a-namevalue-condition-on-a-udt-created-on-20261">Breaking Changes entry 7</a> is now re-verified and the entry gives the fix. The service ignores <code>name</code> and <code>value</code> when <code>rowuid</code> is present, the key name is not case-sensitive, and several <code>rowuid</code> conditions select several rows. Nesting delete's <code>conditions</code> in <code>rows[]</code> is still a 400. The Update, Delete, read and full-workflow examples in doc 13 now send <code>rowuid</code> and read back by the primary key; the Python and C# versions all ran on play. docs/06, docs/01, the task index and the alert header follow. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/248">#248</a> — <em>@mrwuss</em></li>
 <li><strong>fix:</strong> <strong><a href="03-Transaction-API.html#transactionset-fields">What a blank stores depends on the field</a>.</strong> A second run on play 26.1.5950.0 found that <code>null</code>, <code>""</code> and a single space store SQL NULL on <code>inv_mast.extended_desc</code> through the <code>Item</code> service, while the same values store an empty string on <code>oe_hdr.delivery_instructions</code> and leave <code>oe_hdr.po_no</code> unchanged. <code>extended_desc</code> and <code>delivery_instructions</code> were each re-run and restored to their original values; the note now gives all three fields. The <a href="03-Transaction-API.html#item-service-gotchas">raw <code>Item</code> create gotcha</a> now quotes the error 26.1.5950.0 returns, <code>Column is disabled: unit_id</code>. <a href="11-Inventory-REST-API.html#url-encoding-for-special-characters">A third route reads an item whose ID contains <code>/</code></a>: <code>GET /api/inventory/parts/?$query=ItemId eq '{id}'</code> returns the full part object. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/246">#246</a> — <em>@mrwuss</em></li>
@@ -1754,7 +1755,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
-<li><a href="#2026-10-29">2026-10-29</a></li>
+<li><a href="#2026-10-29-v1300">2026-10-29 — v1.30.0</a></li>
 <li><a href="#2026-10-21">2026-10-21</a></li>
 <li><a href="#2026-10-17">2026-10-17</a></li>
 <li><a href="#2026-10-11-v1293">2026-10-11 — v1.29.3</a></li>
