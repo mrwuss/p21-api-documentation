@@ -32,6 +32,7 @@ from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -200,32 +201,43 @@ def read_labor_hours(config, headers: dict, prod_order_number: int) -> float:
     POST /transaction/get on TimeEntry is technician-scoped and returns no
     labor values, so it is not a usable read-back here.
     """
+
     def odata(table: str, flt: str, select: str) -> list:
         response = httpx.get(
             f"{config.odata_url}/table/{table}",
             params={"$filter": flt, "$select": select},
-            headers=headers, verify=config.verify_ssl,
-            follow_redirects=True, timeout=30.0,
+            headers=headers,
+            verify=config.verify_ssl,
+            follow_redirects=True,
+            timeout=30.0,
         )
         response.raise_for_status()
         return response.json().get("value", [])
 
     total = 0.0
-    for comp in odata("prod_order_line_component",
-                      f"prod_order_number eq {prod_order_number}",
-                      "prod_order_line_component_uid"):
-        for row in odata("prod_order_line_comp_labor",
-                         f"prod_order_line_component_uid eq "
-                         f"{comp['prod_order_line_component_uid']}",
-                         "hours_worked"):
+    for comp in odata(
+        "prod_order_line_component",
+        f"prod_order_number eq {prod_order_number}",
+        "prod_order_line_component_uid",
+    ):
+        for row in odata(
+            "prod_order_line_comp_labor",
+            f"prod_order_line_component_uid eq {comp['prod_order_line_component_uid']}",
+            "hours_worked",
+        ):
             total += float(row.get("hours_worked") or 0)
     return total
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Record labor hours via the TimeEntry service")
-    parser.add_argument("--execute", action="store_true",
-                        help="Actually POST the transaction (default: dry run, print payload only)")
+    parser = argparse.ArgumentParser(
+        description="Record labor hours via the TimeEntry service"
+    )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Actually POST the transaction (default: dry run, print payload only)",
+    )
     args = parser.parse_args()
 
     print("Transaction API - Record Labor Hours")
@@ -265,7 +277,7 @@ def main() -> None:
         technician_id="300",  # contact ID, not a user ID
         entry_date=entry_date,
         prod_order_number=prod_order_number,
-        item_id="ASSY-100",            # the assembly line's item
+        item_id="ASSY-100",  # the assembly line's item
         component_labor_id="LABOR-SHOP",
         start_time=start_time,
         end_time=end_time,
@@ -304,7 +316,9 @@ def main() -> None:
         return
 
     hours_before = read_labor_hours(config, headers, prod_order_number)
-    print(f"\nLabor hours on production order {prod_order_number} before: {hours_before:.4f}")
+    print(
+        f"\nLabor hours on production order {prod_order_number} before: {hours_before:.4f}"
+    )
 
     # ------------------------------------------------------------------
     # Submit the transaction
@@ -313,9 +327,7 @@ def main() -> None:
     print("Submitting labor entry...")
 
     try:
-        result = submit_transaction(
-            ui_server_url, payload, headers, config.verify_ssl
-        )
+        result = submit_transaction(ui_server_url, payload, headers, config.verify_ssl)
 
         # Parse the response
         summary = result.get("Summary", {})
@@ -356,10 +368,14 @@ def main() -> None:
 
             # Verify with a read-back - the only proof of persistence
             hours_after = read_labor_hours(config, headers, prod_order_number)
-            print(f"\n  Read-back: {hours_before:.4f} -> {hours_after:.4f} labor hours "
-                  f"(+{hours_after - hours_before:.4f}, expected +{time_worked:.4f})")
+            print(
+                f"\n  Read-back: {hours_before:.4f} -> {hours_after:.4f} labor hours "
+                f"(+{hours_after - hours_before:.4f}, expected +{time_worked:.4f})"
+            )
             if abs((hours_after - hours_before) - time_worked) > 0.01:
-                print("  WARNING: the recorded hours do not match -- check the labor grid")
+                print(
+                    "  WARNING: the recorded hours do not match -- check the labor grid"
+                )
         else:
             print("\n  FAILED: Labor entry not created")
             print("  Check messages above for details.")
@@ -380,10 +396,14 @@ def main() -> None:
 
         if e.response.status_code == 404:
             print("\n  The 'TimeEntry' service may not exist on this P21 instance.")
-            print("  Run 01_list_production_services.py to find the correct service name.")
+            print(
+                "  Run 01_list_production_services.py to find the correct service name."
+            )
         elif e.response.status_code == 400:
             print("\n  Bad request - the payload structure may be incorrect.")
-            print("  Run 02_get_timeentry_definition.py to verify the DataElement names.")
+            print(
+                "  Run 02_get_timeentry_definition.py to verify the DataElement names."
+            )
 
     except (httpx.HTTPError, ValueError, KeyError) as e:
         print(f"\n  Error: {type(e).__name__}: {e}")

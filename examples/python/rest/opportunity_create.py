@@ -29,19 +29,33 @@ from common.auth import get_token, get_auth_headers
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
-LOOKUP_TABLES = ("opportunity_status", "opportunity_stage", "opportunity_type", "opportunity_step")
+LOOKUP_TABLES = (
+    "opportunity_status",
+    "opportunity_stage",
+    "opportunity_type",
+    "opportunity_step",
+)
 
 
 def check_lookup_tables(base_url: str, headers: dict, verify_ssl: bool) -> bool:
     """Print each CRM lookup table's row count. Returns True if all are non-empty."""
     all_populated = True
     for table in LOOKUP_TABLES:
-        r = httpx.get(f"{base_url}/odataservice/odata/table/{table}",
-                      params={"$top": "1", "$count": "true"},
-                      headers=headers, verify=verify_ssl, timeout=30.0)
-        count = r.json().get("@odata.count", "?") if r.status_code == 200 else f"HTTP {r.status_code}"
+        r = httpx.get(
+            f"{base_url}/odataservice/odata/table/{table}",
+            params={"$top": "1", "$count": "true"},
+            headers=headers,
+            verify=verify_ssl,
+            timeout=30.0,
+        )
+        count = (
+            r.json().get("@odata.count", "?")
+            if r.status_code == 200
+            else f"HTTP {r.status_code}"
+        )
         print(f"  {table:22} {count}")
         if r.status_code != 200 or r.json().get("@odata.count", 0) == 0:
             all_populated = False
@@ -52,8 +66,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Create a CRM opportunity (docs/15 sales/opportunities)"
     )
-    parser.add_argument("--execute", action="store_true",
-                        help="Also attempt the create (default: only check preconditions)")
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Also attempt the create (default: only check preconditions)",
+    )
     parser.add_argument("--customer-id", type=int, default=100198)
     parser.add_argument("--company-id", default="ACME")
     parser.add_argument("--location-id", type=int, default=10)
@@ -67,23 +84,38 @@ def main() -> None:
     headers = get_auth_headers(token_data["AccessToken"])
     print(f"Server: {config.base_url}")
 
-    print("\nCRM lookup table row counts (all must be non-zero for a create to succeed):")
+    print(
+        "\nCRM lookup table row counts (all must be non-zero for a create to succeed):"
+    )
     print("-" * 50)
     ready = check_lookup_tables(config.base_url, headers, config.verify_ssl)
 
     if not ready:
-        print("\nAt least one CRM lookup table is empty on this tenant -- a create cannot "
-              "succeed regardless of payload. This is a tenant configuration gap, not an "
-              "API defect. See docs/15's sales/opportunities section.")
+        print(
+            "\nAt least one CRM lookup table is empty on this tenant -- a create cannot "
+            "succeed regardless of payload. This is a tenant configuration gap, not an "
+            "API defect. See docs/15's sales/opportunities section."
+        )
         if not args.execute:
             return
-        print("\n--execute given anyway -- attempting the create to show the real error:")
+        print(
+            "\n--execute given anyway -- attempting the create to show the real error:"
+        )
 
-    opp = httpx.get(f"{config.base_url}/api/sales/opportunities/new",
-                    headers=headers, verify=config.verify_ssl, timeout=30.0).json()
-    opp.update({"OpportunityName": "ZZ API DOC TEST - safe to delete",
-               "CompanyId": args.company_id, "CustomerId": args.customer_id,
-               "LocationId": args.location_id})
+    opp = httpx.get(
+        f"{config.base_url}/api/sales/opportunities/new",
+        headers=headers,
+        verify=config.verify_ssl,
+        timeout=30.0,
+    ).json()
+    opp.update(
+        {
+            "OpportunityName": "ZZ API DOC TEST - safe to delete",
+            "CompanyId": args.company_id,
+            "CustomerId": args.customer_id,
+            "LocationId": args.location_id,
+        }
+    )
 
     if not args.execute:
         print("\nDRY RUN - payload that would be POSTed to /api/sales/opportunities/:")
@@ -91,8 +123,13 @@ def main() -> None:
         print("\nRe-run with --execute to actually attempt it.")
         return
 
-    r = httpx.post(f"{config.base_url}/api/sales/opportunities/", headers=headers,
-                   json=opp, verify=config.verify_ssl, timeout=60.0)
+    r = httpx.post(
+        f"{config.base_url}/api/sales/opportunities/",
+        headers=headers,
+        json=opp,
+        verify=config.verify_ssl,
+        timeout=60.0,
+    )
     print(f"\nHTTP {r.status_code}")
     print(r.text[:500])
 

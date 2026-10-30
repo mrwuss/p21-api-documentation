@@ -40,14 +40,15 @@ from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # --- Configuration (generic placeholders -- substitute your own) ------------
-SUPPLIER_ID = "10050"                    # address.id == supplier.supplier_id
+SUPPLIER_ID = "10050"  # address.id == supplier.supplier_id
 EMAIL_ADDRESS = "orders@example.com"
 CENTRAL_PHONE = "319-555-0100"
 
-CONTACT_TAB = "TABPAGE_3.tp_3_dw_3"      # Phone tab: email + central phone/fax
+CONTACT_TAB = "TABPAGE_3.tp_3_dw_3"  # Phone tab: email + central phone/fax
 
 
 def build_payload() -> dict:
@@ -64,37 +65,52 @@ def build_payload() -> dict:
         "Name": "Address",
         "UseCodeValues": False,
         "IgnoreDisabled": True,
-        "Transactions": [{
-            "Status": "New",
-            "DataElements": [
-                {
-                    "Name": "TABPAGE_1.tp_1_dw_1",
-                    "Type": "Form",
-                    "Keys": ["id"],
-                    "Rows": [{
-                        "Edits": [
-                            {"Name": "id", "Value": SUPPLIER_ID,
-                             "IgnoreIfEmpty": False},
+        "Transactions": [
+            {
+                "Status": "New",
+                "DataElements": [
+                    {
+                        "Name": "TABPAGE_1.tp_1_dw_1",
+                        "Type": "Form",
+                        "Keys": ["id"],
+                        "Rows": [
+                            {
+                                "Edits": [
+                                    {
+                                        "Name": "id",
+                                        "Value": SUPPLIER_ID,
+                                        "IgnoreIfEmpty": False,
+                                    },
+                                ],
+                                "RelativeDateEdits": [],
+                            }
                         ],
-                        "RelativeDateEdits": [],
-                    }],
-                },
-                {
-                    "Name": CONTACT_TAB,
-                    "Type": "Form",
-                    "Keys": [],
-                    "Rows": [{
-                        "Edits": [
-                            {"Name": "email_address", "Value": EMAIL_ADDRESS,
-                             "IgnoreIfEmpty": True},
-                            {"Name": "address_central_phone_number",
-                             "Value": CENTRAL_PHONE, "IgnoreIfEmpty": True},
+                    },
+                    {
+                        "Name": CONTACT_TAB,
+                        "Type": "Form",
+                        "Keys": [],
+                        "Rows": [
+                            {
+                                "Edits": [
+                                    {
+                                        "Name": "email_address",
+                                        "Value": EMAIL_ADDRESS,
+                                        "IgnoreIfEmpty": True,
+                                    },
+                                    {
+                                        "Name": "address_central_phone_number",
+                                        "Value": CENTRAL_PHONE,
+                                        "IgnoreIfEmpty": True,
+                                    },
+                                ],
+                                "RelativeDateEdits": [],
+                            }
                         ],
-                        "RelativeDateEdits": [],
-                    }],
-                },
-            ],
-        }],
+                    },
+                ],
+            }
+        ],
     }
 
 
@@ -111,11 +127,19 @@ def read_contact(ui_server: str, headers: dict, verify_ssl: bool) -> dict:
     """
     resp = httpx.post(
         f"{ui_server}/api/v2/transaction/get",
-        headers=headers, verify=verify_ssl, follow_redirects=True, timeout=120,
-        json={"ServiceName": "Address", "TransactionStates": [{
-            "DataElementName": "TABPAGE_1.tp_1_dw_1",
-            "Keys": [{"Name": "id", "Value": SUPPLIER_ID}],
-        }]},
+        headers=headers,
+        verify=verify_ssl,
+        follow_redirects=True,
+        timeout=120,
+        json={
+            "ServiceName": "Address",
+            "TransactionStates": [
+                {
+                    "DataElementName": "TABPAGE_1.tp_1_dw_1",
+                    "Keys": [{"Name": "id", "Value": SUPPLIER_ID}],
+                }
+            ],
+        },
     )
     resp.raise_for_status()
     for element in resp.json()["Transactions"][0]["DataElements"]:
@@ -137,17 +161,23 @@ def show(label: str, contact: dict) -> None:
     """
     print(f"\n{label}")
     print(f"  email_address                = {contact.get('email_address', '')!r}")
-    print("  address_central_phone_number = "
-          f"{contact.get('address_central_phone_number', '')!r}")
+    print(
+        "  address_central_phone_number = "
+        f"{contact.get('address_central_phone_number', '')!r}"
+    )
 
 
 def main() -> None:
     """Entry point: build the payload, POST on --execute, read the record back."""
     parser = argparse.ArgumentParser(
         description="Update supplier contact info "
-                    "(docs/recipes/update-supplier-contact.md)")
-    parser.add_argument("--execute", action="store_true",
-                        help="Actually POST the transaction (default: dry run)")
+        "(docs/recipes/update-supplier-contact.md)"
+    )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Actually POST the transaction (default: dry run)",
+    )
     args = parser.parse_args()
 
     print("Recipe - Update Supplier Contact Info")
@@ -163,24 +193,32 @@ def main() -> None:
     config = load_config()
     token_data = get_token(config)
     headers = get_auth_headers(token_data["AccessToken"])
-    ui_server = get_ui_server_url(config.base_url, token_data["AccessToken"],
-                                  config.verify_ssl)
+    ui_server = get_ui_server_url(
+        config.base_url, token_data["AccessToken"], config.verify_ssl
+    )
     print(f"UI Server: {ui_server}")
 
     show("Before:", read_contact(ui_server, headers, config.verify_ssl))
 
-    resp = httpx.post(f"{ui_server}/api/v2/transaction", headers=headers,
-                      json=payload, verify=config.verify_ssl,
-                      follow_redirects=True, timeout=120)
-    resp.raise_for_status()          # HTTP 200 does NOT mean the write succeeded
+    resp = httpx.post(
+        f"{ui_server}/api/v2/transaction",
+        headers=headers,
+        json=payload,
+        verify=config.verify_ssl,
+        follow_redirects=True,
+        timeout=120,
+    )
+    resp.raise_for_status()  # HTTP 200 does NOT mean the write succeeded
     result = resp.json()
     print(f"\nSummary: {result['Summary']}")
     for message in result.get("Messages") or []:
         print(f"  Message: {message}")
 
     # IgnoreDisabled can report Succeeded and write nothing -- docs/14 entry 8.
-    show("After (read-back is the only proof):",
-         read_contact(ui_server, headers, config.verify_ssl))
+    show(
+        "After (read-back is the only proof):",
+        read_contact(ui_server, headers, config.verify_ssl),
+    )
 
 
 if __name__ == "__main__":

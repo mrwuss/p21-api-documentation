@@ -36,6 +36,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from common.tapi import connect, edit, odata, odata_quote, post_transaction
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # --- Configuration (generic placeholders -- substitute your own) ------------
@@ -44,18 +45,23 @@ LOCATION_ID = "10"
 
 # mode -> (edits to send, expected p21_view_bin values after the write)
 MODES = {
-    "lock":    ({"pick_locked_flag": "ON",  "put_locked_flag": "ON"},
-                {"pick_locked_flag": "Y",   "put_locked_flag": "Y"}),
-    "unlock":  ({"pick_locked_flag": "OFF", "put_locked_flag": "OFF"},
-                {"pick_locked_flag": "N",   "put_locked_flag": "N"}),
-    "delete":  ({"delete_flag": "ON"},  {"delete_flag": "Y"}),
+    "lock": (
+        {"pick_locked_flag": "ON", "put_locked_flag": "ON"},
+        {"pick_locked_flag": "Y", "put_locked_flag": "Y"},
+    ),
+    "unlock": (
+        {"pick_locked_flag": "OFF", "put_locked_flag": "OFF"},
+        {"pick_locked_flag": "N", "put_locked_flag": "N"},
+    ),
+    "delete": ({"delete_flag": "ON"}, {"delete_flag": "Y"}),
     "restore": ({"delete_flag": "OFF"}, {"delete_flag": "N"}),
 }
 FLAG_COLUMNS = "bin_id,delete_flag,pick_locked_flag,put_locked_flag"
 
 
-def build_payload(company_id: str, location_id: str, bin_ids: list[str],
-                  edits: dict[str, str]) -> dict:
+def build_payload(
+    company_id: str, location_id: str, bin_ids: list[str], edits: dict[str, str]
+) -> dict:
     """Build one BinLocation payload with one Transaction per bin.
 
     No IgnoreDisabled: the lock flags and delete_flag are enabled columns.
@@ -74,21 +80,30 @@ def build_payload(company_id: str, location_id: str, bin_ids: list[str],
     return {
         "Name": "BinLocation",
         "UseCodeValues": False,
-        "Transactions": [{
-            "Status": "New",
-            "DataElements": [{
-                "Name": "FORM.form",
-                "Type": "Form",
-                "Keys": ["company_id", "location_id", "bin_id"],
-                "Rows": [{
-                    "Edits": [edit("company_id", company_id),
-                              edit("location_id", location_id),
-                              edit("bin_id", bin_id)]
-                             + [edit(name, value) for name, value in edits.items()],
-                    "RelativeDateEdits": [],
-                }],
-            }],
-        } for bin_id in bin_ids],
+        "Transactions": [
+            {
+                "Status": "New",
+                "DataElements": [
+                    {
+                        "Name": "FORM.form",
+                        "Type": "Form",
+                        "Keys": ["company_id", "location_id", "bin_id"],
+                        "Rows": [
+                            {
+                                "Edits": [
+                                    edit("company_id", company_id),
+                                    edit("location_id", location_id),
+                                    edit("bin_id", bin_id),
+                                ]
+                                + [edit(name, value) for name, value in edits.items()],
+                                "RelativeDateEdits": [],
+                            }
+                        ],
+                    }
+                ],
+            }
+            for bin_id in bin_ids
+        ],
     }
 
 
@@ -104,9 +119,13 @@ def read_bins(session, location_id: str, bin_ids: list[str]) -> dict[str, dict]:
         dict[str, dict]: bin_id -> row (flags stored as Y/N).
     """
     ids = " or ".join(f"bin_id eq {odata_quote(b)}" for b in bin_ids)
-    rows = odata(session, "p21_view_bin",
-                 f"location_id eq {location_id} and ({ids})", FLAG_COLUMNS,
-                 surface="view")
+    rows = odata(
+        session,
+        "p21_view_bin",
+        f"location_id eq {location_id} and ({ids})",
+        FLAG_COLUMNS,
+        surface="view",
+    )
     return {row["bin_id"]: row for row in rows}
 
 
@@ -123,14 +142,21 @@ def bins_in_use(session, location_id: str, bin_ids: list[str]) -> list[str]:
     """
     problems = []
     for bin_id in bin_ids:
-        stock = odata(session, "inv_bin",
-                      f"location_id eq {location_id} and bin eq {odata_quote(bin_id)} "
-                      "and quantity gt 0", "inv_mast_uid,quantity")
+        stock = odata(
+            session,
+            "inv_bin",
+            f"location_id eq {location_id} and bin eq {odata_quote(bin_id)} "
+            "and quantity gt 0",
+            "inv_mast_uid,quantity",
+        )
         if stock:
             problems.append(f"{bin_id}: holds stock for {len(stock)} item(s)")
-        primary = odata(session, "inv_loc",
-                        f"location_id eq {location_id} and primary_bin eq {odata_quote(bin_id)}",
-                        "inv_mast_uid")
+        primary = odata(
+            session,
+            "inv_loc",
+            f"location_id eq {location_id} and primary_bin eq {odata_quote(bin_id)}",
+            "inv_mast_uid",
+        )
         if primary:
             problems.append(f"{bin_id}: primary bin for {len(primary)} item(s)")
     return problems
@@ -140,13 +166,17 @@ def main() -> None:
     """Entry point: dry run prints the payload; --execute backs up, posts, verifies."""
     parser = argparse.ArgumentParser(
         description="Lock, unlock, delete, or restore bins "
-                    "(docs/03-Transaction-API.md#locking-unlocking-and-deleting-bins)")
+        "(docs/03-Transaction-API.md#locking-unlocking-and-deleting-bins)"
+    )
     parser.add_argument("mode", choices=sorted(MODES))
     parser.add_argument("bin_ids", nargs="+", help="Bin IDs at the location")
     parser.add_argument("--company", default=COMPANY_ID)
     parser.add_argument("--location", default=LOCATION_ID)
-    parser.add_argument("--execute", action="store_true",
-                        help="Actually POST the transactions (default: dry run)")
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Actually POST the transactions (default: dry run)",
+    )
     args = parser.parse_args()
 
     edits, expected = MODES[args.mode]
@@ -155,7 +185,9 @@ def main() -> None:
     print(f"Recipe - Bins: {args.mode} (BinLocation)")
     print("=" * 60)
     if not args.execute:
-        print("\nDRY RUN - payload that would be POSTed to {ui_server}/api/v2/transaction:")
+        print(
+            "\nDRY RUN - payload that would be POSTed to {ui_server}/api/v2/transaction:"
+        )
         print(json.dumps(payload, indent=2))
         print("\nRe-run with --execute to POST it.")
         return
@@ -174,7 +206,9 @@ def main() -> None:
     if args.mode in ("lock", "delete"):
         problems = bins_in_use(session, args.location, args.bin_ids)
         if problems:
-            print("\nRefusing: locking or deleting a bin in use strands stock and putaways.")
+            print(
+                "\nRefusing: locking or deleting a bin in use strands stock and putaways."
+            )
             for line in problems:
                 print(f"  {line}")
             raise SystemExit(1)

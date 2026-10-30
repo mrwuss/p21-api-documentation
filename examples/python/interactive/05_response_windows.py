@@ -56,6 +56,7 @@ from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -66,7 +67,9 @@ class InteractiveSession:
         self.ui_server_url = ui_server_url
         self.headers = headers
         self.verify_ssl = verify_ssl
-        self.client = httpx.Client(verify=verify_ssl, timeout=60.0, follow_redirects=True)
+        self.client = httpx.Client(
+            verify=verify_ssl, timeout=60.0, follow_redirects=True
+        )
 
     def start(self, response_window_handling: bool = True):
         """Start session.
@@ -79,15 +82,14 @@ class InteractiveSession:
         response = self.client.post(
             f"{self.ui_server_url}/api/ui/interactive/sessions/",
             headers=self.headers,
-            json={"ResponseWindowHandlingEnabled": response_window_handling}
+            json={"ResponseWindowHandlingEnabled": response_window_handling},
         )
         response.raise_for_status()
         return response.json()
 
     def end(self):
         self.client.delete(
-            f"{self.ui_server_url}/api/ui/interactive/sessions/",
-            headers=self.headers
+            f"{self.ui_server_url}/api/ui/interactive/sessions/", headers=self.headers
         )
         self.client.close()
 
@@ -95,7 +97,7 @@ class InteractiveSession:
         response = self.client.post(
             f"{self.ui_server_url}/api/ui/interactive/v2/window",
             headers=self.headers,
-            json={"ServiceName": service_name}
+            json={"ServiceName": service_name},
         )
         response.raise_for_status()
         return response.json()
@@ -105,7 +107,7 @@ class InteractiveSession:
         response = self.client.get(
             f"{self.ui_server_url}/api/ui/interactive/v2/window",
             params={"id": window_id},
-            headers=self.headers
+            headers=self.headers,
         )
         response.raise_for_status()
         return response.json()
@@ -115,7 +117,7 @@ class InteractiveSession:
         self.client.delete(
             f"{self.ui_server_url}/api/ui/interactive/v2/window",
             params={"id": window_id},
-            headers=self.headers
+            headers=self.headers,
         )
 
     def change_data_v2(self, window_id: str, changes: list) -> dict:
@@ -127,7 +129,7 @@ class InteractiveSession:
         response = self.client.put(
             f"{self.ui_server_url}/api/ui/interactive/v2/change",
             headers=self.headers,
-            json={"WindowId": window_id, "List": changes}
+            json={"WindowId": window_id, "List": changes},
         )
         response.raise_for_status()
         return response.json()
@@ -136,7 +138,7 @@ class InteractiveSession:
         response = self.client.put(
             f"{self.ui_server_url}/api/ui/interactive/v2/tab",
             headers=self.headers,
-            json={"WindowId": window_id, "PageName": page_name}
+            json={"WindowId": window_id, "PageName": page_name},
         )
         response.raise_for_status()
         return response.json()
@@ -145,7 +147,7 @@ class InteractiveSession:
         response = self.client.put(
             f"{self.ui_server_url}/api/ui/interactive/v2/row",
             headers=self.headers,
-            json={"WindowId": window_id, "DatawindowName": datawindow_name, "Row": row}
+            json={"WindowId": window_id, "DatawindowName": datawindow_name, "Row": row},
         )
         response.raise_for_status()
         return response.json()
@@ -160,7 +162,7 @@ class InteractiveSession:
         response = self.client.get(
             f"{self.ui_server_url}/api/ui/interactive/v2/tools",
             params={"windowId": window_id},
-            headers=self.headers
+            headers=self.headers,
         )
         response.raise_for_status()
         return response.json()
@@ -170,7 +172,7 @@ class InteractiveSession:
         response = self.client.post(
             f"{self.ui_server_url}/api/ui/interactive/v2/tools",
             headers=self.headers,
-            json={"WindowId": window_id, "ToolName": tool_name, "ToolText": tool_text}
+            json={"WindowId": window_id, "ToolName": tool_name, "ToolText": tool_text},
         )
         response.raise_for_status()
         return response.json()
@@ -258,7 +260,9 @@ def main():
     config = load_config()
     token_data = get_token(config)
     headers = get_auth_headers(token_data["AccessToken"])
-    ui_server_url = get_ui_server_url(config.base_url, token_data["AccessToken"], config.verify_ssl)
+    ui_server_url = get_ui_server_url(
+        config.base_url, token_data["AccessToken"], config.verify_ssl
+    )
 
     print(f"UI Server: {ui_server_url}")
 
@@ -282,10 +286,17 @@ def main():
         print("-" * 50)
         # Use an item that exists in your P21 - adjust as needed.
         # DatawindowName is required in P21 25.2+ (Item header = tp_1_dw_1).
-        result = session.change_data_v2(window_id, [
-            {"TabName": "TABPAGE_1", "DatawindowName": "tp_1_dw_1",
-             "FieldName": "item_id", "Value": "WIDGET-001"}
-        ])
+        result = session.change_data_v2(
+            window_id,
+            [
+                {
+                    "TabName": "TABPAGE_1",
+                    "DatawindowName": "tp_1_dw_1",
+                    "FieldName": "item_id",
+                    "Value": "WIDGET-001",
+                }
+            ],
+        )
         print(f"  Status: {result.get('Status')}")
         if result.get("Status") != 1:
             print("  Item not found or error - adjust item_id in script")
@@ -303,10 +314,17 @@ def main():
         # This only edits the window buffer to provoke a dialog - the
         # script never saves. Real inv_loc updates belong on the
         # Inventory REST API (docs/11-Inventory-REST-API.md).
-        result = session.change_data_v2(window_id, [
-            {"TabName": "TABPAGE_18", "FieldName": "product_group_id",
-             "Value": "MISC", "DatawindowName": "inv_loc_detail"}
-        ])
+        result = session.change_data_v2(
+            window_id,
+            [
+                {
+                    "TabName": "TABPAGE_18",
+                    "FieldName": "product_group_id",
+                    "Value": "MISC",
+                    "DatawindowName": "inv_loc_detail",
+                }
+            ],
+        )
         print(f"  Status: {result.get('Status')}")
         print(f"  Events: {len(result.get('Events', []))} events")
 
@@ -335,8 +353,7 @@ def main():
                 if button:
                     print(f"  Clicking '{button}' on the popup...")
                     answer_result = session.run_tool(dialog_id, button)
-                    print(f"  Answer Status: {answer_result.get('Status')} "
-                          "(1=Success)")
+                    print(f"  Answer Status: {answer_result.get('Status')} (1=Success)")
                     print("  Dialog dismissed - the parent window is unblocked.")
                     if dialog_name == "w_message":
                         print("  NOTE: w_message has no fields, but its buttons are")
@@ -359,7 +376,9 @@ def main():
             print("  docs/04-Interactive-API.md).")
 
         else:
-            print("  No dialog opened (product group may already be set to target value)")
+            print(
+                "  No dialog opened (product group may already be set to target value)"
+            )
             print("  Try changing to a different product_group_id to trigger dialog")
 
     except httpx.HTTPStatusError as e:

@@ -32,6 +32,7 @@ from common.auth import get_token, get_auth_headers
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -124,8 +125,10 @@ def main() -> None:
             print("  (no user-defined fields beyond the join key)")
             continue
         for f in udfs:
-            print(f"  {f['ColumnName']:32} {f['DataType']}({f['Length']})  "
-                  f"null={f['IsNullable']}")
+            print(
+                f"  {f['ColumnName']:32} {f['DataType']}({f['Length']})  "
+                f"null={f['IsNullable']}"
+            )
 
     print("\n" + "=" * 60)
     print(f"{len(tables)} table(s), {total_real} user-defined field(s)")

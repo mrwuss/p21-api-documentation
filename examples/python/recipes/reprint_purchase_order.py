@@ -33,13 +33,14 @@ from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # --- Configuration (generic placeholders -- substitute your own) ------------
 COMPANY_ID = "ACME"
-PO_NO = "500100"             # single PO: beg_po_no == end_po_no
-ATTEMPTS = 3                 # report-engine faults are usually transient
-BACKOFF_SECONDS = 0.5        # x attempt number
+PO_NO = "500100"  # single PO: beg_po_no == end_po_no
+ATTEMPTS = 3  # report-engine faults are usually transient
+BACKOFF_SECONDS = 0.5  # x attempt number
 
 
 def build_payload(company_id: str, po_no: str, reprint_flag: str) -> dict:
@@ -55,20 +56,28 @@ def build_payload(company_id: str, po_no: str, reprint_flag: str) -> dict:
     """
     return {
         "Name": "m_reprintpurchaseorders",
-        "Transactions": [{
-            "DataElements": [{
-                "Keys": [],
-                "Name": "TABPAGE_1.poreportcriteriadw",
-                "Rows": [{"Edits": [
-                    {"Name": "company_id", "Value": company_id},
-                    {"Name": "beg_po_no", "Value": po_no},
-                    {"Name": "end_po_no", "Value": po_no},
-                    {"Name": "reprint_flag", "Value": reprint_flag},
-                ]}],
-                "Type": "Form",
-            }],
-            "Status": "New",
-        }],
+        "Transactions": [
+            {
+                "DataElements": [
+                    {
+                        "Keys": [],
+                        "Name": "TABPAGE_1.poreportcriteriadw",
+                        "Rows": [
+                            {
+                                "Edits": [
+                                    {"Name": "company_id", "Value": company_id},
+                                    {"Name": "beg_po_no", "Value": po_no},
+                                    {"Name": "end_po_no", "Value": po_no},
+                                    {"Name": "reprint_flag", "Value": reprint_flag},
+                                ]
+                            }
+                        ],
+                        "Type": "Form",
+                    }
+                ],
+                "Status": "New",
+            }
+        ],
         "UseCodeValues": False,
     }
 
@@ -84,8 +93,10 @@ def get_printed_flag(client: httpx.Client, base_url: str, po_no: str) -> str:
     Returns:
         str: "Y" when the PO has been printed, otherwise "N".
     """
-    r = client.get(f"{base_url}/odataservice/odata/table/po_hdr",
-                   params={"$filter": f"po_no eq {po_no}", "$select": "po_no,printed"})
+    r = client.get(
+        f"{base_url}/odataservice/odata/table/po_hdr",
+        params={"$filter": f"po_no eq {po_no}", "$select": "po_no,printed"},
+    )
     r.raise_for_status()
     rows = r.json().get("value", [])
     if not rows:
@@ -93,7 +104,9 @@ def get_printed_flag(client: httpx.Client, base_url: str, po_no: str) -> str:
     return "Y" if rows[0].get("printed") == "Y" else "N"
 
 
-def run_report(client: httpx.Client, ui_server: str, base_url: str, args: argparse.Namespace):
+def run_report(
+    client: httpx.Client, ui_server: str, base_url: str, args: argparse.Namespace
+):
     """POST the report, re-reading printed and backing off between attempts.
 
     Args:
@@ -109,9 +122,13 @@ def run_report(client: httpx.Client, ui_server: str, base_url: str, args: argpar
     body = None
     flag = "N"
     for attempt in range(1, ATTEMPTS + 1):
-        flag = get_printed_flag(client, base_url, args.po_no)  # re-read before every try
-        resp = client.post(f"{ui_server}/api/v2/process/pdfreport",
-                           json=build_payload(args.company_id, args.po_no, flag))
+        flag = get_printed_flag(
+            client, base_url, args.po_no
+        )  # re-read before every try
+        resp = client.post(
+            f"{ui_server}/api/v2/process/pdfreport",
+            json=build_payload(args.company_id, args.po_no, flag),
+        )
         try:
             body = resp.json()
         except ValueError:
@@ -121,8 +138,10 @@ def run_report(client: httpx.Client, ui_server: str, base_url: str, args: argpar
             return flag, body
         if resp.status_code == 200 and isinstance(body, list):
             return flag, body
-        print(f"  attempt {attempt} (reprint_flag={flag}): HTTP {resp.status_code}, "
-              f"{len(resp.content)}-byte body")
+        print(
+            f"  attempt {attempt} (reprint_flag={flag}): HTTP {resp.status_code}, "
+            f"{len(resp.content)}-byte body"
+        )
         time.sleep(BACKOFF_SECONDS * attempt)
     return flag, body
 
@@ -130,59 +149,86 @@ def run_report(client: httpx.Client, ui_server: str, base_url: str, args: argpar
 def main() -> None:
     """Entry point: dry run, or generate the PDF, save it, and verify."""
     parser = argparse.ArgumentParser(
-        description="Print or reprint a PO PDF (docs/03-Transaction-API.md#pdf-report-generation)")
+        description="Print or reprint a PO PDF (docs/03-Transaction-API.md#pdf-report-generation)"
+    )
     parser.add_argument("--company-id", default=COMPANY_ID)
     parser.add_argument("--po-no", default=PO_NO)
     parser.add_argument("--output-dir", default=".", help="where to save the PDF")
-    parser.add_argument("--execute", action="store_true",
-                        help="Actually generate the report (default: dry run)")
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Actually generate the report (default: dry run)",
+    )
     args = parser.parse_args()
 
     print("Recipe - Print or Reprint a Purchase Order PDF (m_reprintpurchaseorders)")
     print("=" * 60)
 
     if not args.execute:
-        print("\nDRY RUN - POST {ui_server}/api/v2/process/pdfreport "
-              "(reprint_flag is read from po_hdr.printed at run time):")
-        print(json.dumps(build_payload(args.company_id, args.po_no, "<po_hdr.printed>"), indent=2))
-        print("\nRe-run with --execute to generate. A first print marks the PO printed.")
+        print(
+            "\nDRY RUN - POST {ui_server}/api/v2/process/pdfreport "
+            "(reprint_flag is read from po_hdr.printed at run time):"
+        )
+        print(
+            json.dumps(
+                build_payload(args.company_id, args.po_no, "<po_hdr.printed>"), indent=2
+            )
+        )
+        print(
+            "\nRe-run with --execute to generate. A first print marks the PO printed."
+        )
         return
 
     config = load_config()
     token = get_token(config)["AccessToken"]
     ui_server = get_ui_server_url(config.base_url, token, config.verify_ssl)
 
-    with httpx.Client(headers=get_auth_headers(token), verify=config.verify_ssl,
-                      timeout=180, follow_redirects=True) as client:
+    with httpx.Client(
+        headers=get_auth_headers(token),
+        verify=config.verify_ssl,
+        timeout=180,
+        follow_redirects=True,
+    ) as client:
         flag, body = run_report(client, ui_server, config.base_url, args)
         print(f"reprint_flag sent: {flag} (po_hdr.printed)")
 
         if isinstance(body, dict) and body.get("ErrorMessage"):
             raise SystemExit(f"{body.get('ErrorType')}: {body['ErrorMessage']}")
         if not isinstance(body, list) or not body:
-            raise SystemExit(f"No documents after {ATTEMPTS} attempts -- re-check the PO, "
-                             "company_id and the PO's printed flag")
+            raise SystemExit(
+                f"No documents after {ATTEMPTS} attempts -- re-check the PO, "
+                "company_id and the PO's printed flag"
+            )
 
         # Success is per document: StatusCode "Success" AND non-empty DocumentData.
         saved = 0
         for doc in body:
             status = (doc.get("ResponseStatus") or {}).get("StatusCode")
             if status != "Success" or not doc.get("DocumentData"):
-                print(f"  document failed: {(doc.get('ResponseStatus') or {}).get('Message')}")
+                print(
+                    f"  document failed: {(doc.get('ResponseStatus') or {}).get('Message')}"
+                )
                 continue
             pdf = base64.b64decode(doc["DocumentData"])
             # FileName's number is a document number, not necessarily the PO number.
-            path = Path(args.output_dir) / Path(doc.get("FileName") or f"PO_{args.po_no}.pdf").name
+            path = (
+                Path(args.output_dir)
+                / Path(doc.get("FileName") or f"PO_{args.po_no}.pdf").name
+            )
             path.write_bytes(pdf)
             saved += 1
-            print(f"  saved {path} ({path.stat().st_size} bytes, "
-                  f"starts with %PDF: {pdf[:4] == b'%PDF'})")
+            print(
+                f"  saved {path} ({path.stat().st_size} bytes, "
+                f"starts with %PDF: {pdf[:4] == b'%PDF'})"
+            )
 
         # Read-back: a successful print leaves the PO marked printed.
         after = get_printed_flag(client, config.base_url, args.po_no)
     print(f"po_hdr.printed after: {after}")
-    print(f"Verify: {'OK' if saved and after == 'Y' else 'CHECK'} "
-          f"({saved} document(s) saved)")
+    print(
+        f"Verify: {'OK' if saved and after == 'Y' else 'CHECK'} "
+        f"({saved} document(s) saved)"
+    )
 
 
 if __name__ == "__main__":

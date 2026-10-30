@@ -28,6 +28,7 @@ from common.auth import get_token, get_auth_headers
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -35,8 +36,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Read a service order (docs/15 service/serviceorders)"
     )
-    parser.add_argument("order_no", help="Any oe_hdr.order_no -- this family is not "
-                                         "restricted to orders flagged as 'service'")
+    parser.add_argument(
+        "order_no",
+        help="Any oe_hdr.order_no -- this family is not "
+        "restricted to orders flagged as 'service'",
+    )
     args = parser.parse_args()
 
     print("Other REST Families - Service Order Read (service/serviceorders)")
@@ -47,18 +51,28 @@ def main() -> None:
     headers = get_auth_headers(token_data["AccessToken"])
     print(f"Server: {config.base_url}")
 
-    response = httpx.get(f"{config.base_url}/api/service/serviceorders/{args.order_no}",
-                         headers=headers, verify=config.verify_ssl, timeout=40.0)
+    response = httpx.get(
+        f"{config.base_url}/api/service/serviceorders/{args.order_no}",
+        headers=headers,
+        verify=config.verify_ssl,
+        timeout=40.0,
+    )
     response.raise_for_status()
     order = response.json()
 
-    print(f"\nOrder {order['OrderNo']}  customer={order['CustomerId']}  "
-          f"location={order['LocationId']}  po_no={order['PoNo']!r}")
+    print(
+        f"\nOrder {order['OrderNo']}  customer={order['CustomerId']}  "
+        f"location={order['LocationId']}  po_no={order['PoNo']!r}"
+    )
     print(f"Ship to: {order['Ship2Name']}")
-    print(f"\nLines={order['Lines']!r}  Salesreps={order['Salesreps']!r}  Notes={order['Notes']!r}")
-    print("\nThis is an ordinary sales order read through a differently-shaped view -- "
-          "the same order also answers on sales/tasks' LinkId lookups and the "
-          "Transaction API Order service.")
+    print(
+        f"\nLines={order['Lines']!r}  Salesreps={order['Salesreps']!r}  Notes={order['Notes']!r}"
+    )
+    print(
+        "\nThis is an ordinary sales order read through a differently-shaped view -- "
+        "the same order also answers on sales/tasks' LinkId lookups and the "
+        "Transaction API Order service."
+    )
 
 
 if __name__ == "__main__":

@@ -20,6 +20,7 @@ from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -31,7 +32,7 @@ def start_session(ui_server_url: str, headers: dict, verify_ssl: bool) -> dict:
         json={"ResponseWindowHandlingEnabled": False},
         verify=verify_ssl,
         follow_redirects=True,
-        timeout=30.0
+        timeout=30.0,
     )
     response.raise_for_status()
     return response.json()
@@ -44,7 +45,7 @@ def list_sessions(ui_server_url: str, headers: dict, verify_ssl: bool) -> list:
         headers=headers,
         verify=verify_ssl,
         follow_redirects=True,
-        timeout=30.0
+        timeout=30.0,
     )
     response.raise_for_status()
     return response.json()
@@ -57,7 +58,7 @@ def end_session(ui_server_url: str, headers: dict, verify_ssl: bool) -> None:
         headers=headers,
         verify=verify_ssl,
         follow_redirects=True,
-        timeout=30.0
+        timeout=30.0,
     )
     response.raise_for_status()
 
@@ -69,7 +70,9 @@ def main():
     config = load_config()
     token_data = get_token(config)
     headers = get_auth_headers(token_data["AccessToken"])
-    ui_server_url = get_ui_server_url(config.base_url, token_data["AccessToken"], config.verify_ssl)
+    ui_server_url = get_ui_server_url(
+        config.base_url, token_data["AccessToken"], config.verify_ssl
+    )
 
     print(f"UI Server: {ui_server_url}")
 

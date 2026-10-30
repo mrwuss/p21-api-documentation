@@ -28,6 +28,7 @@ from common.auth import get_token, get_auth_headers
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -42,24 +43,45 @@ def main() -> None:
 
     serials = httpx.get(
         f"{config.base_url}/odataservice/odata/table/serial_number",
-        params={"$select": "inv_mast_uid,serial_number", "$filter": "delete_flag eq 'N'", "$top": "1"},
-        headers=headers, verify=config.verify_ssl, timeout=30.0,
+        params={
+            "$select": "inv_mast_uid,serial_number",
+            "$filter": "delete_flag eq 'N'",
+            "$top": "1",
+        },
+        headers=headers,
+        verify=config.verify_ssl,
+        timeout=30.0,
     ).json()["value"]
     if not serials:
         raise SystemExit("No serial_number rows on this tenant to test against.")
     uid, serial = serials[0]["inv_mast_uid"], serials[0]["serial_number"]
 
-    item = httpx.get(f"{config.base_url}/odataservice/odata/table/inv_mast",
-                     params={"$select": "item_id", "$filter": f"inv_mast_uid eq {uid}"},
-                     headers=headers, verify=config.verify_ssl, timeout=30.0).json()["value"][0]
+    item = httpx.get(
+        f"{config.base_url}/odataservice/odata/table/inv_mast",
+        params={"$select": "item_id", "$filter": f"inv_mast_uid eq {uid}"},
+        headers=headers,
+        verify=config.verify_ssl,
+        timeout=30.0,
+    ).json()["value"][0]
     item_id = item["item_id"]
-    print(f"\nUsing a real, existing serial: inv_mast_uid={uid} item_id={item_id!r} "
-          f"serial_number={serial!r}")
+    print(
+        f"\nUsing a real, existing serial: inv_mast_uid={uid} item_id={item_id!r} "
+        f"serial_number={serial!r}"
+    )
 
-    body = {"InvMastUid": uid, "InvMastItemId": item_id, "SerialNumber": serial,
-           "Comments": "ZZ API DOC TEST"}
-    r = httpx.put(f"{config.base_url}/api/inventory/serialnumberextdinfo/",
-                  headers=headers, json=body, verify=config.verify_ssl, timeout=60.0)
+    body = {
+        "InvMastUid": uid,
+        "InvMastItemId": item_id,
+        "SerialNumber": serial,
+        "Comments": "ZZ API DOC TEST",
+    }
+    r = httpx.put(
+        f"{config.base_url}/api/inventory/serialnumberextdinfo/",
+        headers=headers,
+        json=body,
+        verify=config.verify_ssl,
+        timeout=60.0,
+    )
     print(f"\nHTTP {r.status_code}")
     if r.status_code != 200:
         stack = r.json().get("StackTrace", r.text)

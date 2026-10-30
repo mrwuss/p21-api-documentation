@@ -22,25 +22,33 @@ from common.auth import get_token, get_auth_headers
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
-def get_entity(base_url: str, endpoint: str, entity_id: str,
-                headers: dict, verify_ssl: bool) -> dict:
+def get_entity(
+    base_url: str, endpoint: str, entity_id: str, headers: dict, verify_ssl: bool
+) -> dict:
     """Get an entity by ID."""
     response = httpx.get(
         f"{base_url}{endpoint}/{entity_id}",
         headers=headers,
         verify=verify_ssl,
         follow_redirects=True,
-        timeout=30.0
+        timeout=30.0,
     )
     response.raise_for_status()
     return response.json()
 
 
-def get_entity_extended(base_url: str, endpoint: str, entity_id: str,
-                         headers: dict, verify_ssl: bool, props: str = "*") -> dict:
+def get_entity_extended(
+    base_url: str,
+    endpoint: str,
+    entity_id: str,
+    headers: dict,
+    verify_ssl: bool,
+    props: str = "*",
+) -> dict:
     """Get an entity with extended properties."""
     response = httpx.get(
         f"{base_url}{endpoint}/{entity_id}",
@@ -48,14 +56,15 @@ def get_entity_extended(base_url: str, endpoint: str, entity_id: str,
         headers=headers,
         verify=verify_ssl,
         follow_redirects=True,
-        timeout=30.0
+        timeout=30.0,
     )
     response.raise_for_status()
     return response.json()
 
 
-def update_entity(base_url: str, endpoint: str, data: dict,
-                   headers: dict, verify_ssl: bool) -> dict:
+def update_entity(
+    base_url: str, endpoint: str, data: dict, headers: dict, verify_ssl: bool
+) -> dict:
     """Update an entity record."""
     response = httpx.post(
         f"{base_url}{endpoint}",
@@ -63,7 +72,7 @@ def update_entity(base_url: str, endpoint: str, data: dict,
         json=data,
         verify=verify_ssl,
         follow_redirects=True,
-        timeout=30.0
+        timeout=30.0,
     )
     response.raise_for_status()
     return response.json()
@@ -91,7 +100,7 @@ def main():
             headers=headers,
             verify=config.verify_ssl,
             follow_redirects=True,
-            timeout=30.0
+            timeout=30.0,
         )
         response.raise_for_status()
         customers = response.json()
@@ -123,14 +132,16 @@ def main():
             headers=headers,
             verify=config.verify_ssl,
             follow_redirects=True,
-            timeout=30.0
+            timeout=30.0,
         )
         response.raise_for_status()
         orders = response.json()
 
         if orders:
             order = orders[0]
-            order_id = order.get("OrderNumber") or order.get("OrderNo") or order.get("Id")
+            order_id = (
+                order.get("OrderNumber") or order.get("OrderNo") or order.get("Id")
+            )
             print(f"  Order ID: {order_id}")
             print(f"  Attempting to get extended properties...")
 
@@ -142,9 +153,11 @@ def main():
                     str(order_id),
                     headers,
                     config.verify_ssl,
-                    "*"
+                    "*",
                 )
-                print(f"  Extended properties available: {list(extended.keys())[:5]}...")
+                print(
+                    f"  Extended properties available: {list(extended.keys())[:5]}..."
+                )
             except (httpx.HTTPError, KeyError, ValueError):
                 print("  Extended properties not available for this order")
 
@@ -174,7 +187,7 @@ def main():
     sample_update = {
         "CustomerCode": customer_code or 100000,
         "CustomerName": "Updated Customer Name",
-        "City": "New City"
+        "City": "New City",
     }
 
     print("  {")

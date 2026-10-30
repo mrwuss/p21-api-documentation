@@ -26,6 +26,7 @@ from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # --- Configuration (generic placeholders -- substitute your own) ------------
@@ -37,7 +38,7 @@ CONTACT_ID = "300"
 ORDER_DATE = "2030-01-05"
 REQUESTED_DATE = "2030-01-06"  # must differ from order_date
 PO_NO = "PO-TEST-001"
-TAKER = "JSMITH"               # else the order is attributed to the API user
+TAKER = "JSMITH"  # else the order is attributed to the API user
 ASSEMBLY_ITEM_ID = "WIDGET-001"  # an assembly item (assembly_hdr exists)
 QUANTITY = "5"
 
@@ -130,14 +131,18 @@ class InteractiveOrderSession:
     def start_session(self) -> None:
         """Start a session with response-window handling enabled."""
         httpx.post(
-            f"{self.iapi}/sessions", headers=self.headers, verify=self.verify,
+            f"{self.iapi}/sessions",
+            headers=self.headers,
+            verify=self.verify,
             json={"ResponseWindowHandlingEnabled": True},
         ).raise_for_status()
 
     def open_window(self, service_name: str) -> str:
         """Open a window and return its window ID."""
         win = httpx.post(
-            f"{self.iapi}/v2/window", headers=self.headers, verify=self.verify,
+            f"{self.iapi}/v2/window",
+            headers=self.headers,
+            verify=self.verify,
             json={"ServiceName": service_name},
         )
         win.raise_for_status()
@@ -159,26 +164,41 @@ class InteractiveOrderSession:
         """
         for popup_id in popup_ids(result):
             tools = httpx.get(
-                f"{self.iapi}/v2/tools", params={"windowId": popup_id},
-                headers=self.headers, verify=self.verify,
+                f"{self.iapi}/v2/tools",
+                params={"windowId": popup_id},
+                headers=self.headers,
+                verify=self.verify,
             )
             tools.raise_for_status()
             available = [t.get("Name") or t.get("ToolName") for t in tools.json()]
             pick = button
             if pick is None:  # prefer common proceed buttons
-                pick = next((b for b in ("cb_ok", "cb_1", "cb_yes") if b in available), None)
+                pick = next(
+                    (b for b in ("cb_ok", "cb_1", "cb_yes") if b in available), None
+                )
             if pick is None or pick not in available:
-                raise RuntimeError(f"Popup {popup_id}: buttons {available}, wanted {button}")
+                raise RuntimeError(
+                    f"Popup {popup_id}: buttons {available}, wanted {button}"
+                )
             click = httpx.post(
-                f"{self.iapi}/v2/tools", headers=self.headers, verify=self.verify,
+                f"{self.iapi}/v2/tools",
+                headers=self.headers,
+                verify=self.verify,
                 json={"WindowId": popup_id, "ToolName": pick},
             )
             click.raise_for_status()
             result = click.json()
         return result
 
-    def change(self, window_id: str, tab: str, dw: str, field: str, value: str,
-               answer: str | None = None) -> dict:
+    def change(
+        self,
+        window_id: str,
+        tab: str,
+        dw: str,
+        field: str,
+        value: str,
+        answer: str | None = None,
+    ) -> dict:
         """Change one field; answer the popup it triggers (if any) with answer.
 
         Args:
@@ -196,11 +216,20 @@ class InteractiveOrderSession:
             RuntimeError: When the change comes back as a Failure.
         """
         resp = httpx.put(
-            f"{self.iapi}/v2/change", headers=self.headers, verify=self.verify,
-            json={"WindowId": window_id, "List": [{
-                "TabName": tab, "DatawindowName": dw,  # DatawindowName required on 25.2+
-                "FieldName": field, "Value": value,
-            }]},
+            f"{self.iapi}/v2/change",
+            headers=self.headers,
+            verify=self.verify,
+            json={
+                "WindowId": window_id,
+                "List": [
+                    {
+                        "TabName": tab,
+                        "DatawindowName": dw,  # DatawindowName required on 25.2+
+                        "FieldName": field,
+                        "Value": value,
+                    }
+                ],
+            },
         )
         resp.raise_for_status()
         result = resp.json()
@@ -213,7 +242,9 @@ class InteractiveOrderSession:
     def tab(self, window_id: str, page_name: str) -> None:
         """Switch the window's active tab page."""
         httpx.put(
-            f"{self.iapi}/v2/tab", headers=self.headers, verify=self.verify,
+            f"{self.iapi}/v2/tab",
+            headers=self.headers,
+            verify=self.verify,
             json={"WindowId": window_id, "PageName": page_name},
         ).raise_for_status()
 
@@ -228,8 +259,12 @@ class InteractiveOrderSession:
         Raises:
             RuntimeError: When the save comes back as a Failure.
         """
-        resp = httpx.put(f"{self.iapi}/v2/data", headers=self.headers,
-                         verify=self.verify, json=window_id)
+        resp = httpx.put(
+            f"{self.iapi}/v2/data",
+            headers=self.headers,
+            verify=self.verify,
+            json=window_id,
+        )
         resp.raise_for_status()
         result = resp.json()
         events = list(result.get("Events") or [])
@@ -243,8 +278,12 @@ class InteractiveOrderSession:
     def cleanup(self, window_id: str | None) -> None:
         """Close the window and end the session (window uses ?id=)."""
         if window_id:
-            httpx.delete(f"{self.iapi}/v2/window", params={"id": window_id},
-                         headers=self.headers, verify=self.verify)
+            httpx.delete(
+                f"{self.iapi}/v2/window",
+                params={"id": window_id},
+                headers=self.headers,
+                verify=self.verify,
+            )
         httpx.delete(f"{self.iapi}/sessions", headers=self.headers, verify=self.verify)
 
 
@@ -269,10 +308,17 @@ def run_flow(session: InteractiveOrderSession) -> str | None:
         session.change(window_id, "TABPAGE_1", "order", "ship_to_id", SHIP_TO_ID)
         session.change(window_id, "TABPAGE_1", "order", "contact_id", CONTACT_ID)
         # Dates fire the w_response_common date-cascade prompt even on a NEW order
-        session.change(window_id, "TABPAGE_1", "order", "order_date", ORDER_DATE,
-                       answer="cb_ok")
-        session.change(window_id, "TABPAGE_1", "order", "requested_date", REQUESTED_DATE,
-                       answer="cb_ok")
+        session.change(
+            window_id, "TABPAGE_1", "order", "order_date", ORDER_DATE, answer="cb_ok"
+        )
+        session.change(
+            window_id,
+            "TABPAGE_1",
+            "order",
+            "requested_date",
+            REQUESTED_DATE,
+            answer="cb_ok",
+        )
         session.change(window_id, "TABPAGE_1", "order", "po_no", PO_NO)
         session.change(window_id, "TABPAGE_1", "order", "taker", TAKER)
 
@@ -281,8 +327,14 @@ def run_flow(session: InteractiveOrderSession) -> str | None:
 
         # Item on the EXISTING items row (no /v2/row add for the first line).
         # Assembly prompt: cb_1 = Yes (explode / link prod order).
-        session.change(window_id, "TP_ITEMS", "items", "oe_order_item_id",
-                       ASSEMBLY_ITEM_ID, answer="cb_1")
+        session.change(
+            window_id,
+            "TP_ITEMS",
+            "items",
+            "oe_order_item_id",
+            ASSEMBLY_ITEM_ID,
+            answer="cb_1",
+        )
         session.change(window_id, "TP_ITEMS", "items", "unit_quantity", QUANTITY)
 
         # Save -- v2 body is the bare window-ID string (an object => 422)
@@ -311,21 +363,29 @@ def verify_order(config, headers: dict, order_no: str) -> None:
     resp = httpx.get(
         f"{config.base_url}/odataservice/odata/table/oe_line",
         params={"$filter": f"order_no eq '{order_no}'"},
-        headers=headers, verify=config.verify_ssl, follow_redirects=True,
+        headers=headers,
+        verify=config.verify_ssl,
+        follow_redirects=True,
     )
     resp.raise_for_status()
     print("\nVerify (oe_line assembly codes):")
     for line in resp.json()["value"]:
-        print(f"  line {line.get('line_no')}: assembly={line.get('assembly')} "
-              f"qty_ordered={line.get('qty_ordered')}")
+        print(
+            f"  line {line.get('line_no')}: assembly={line.get('assembly')} "
+            f"qty_ordered={line.get('qty_ordered')}"
+        )
 
 
 def main() -> None:
     """Entry point: print the call plan (dry run) or run the full flow."""
     parser = argparse.ArgumentParser(
-        description="Order with an assembly line (docs/recipes/order-with-assembly.md)")
-    parser.add_argument("--execute", action="store_true",
-                        help="Run the full Interactive API flow (default: print the call plan)")
+        description="Order with an assembly line (docs/recipes/order-with-assembly.md)"
+    )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Run the full Interactive API flow (default: print the call plan)",
+    )
     args = parser.parse_args()
 
     print("Recipe - Order with an Assembly Line (Interactive API)")
@@ -333,20 +393,31 @@ def main() -> None:
 
     if not args.execute:
         print("\nDRY RUN - no session is opened.\n")
-        print(CALL_PLAN.format(
-            iapi="{ui_server}/api/ui/interactive",
-            sales_loc=SALES_LOC_ID, source_loc=SOURCE_LOC_ID,
-            customer=CUSTOMER_ID, ship_to=SHIP_TO_ID, contact=CONTACT_ID,
-            order_date=ORDER_DATE, req_date=REQUESTED_DATE,
-            po_no=PO_NO, taker=TAKER, item=ASSEMBLY_ITEM_ID, qty=QUANTITY,
-        ))
+        print(
+            CALL_PLAN.format(
+                iapi="{ui_server}/api/ui/interactive",
+                sales_loc=SALES_LOC_ID,
+                source_loc=SOURCE_LOC_ID,
+                customer=CUSTOMER_ID,
+                ship_to=SHIP_TO_ID,
+                contact=CONTACT_ID,
+                order_date=ORDER_DATE,
+                req_date=REQUESTED_DATE,
+                po_no=PO_NO,
+                taker=TAKER,
+                item=ASSEMBLY_ITEM_ID,
+                qty=QUANTITY,
+            )
+        )
         print("Re-run with --execute to open the session and enter the order.")
         return
 
     config = load_config()
     token_data = get_token(config)
     headers = get_auth_headers(token_data["AccessToken"])
-    ui_server = get_ui_server_url(config.base_url, token_data["AccessToken"], config.verify_ssl)
+    ui_server = get_ui_server_url(
+        config.base_url, token_data["AccessToken"], config.verify_ssl
+    )
     print(f"UI Server: {ui_server}")
 
     session = InteractiveOrderSession(ui_server, headers, config.verify_ssl)

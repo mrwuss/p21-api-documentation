@@ -38,36 +38,53 @@ from common.config import load_config
 from common.interactive_session import InteractiveSession, popup_ids
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 LABEL = {704: "Active", 705: "Inactive"}
 
 
-def rule_status(http: httpx.Client, base_url: str, args: argparse.Namespace) -> list[dict]:
+def rule_status(
+    http: httpx.Client, base_url: str, args: argparse.Namespace
+) -> list[dict]:
     """Read the matching rule(s) from the p21_view_business_rule OData view."""
+
     def lit(value: str) -> str:
-        return "'" + value.replace("'", "''") + "'"          # OData string literal
-    flt = (f"rule_name eq {lit(args.rule_name)} and field_name eq {lit(args.field_name)} "
-           f"and window_title eq {lit(args.window_title)}")
-    r = http.get(f"{base_url}/odataservice/odata/view/p21_view_business_rule",
-                 params={"$filter": flt,
-                         "$select": "business_rule_uid,row_status_flag,date_last_modified"})
+        return "'" + value.replace("'", "''") + "'"  # OData string literal
+
+    flt = (
+        f"rule_name eq {lit(args.rule_name)} and field_name eq {lit(args.field_name)} "
+        f"and window_title eq {lit(args.window_title)}"
+    )
+    r = http.get(
+        f"{base_url}/odataservice/odata/view/p21_view_business_rule",
+        params={
+            "$filter": flt,
+            "$select": "business_rule_uid,row_status_flag,date_last_modified",
+        },
+    )
     r.raise_for_status()
     return r.json()["value"]
 
 
 def set_status(s: InteractiveSession, organizer: str, row: int, status: str) -> None:
     """Select the rule row, change its status, and apply."""
-    s.select_row(organizer, "list", row)                         # select FIRST
+    s.select_row(organizer, "list", row)  # select FIRST
     s.change(organizer, "LIST", "list", "row_status_flag", status)
-    s.run_tool(organizer, "cb_apply")                            # commit
+    s.run_tool(organizer, "cb_apply")  # commit
 
 
 def main() -> None:
     """Entry point: dry run prints the plan; --execute toggles, verifies and restores."""
-    p = argparse.ArgumentParser(description="Toggle a DynaChange rule through the organizer")
-    p.add_argument("--execute", action="store_true", help="Run the session (default: dry run)")
-    p.add_argument("--leave", action="store_true", help="Do not restore the original status")
+    p = argparse.ArgumentParser(
+        description="Toggle a DynaChange rule through the organizer"
+    )
+    p.add_argument(
+        "--execute", action="store_true", help="Run the session (default: dry run)"
+    )
+    p.add_argument(
+        "--leave", action="store_true", help="Do not restore the original status"
+    )
     p.add_argument("--rule-name", default="ExampleRule")
     p.add_argument("--field-name", default="item_id")
     p.add_argument("--window-title", default="Item Maintenance")
@@ -97,8 +114,9 @@ Re-run with --execute.""")
     headers = get_auth_headers(token)
     ui_server = get_ui_server_url(config.base_url, token, config.verify_ssl)
 
-    with httpx.Client(headers=headers, verify=config.verify_ssl,
-                      follow_redirects=True, timeout=60) as http:
+    with httpx.Client(
+        headers=headers, verify=config.verify_ssl, follow_redirects=True, timeout=60
+    ) as http:
         before = rule_status(http, config.base_url, args)
         if len(before) != 1:
             raise SystemExit(f"Expected one matching rule, found {len(before)}")
@@ -115,32 +133,46 @@ Re-run with --execute.""")
         try:
             organizer = popup_ids(s.run_tool(host, "dc.organizer.rule"))[0]
             rows = s.rows(organizer, "list")
-            index = next((i for i, r in enumerate(rows, start=1)
-                          if r["rule_name"] == args.rule_name
-                          and r["field_name"] == args.field_name
-                          and r["window_title"] == args.window_title), None)
+            index = next(
+                (
+                    i
+                    for i, r in enumerate(rows, start=1)
+                    if r["rule_name"] == args.rule_name
+                    and r["field_name"] == args.field_name
+                    and r["window_title"] == args.window_title
+                ),
+                None,
+            )
             if index is None:
-                raise SystemExit("Rule not in the organizer list (internal rules are not listed)")
+                raise SystemExit(
+                    "Rule not in the organizer list (internal rules are not listed)"
+                )
 
             set_status(s, organizer, index, flipped)
             restore = not args.leave
             now = rule_status(http, config.base_url, args)[0]["row_status_flag"]
-            print(f"Set {flipped}: row_status_flag={now} -> "
-                  f"{'OK' if LABEL[now] == flipped else 'NOT APPLIED'}")
+            print(
+                f"Set {flipped}: row_status_flag={now} -> "
+                f"{'OK' if LABEL[now] == flipped else 'NOT APPLIED'}"
+            )
 
             if not args.leave:
                 set_status(s, organizer, index, original)
                 restore = False
                 now = rule_status(http, config.base_url, args)[0]["row_status_flag"]
-                print(f"Restored {original}: row_status_flag={now} -> "
-                      f"{'OK' if LABEL[now] == original else 'NOT RESTORED'}")
+                print(
+                    f"Restored {original}: row_status_flag={now} -> "
+                    f"{'OK' if LABEL[now] == original else 'NOT RESTORED'}"
+                )
         finally:
             if restore and organizer and index:
-                try:                                          # never leave the rule flipped on an error
+                try:  # never leave the rule flipped on an error
                     set_status(s, organizer, index, original)
                     print(f"Restored {original} after an error")
                 except Exception as exc:  # noqa: BLE001 - report and keep cleaning up
-                    print(f"RESTORE FAILED: set the rule back to {original} by hand ({exc})")
+                    print(
+                        f"RESTORE FAILED: set the rule back to {original} by hand ({exc})"
+                    )
             if organizer:
                 s.run_tool(organizer, "cb_cancel")
             s.close_window(host)

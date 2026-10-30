@@ -18,6 +18,7 @@ from common.auth import get_token, get_auth_headers
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -41,11 +42,11 @@ def main():
         params={
             "$top": 5,
             "$select": "supplier_id,supplier_name",
-            "$orderby": "supplier_name"
+            "$orderby": "supplier_name",
         },
         headers=headers,
         verify=config.verify_ssl,
-        follow_redirects=True
+        follow_redirects=True,
     )
     response.raise_for_status()
     data = response.json()
@@ -62,17 +63,19 @@ def main():
         params={
             "$top": 5,
             "$select": "product_group_id,product_group_desc",
-            "$orderby": "product_group_id"
+            "$orderby": "product_group_id",
         },
         headers=headers,
         verify=config.verify_ssl,
-        follow_redirects=True
+        follow_redirects=True,
     )
     response.raise_for_status()
     data = response.json()
 
     for group in data["value"]:
-        print(f"  {group['product_group_id']}: {group.get('product_group_desc', 'N/A')}")
+        print(
+            f"  {group['product_group_id']}: {group.get('product_group_desc', 'N/A')}"
+        )
 
     # Example 3: Query with count
     print("\n3. Query price pages with count:")
@@ -80,14 +83,10 @@ def main():
 
     response = httpx.get(
         f"{config.odata_url}/table/price_page",
-        params={
-            "$top": 3,
-            "$count": "true",
-            "$select": "price_page_uid,description"
-        },
+        params={"$top": 3, "$count": "true", "$select": "price_page_uid,description"},
         headers=headers,
         verify=config.verify_ssl,
-        follow_redirects=True
+        follow_redirects=True,
     )
     response.raise_for_status()
     data = response.json()

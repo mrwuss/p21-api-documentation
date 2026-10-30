@@ -38,7 +38,9 @@ def connect() -> Session:
     config = load_config()
     token = get_token(config)["AccessToken"]
     ui_server = get_ui_server_url(config.base_url, token, config.verify_ssl)
-    return Session(config.base_url, ui_server, get_auth_headers(token), config.verify_ssl)
+    return Session(
+        config.base_url, ui_server, get_auth_headers(token), config.verify_ssl
+    )
 
 
 def edit(name: str, value: str) -> dict:
@@ -69,14 +71,20 @@ def post_transaction(session: Session, payload: dict, timeout: float = 300) -> d
     Returns:
         dict: The parsed response body.
     """
-    resp = httpx.post(f"{session.ui_server}/api/v2/transaction",
-                      headers=session.headers, json=payload,
-                      verify=session.verify_ssl, follow_redirects=True,
-                      timeout=timeout)
+    resp = httpx.post(
+        f"{session.ui_server}/api/v2/transaction",
+        headers=session.headers,
+        json=payload,
+        verify=session.verify_ssl,
+        follow_redirects=True,
+        timeout=timeout,
+    )
     resp.raise_for_status()
     result = resp.json()
     summary = result.get("Summary") or {}
-    print(f"Summary: Succeeded={summary.get('Succeeded')}, Failed={summary.get('Failed')}")
+    print(
+        f"Summary: Succeeded={summary.get('Succeeded')}, Failed={summary.get('Failed')}"
+    )
     for message in result.get("Messages") or []:
         print(f"  Message: {message}")
     return result
@@ -119,8 +127,13 @@ def result_value(result: dict, element: str, field: str) -> str | None:
     return None
 
 
-def odata(session: Session, name: str, filter_expr: str, select: str | None = None,
-          surface: str = "table") -> list[dict]:
+def odata(
+    session: Session,
+    name: str,
+    filter_expr: str,
+    select: str | None = None,
+    surface: str = "table",
+) -> list[dict]:
     """Query an OData table (or view) and return its rows.
 
     Args:
@@ -136,9 +149,14 @@ def odata(session: Session, name: str, filter_expr: str, select: str | None = No
     params = {"$filter": filter_expr}
     if select:
         params["$select"] = select
-    resp = httpx.get(f"{session.base_url}/odataservice/odata/{surface}/{name}",
-                     params=params, headers=session.headers,
-                     verify=session.verify_ssl, follow_redirects=True, timeout=120)
+    resp = httpx.get(
+        f"{session.base_url}/odataservice/odata/{surface}/{name}",
+        params=params,
+        headers=session.headers,
+        verify=session.verify_ssl,
+        follow_redirects=True,
+        timeout=120,
+    )
     resp.raise_for_status()
     return resp.json()["value"]
 

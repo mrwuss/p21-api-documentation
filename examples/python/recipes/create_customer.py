@@ -29,17 +29,18 @@ from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # --- Configuration (generic placeholders -- substitute your own) ------------
 CUSTOMER_NAME = "ACME Industrial Supply"
-SALESREP_ID = "100"        # hard-required; error surfaces on the ship-to (see below)
+SALESREP_ID = "100"  # hard-required; error surfaces on the ship-to (see below)
 MAIL_ADDRESS1 = "123 Main St"
 MAIL_CITY = "Des Moines"
 MAIL_STATE = "IA"
 MAIL_POSTAL_CODE = "50309"
 MAIL_COUNTRY = "USA"
-DEFAULT_BRANCH = "10"      # required, NOT defaulted by the template
+DEFAULT_BRANCH = "10"  # required, NOT defaulted by the template
 
 
 def build_customer_payload() -> dict:
@@ -54,39 +55,48 @@ def build_customer_payload() -> dict:
     return {
         "Name": "Customer",
         "UseCodeValues": False,
-        "Transactions": [{
-            "Status": "New",
-            "DataElements": [
-                {
-                    "Name": "TABPAGE_1.tp_1_dw_1",
-                    "Type": "Form",
-                    "Keys": [],
-                    "Rows": [{
-                        "Edits": [
-                            {"Name": "customer_name",    "Value": CUSTOMER_NAME},
-                            {"Name": "salesrep_id",      "Value": SALESREP_ID},
-                            {"Name": "mail_address1",    "Value": MAIL_ADDRESS1},
-                            {"Name": "mail_city",        "Value": MAIL_CITY},
-                            {"Name": "mail_state",       "Value": MAIL_STATE},
-                            {"Name": "mail_postal_code", "Value": MAIL_POSTAL_CODE},
-                            {"Name": "mail_country",     "Value": MAIL_COUNTRY},
+        "Transactions": [
+            {
+                "Status": "New",
+                "DataElements": [
+                    {
+                        "Name": "TABPAGE_1.tp_1_dw_1",
+                        "Type": "Form",
+                        "Keys": [],
+                        "Rows": [
+                            {
+                                "Edits": [
+                                    {"Name": "customer_name", "Value": CUSTOMER_NAME},
+                                    {"Name": "salesrep_id", "Value": SALESREP_ID},
+                                    {"Name": "mail_address1", "Value": MAIL_ADDRESS1},
+                                    {"Name": "mail_city", "Value": MAIL_CITY},
+                                    {"Name": "mail_state", "Value": MAIL_STATE},
+                                    {
+                                        "Name": "mail_postal_code",
+                                        "Value": MAIL_POSTAL_CODE,
+                                    },
+                                    {"Name": "mail_country", "Value": MAIL_COUNTRY},
+                                ],
+                                "RelativeDateEdits": [],
+                            }
                         ],
-                        "RelativeDateEdits": [],
-                    }],
-                },
-                {
-                    "Name": "SHIP_TO_GENERAL.ship_to_general",
-                    "Type": "Form",
-                    "Keys": [],
-                    "Rows": [{
-                        "Edits": [
-                            {"Name": "default_branch", "Value": DEFAULT_BRANCH},
+                    },
+                    {
+                        "Name": "SHIP_TO_GENERAL.ship_to_general",
+                        "Type": "Form",
+                        "Keys": [],
+                        "Rows": [
+                            {
+                                "Edits": [
+                                    {"Name": "default_branch", "Value": DEFAULT_BRANCH},
+                                ],
+                                "RelativeDateEdits": [],
+                            }
                         ],
-                        "RelativeDateEdits": [],
-                    }],
-                },
-            ],
-        }],
+                    },
+                ],
+            }
+        ],
     }
 
 
@@ -116,9 +126,13 @@ def extract_customer_id(result: dict) -> str | None:
 def main() -> None:
     """Entry point: build payload, POST on --execute, then verify via OData."""
     parser = argparse.ArgumentParser(
-        description="Create a customer (docs/recipes/create-customer.md)")
-    parser.add_argument("--execute", action="store_true",
-                        help="Actually POST the transaction (default: dry run)")
+        description="Create a customer (docs/recipes/create-customer.md)"
+    )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Actually POST the transaction (default: dry run)",
+    )
     args = parser.parse_args()
 
     print("Recipe - Create a Customer (Customer service)")
@@ -127,7 +141,9 @@ def main() -> None:
     payload = build_customer_payload()
 
     if not args.execute:
-        print("\nDRY RUN - payload that would be POSTed to {ui_server}/api/v2/transaction:")
+        print(
+            "\nDRY RUN - payload that would be POSTed to {ui_server}/api/v2/transaction:"
+        )
         print(json.dumps(payload, indent=2))
         print("\nRe-run with --execute to POST it.")
         return
@@ -135,12 +151,19 @@ def main() -> None:
     config = load_config()
     token_data = get_token(config)
     headers = get_auth_headers(token_data["AccessToken"])
-    ui_server = get_ui_server_url(config.base_url, token_data["AccessToken"], config.verify_ssl)
+    ui_server = get_ui_server_url(
+        config.base_url, token_data["AccessToken"], config.verify_ssl
+    )
     print(f"UI Server: {ui_server}")
 
-    response = httpx.post(f"{ui_server}/api/v2/transaction",
-                          headers=headers, json=payload, verify=config.verify_ssl,
-                          follow_redirects=True, timeout=120)
+    response = httpx.post(
+        f"{ui_server}/api/v2/transaction",
+        headers=headers,
+        json=payload,
+        verify=config.verify_ssl,
+        follow_redirects=True,
+        timeout=120,
+    )
     response.raise_for_status()
     result = response.json()
 
@@ -163,14 +186,20 @@ def main() -> None:
     print("\nVerify (OData read-back):")
     cust_resp = httpx.get(
         f"{config.base_url}/odataservice/odata/table/customer",
-        params={"$filter": f"customer_id eq {customer_id}",
-                "$select": "customer_id,customer_name,salesrep_id"},
-        headers=headers, verify=config.verify_ssl, follow_redirects=True,
+        params={
+            "$filter": f"customer_id eq {customer_id}",
+            "$select": "customer_id,customer_name,salesrep_id",
+        },
+        headers=headers,
+        verify=config.verify_ssl,
+        follow_redirects=True,
     )
     cust_resp.raise_for_status()
     for cust in cust_resp.json()["value"]:
-        print(f"  customer_id={cust.get('customer_id')} "
-              f"name={cust.get('customer_name')} salesrep_id={cust.get('salesrep_id')}")
+        print(
+            f"  customer_id={cust.get('customer_id')} "
+            f"name={cust.get('customer_name')} salesrep_id={cust.get('salesrep_id')}"
+        )
 
 
 if __name__ == "__main__":

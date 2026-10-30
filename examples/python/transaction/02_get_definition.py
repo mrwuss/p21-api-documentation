@@ -17,30 +17,35 @@ from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
-def get_service_definition(ui_server_url: str, service_name: str, headers: dict, verify_ssl: bool) -> dict:
+def get_service_definition(
+    ui_server_url: str, service_name: str, headers: dict, verify_ssl: bool
+) -> dict:
     """Fetch the definition for a service."""
     response = httpx.get(
         f"{ui_server_url}/api/v2/definition/{service_name}",
         headers=headers,
         verify=verify_ssl,
         follow_redirects=True,
-        timeout=60.0  # Large definitions can take time
+        timeout=60.0,  # Large definitions can take time
     )
     response.raise_for_status()
     return response.json()
 
 
-def get_service_defaults(ui_server_url: str, service_name: str, headers: dict, verify_ssl: bool) -> dict:
+def get_service_defaults(
+    ui_server_url: str, service_name: str, headers: dict, verify_ssl: bool
+) -> dict:
     """Fetch the default values for a service."""
     response = httpx.get(
         f"{ui_server_url}/api/v2/defaults/{service_name}",
         headers=headers,
         verify=verify_ssl,
         follow_redirects=True,
-        timeout=60.0
+        timeout=60.0,
     )
     response.raise_for_status()
     return response.json()
@@ -82,7 +87,10 @@ def print_field_definition(field_def: dict, indent: int = 0):
 
     if valid_values:
         values_preview = valid_values[:5]
-        print(f"{prefix}    Valid: {values_preview}" + ("..." if len(valid_values) > 5 else ""))
+        print(
+            f"{prefix}    Valid: {values_preview}"
+            + ("..." if len(valid_values) > 5 else "")
+        )
 
 
 def main():
@@ -92,7 +100,9 @@ def main():
     config = load_config()
     token_data = get_token(config)
     headers = get_auth_headers(token_data["AccessToken"])
-    ui_server_url = get_ui_server_url(config.base_url, token_data["AccessToken"], config.verify_ssl)
+    ui_server_url = get_ui_server_url(
+        config.base_url, token_data["AccessToken"], config.verify_ssl
+    )
 
     # Example 1: Get Order definition
     service_name = "Order"
@@ -100,7 +110,9 @@ def main():
     print("-" * 50)
 
     try:
-        definition = get_service_definition(ui_server_url, service_name, headers, config.verify_ssl)
+        definition = get_service_definition(
+            ui_server_url, service_name, headers, config.verify_ssl
+        )
 
         # Show template structure
         template = definition.get("Template", {})
@@ -144,7 +156,9 @@ def main():
     print("-" * 50)
 
     try:
-        definition = get_service_definition(ui_server_url, service_name, headers, config.verify_ssl)
+        definition = get_service_definition(
+            ui_server_url, service_name, headers, config.verify_ssl
+        )
 
         trans_def = definition.get("TransactionDefinition", {})
         data_elem_defs = trans_def.get("DataElementDefinitions", [])
@@ -166,7 +180,9 @@ def main():
     print("-" * 50)
 
     try:
-        defaults = get_service_defaults(ui_server_url, "Order", headers, config.verify_ssl)
+        defaults = get_service_defaults(
+            ui_server_url, "Order", headers, config.verify_ssl
+        )
 
         # Show some default values
         data_elements = defaults.get("DataElements", [])
@@ -189,9 +205,9 @@ def main():
     print("\n" + "=" * 60)
     print("Definition examples complete!")
     print("\nTip: Save the full definition to a file for reference:")
-    print('  import json')
+    print("  import json")
     print('  with open("definition.json", "w") as f:')
-    print('      json.dump(definition, f, indent=2)')
+    print("      json.dump(definition, f, indent=2)")
 
 
 if __name__ == "__main__":

@@ -21,11 +21,16 @@ from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
-def build_update_payload(price_page_uid: int, new_description: str = None,
-                          new_multiplier: float = None, expire: bool = False) -> dict:
+def build_update_payload(
+    price_page_uid: int,
+    new_description: str = None,
+    new_multiplier: float = None,
+    expire: bool = False,
+) -> dict:
     """
     Build a Transaction API payload for updating a price page.
 
@@ -65,26 +70,27 @@ def build_update_payload(price_page_uid: int, new_description: str = None,
             "Name": "FORM.form",
             "Type": "Form",
             "Keys": [],  # empty - key value goes in Edits (JobContractPricing pattern)
-            "Rows": [{
-                "Edits": edits,
-                "RelativeDateEdits": []
-            }]
+            "Rows": [{"Edits": edits, "RelativeDateEdits": []}],
         }
     ]
 
     # If updating multiplier, need to include VALUES tab
     if new_multiplier is not None:
-        data_elements.append({
-            "Name": "VALUES.values",
-            "Type": "Form",
-            "Keys": [],
-            "Rows": [{
-                "Edits": [
-                    {"Name": "calculation_value1", "Value": str(new_multiplier)}
+        data_elements.append(
+            {
+                "Name": "VALUES.values",
+                "Type": "Form",
+                "Keys": [],
+                "Rows": [
+                    {
+                        "Edits": [
+                            {"Name": "calculation_value1", "Value": str(new_multiplier)}
+                        ],
+                        "RelativeDateEdits": [],
+                    }
                 ],
-                "RelativeDateEdits": []
-            }]
-        })
+            }
+        )
 
     return {
         "Name": "SalesPricePage",
@@ -92,13 +98,15 @@ def build_update_payload(price_page_uid: int, new_description: str = None,
         "Transactions": [
             {
                 "Status": "New",  # Still "New" for updates
-                "DataElements": data_elements
+                "DataElements": data_elements,
             }
-        ]
+        ],
     }
 
 
-def get_price_page(ui_server_url: str, price_page_uid: int, headers: dict, verify_ssl: bool) -> dict:
+def get_price_page(
+    ui_server_url: str, price_page_uid: int, headers: dict, verify_ssl: bool
+) -> dict:
     """
     Get an existing price page using the Transaction API /get endpoint.
 
@@ -109,11 +117,9 @@ def get_price_page(ui_server_url: str, price_page_uid: int, headers: dict, verif
         "TransactionStates": [
             {
                 "DataElementName": "FORM.form",
-                "Keys": [
-                    {"Name": "price_page_uid", "Value": str(price_page_uid)}
-                ]
+                "Keys": [{"Name": "price_page_uid", "Value": str(price_page_uid)}],
             }
-        ]
+        ],
     }
 
     response = httpx.post(
@@ -122,7 +128,7 @@ def get_price_page(ui_server_url: str, price_page_uid: int, headers: dict, verif
         json=payload,
         verify=verify_ssl,
         follow_redirects=True,
-        timeout=30.0
+        timeout=30.0,
     )
     response.raise_for_status()
     return response.json()
@@ -135,7 +141,9 @@ def main():
     config = load_config()
     token_data = get_token(config)
     headers = get_auth_headers(token_data["AccessToken"])
-    ui_server_url = get_ui_server_url(config.base_url, token_data["AccessToken"], config.verify_ssl)
+    ui_server_url = get_ui_server_url(
+        config.base_url, token_data["AccessToken"], config.verify_ssl
+    )
 
     print(f"UI Server: {ui_server_url}")
 
@@ -186,7 +194,7 @@ def main():
     payload = build_update_payload(
         price_page_uid=test_uid,
         new_description="Updated Description",
-        new_multiplier=0.85
+        new_multiplier=0.85,
     )
 
     print("\n  Sample update payload:")
@@ -205,10 +213,7 @@ def main():
     print("\n\n3. Expire record payload structure:")
     print("-" * 50)
 
-    expire_payload = build_update_payload(
-        price_page_uid=test_uid,
-        expire=True
-    )
+    expire_payload = build_update_payload(price_page_uid=test_uid, expire=True)
 
     for trans in expire_payload["Transactions"]:
         for elem in trans["DataElements"]:

@@ -104,46 +104,122 @@ BOOLEAN_VALUES = {"", " ", "ON", "OFF", "Y", "N", "Yes", "No"}
 # only standard P21 enum labels -- safe to publish. Anything not listed
 # here (and not boolean-style) gets redacted. Deny by default.
 VALIDVALUES_ALLOWLIST = {
-    "action_number", "age_by", "allow_disassembly", "assignment_option",
-    "assembly_usage_accumulation", "auto_update_prices_source_flag",
-    "billing_type_cd", "bssheet_price_display_option", "burdened_cost_type_id",
-    "c_disposition", "c_shipping_action", "calculation_method",
-    "calculation_method_cd", "calculator_type", "cc_include_rfq",
-    "child_uom_code_no", "combine_stock_ns_special_cd",
+    "action_number",
+    "age_by",
+    "allow_disassembly",
+    "assignment_option",
+    "assembly_usage_accumulation",
+    "auto_update_prices_source_flag",
+    "billing_type_cd",
+    "bssheet_price_display_option",
+    "burdened_cost_type_id",
+    "c_disposition",
+    "c_shipping_action",
+    "calculation_method",
+    "calculation_method_cd",
+    "calculator_type",
+    "cc_include_rfq",
+    "child_uom_code_no",
+    "combine_stock_ns_special_cd",
     "commission_cost_calc_method_cd",
-    "commission_cost_type_cd", "contact_type_cd", "contract_category",
-    "contract_type_cd", "control_value", "country_subdivision_uid",
-    "create_po_from_oe", "create_vendor_rfq_cd", "customer_default_disposition",
-    "customer_sensitivity_cd", "customer_type_cd", "dea_schedule",
-    "default_disposition", "default_shipment", "demand_pattern_behavior_cd",
-    "demand_pattern_cd", "dflt_dimension_scale", "display_area_cd",
-    "display_end_date", "disposition", "expedite_type", "filter_by",
-    "freight_charge_option_cd", "generate_statements_by", "gpo_type_cd",
-    "gpt_picking_status", "include_non_alloc_on_pack_list", "include_pm",
-    "invoice_comp_cost_cd_tier1", "invoice_comp_cost_cd_tier2",
-    "invoice_comp_cost_cd_tier3", "invoice_type", "item_type", "item_type_cd",
-    "labor_type_cd", "lead_time_source", "link_area", "list_price_option_cd",
-    "mode_of_transport_cd", "ndc_type_cd", "open_item_balance_forward",
-    "order_disc_type", "order_type", "other_cost_calc_method_cd",
-    "other_cost_type_cd", "override_vmi_status",
-    "pack_by", "packing_basis", "packing_weight_tracking_option",
-    "payable_to", "payment_acct_type_cd", "pm_status", "po_default_method",
-    "po_hdr_po_type", "pocosting_method", "price_page_type_cd",
-    "pricing_method", "pricing_method_cd", "pricing_option",
-    "pricing_service_option", "processed_flag", "product_type",
-    "prorate_cost_by", "quote_price_disposition", "quote_type",
-    "release_status_flag", "release_type", "rental_billing_flag",
-    "rep_method_cd", "rep_source_cd", "replen_method",
-    "replenishment_method_cd", "require_lot_documentation_flag", "responded",
-    "retail_size_cd", "round", "round_type", "routing_status_flag",
-    "row_status", "row_status_flag", "safety_stock_type", "salutation",
-    "scheduling_type_cd", "secondary_rebate_calc_meth_cd",
-    "serialized", "service_level_measure",
-    "source_area_cd", "source_type",
-    "strategic_price_applies_to_cd", "supplementary_value", "tcost",
-    "tag_usage_specificity_cd", "terms_of_delivery_cd", "third_party_billing_flag",
-    "totaling_method_cd", "trans_type",
-    "validation_status", "xmit_invoice_cd",
+    "commission_cost_type_cd",
+    "contact_type_cd",
+    "contract_category",
+    "contract_type_cd",
+    "control_value",
+    "country_subdivision_uid",
+    "create_po_from_oe",
+    "create_vendor_rfq_cd",
+    "customer_default_disposition",
+    "customer_sensitivity_cd",
+    "customer_type_cd",
+    "dea_schedule",
+    "default_disposition",
+    "default_shipment",
+    "demand_pattern_behavior_cd",
+    "demand_pattern_cd",
+    "dflt_dimension_scale",
+    "display_area_cd",
+    "display_end_date",
+    "disposition",
+    "expedite_type",
+    "filter_by",
+    "freight_charge_option_cd",
+    "generate_statements_by",
+    "gpo_type_cd",
+    "gpt_picking_status",
+    "include_non_alloc_on_pack_list",
+    "include_pm",
+    "invoice_comp_cost_cd_tier1",
+    "invoice_comp_cost_cd_tier2",
+    "invoice_comp_cost_cd_tier3",
+    "invoice_type",
+    "item_type",
+    "item_type_cd",
+    "labor_type_cd",
+    "lead_time_source",
+    "link_area",
+    "list_price_option_cd",
+    "mode_of_transport_cd",
+    "ndc_type_cd",
+    "open_item_balance_forward",
+    "order_disc_type",
+    "order_type",
+    "other_cost_calc_method_cd",
+    "other_cost_type_cd",
+    "override_vmi_status",
+    "pack_by",
+    "packing_basis",
+    "packing_weight_tracking_option",
+    "payable_to",
+    "payment_acct_type_cd",
+    "pm_status",
+    "po_default_method",
+    "po_hdr_po_type",
+    "pocosting_method",
+    "price_page_type_cd",
+    "pricing_method",
+    "pricing_method_cd",
+    "pricing_option",
+    "pricing_service_option",
+    "processed_flag",
+    "product_type",
+    "prorate_cost_by",
+    "quote_price_disposition",
+    "quote_type",
+    "release_status_flag",
+    "release_type",
+    "rental_billing_flag",
+    "rep_method_cd",
+    "rep_source_cd",
+    "replen_method",
+    "replenishment_method_cd",
+    "require_lot_documentation_flag",
+    "responded",
+    "retail_size_cd",
+    "round",
+    "round_type",
+    "routing_status_flag",
+    "row_status",
+    "row_status_flag",
+    "safety_stock_type",
+    "salutation",
+    "scheduling_type_cd",
+    "secondary_rebate_calc_meth_cd",
+    "serialized",
+    "service_level_measure",
+    "source_area_cd",
+    "source_type",
+    "strategic_price_applies_to_cd",
+    "supplementary_value",
+    "tcost",
+    "tag_usage_specificity_cd",
+    "terms_of_delivery_cd",
+    "third_party_billing_flag",
+    "totaling_method_cd",
+    "trans_type",
+    "validation_status",
+    "xmit_invoice_cd",
 }
 # Deliberately NOT allowlisted despite looking standard: the price-source
 # dropdowns (commission_cost_source_cd, other_cost_source_cd,
@@ -212,10 +288,16 @@ def scrub_check(text: str, terms: list[str]) -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--services", help="Comma-separated service names")
-    parser.add_argument("--all", action="store_true",
-                        help="Fetch every service listed by /api/v2/services")
-    parser.add_argument("--no-sanitize", action="store_true",
-                        help="Skip sanitization (LOCAL USE ONLY -- never commit raw output)")
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Fetch every service listed by /api/v2/services",
+    )
+    parser.add_argument(
+        "--no-sanitize",
+        action="store_true",
+        help="Skip sanitization (LOCAL USE ONLY -- never commit raw output)",
+    )
     parser.add_argument("--out", default=str(OUTPUT_DIR), help="Output directory")
     args = parser.parse_args()
 
@@ -234,15 +316,21 @@ def main() -> int:
         listed = resp.json()
         services = sorted(
             s if isinstance(s, str) else s.get("Name")
-            for s in (listed if isinstance(listed, list) else listed.get("Services", []))
+            for s in (
+                listed if isinstance(listed, list) else listed.get("Services", [])
+            )
         )
     else:
         services = DOCUMENTED_SERVICES
 
-    scrub_terms = [t.strip() for t in os.environ.get("P21_SCRUB_TERMS", "").split(",") if t.strip()]
+    scrub_terms = [
+        t.strip() for t in os.environ.get("P21_SCRUB_TERMS", "").split(",") if t.strip()
+    ]
     if not scrub_terms and not args.no_sanitize:
-        print("NOTE: P21_SCRUB_TERMS is not set -- no company-term gate will run. "
-              "Set it (comma-separated) before publishing fetched output.")
+        print(
+            "NOTE: P21_SCRUB_TERMS is not set -- no company-term gate will run. "
+            "Set it (comma-separated) before publishing fetched output."
+        )
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -294,9 +382,12 @@ def main() -> int:
     manifest["ok"] = sorted(ok)
     manifest["skipped"] = dict(sorted(skipped.items()))
     manifest_path.write_text(
-        json.dumps(manifest, indent=1, sort_keys=True) + "\n", encoding="utf-8")
-    print(f"\nWrote {len(manifest['ok'])} definitions to {out_dir} "
-          f"({len(manifest['skipped'])} skipped). Manifest: _manifest.json")
+        json.dumps(manifest, indent=1, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    print(
+        f"\nWrote {len(manifest['ok'])} definitions to {out_dir} "
+        f"({len(manifest['skipped'])} skipped). Manifest: _manifest.json"
+    )
     return 0
 
 

@@ -24,6 +24,7 @@ from common.config import load_config
 from common.transaction import get_service_definition, get_service_defaults
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 SERVICE_NAME = "TimeEntry"

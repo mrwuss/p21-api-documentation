@@ -33,6 +33,7 @@ from common.auth import get_token, get_auth_headers
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 FILE_NAME = "zz_api_doc_test.txt"
@@ -51,8 +52,12 @@ def main() -> None:
     print("\n1. Upload:")
     print("-" * 50)
     upload = httpx.post(
-        f"{config.base_url}/api/filehandler/file", params={"fileName": FILE_NAME},
-        headers=headers, content=CONTENT, verify=config.verify_ssl, timeout=60.0,
+        f"{config.base_url}/api/filehandler/file",
+        params={"fileName": FILE_NAME},
+        headers=headers,
+        content=CONTENT,
+        verify=config.verify_ssl,
+        timeout=60.0,
     )
     upload.raise_for_status()
     print(f"  Uploaded {FILE_NAME} ({len(CONTENT)} bytes)")
@@ -60,8 +65,11 @@ def main() -> None:
     print("\n2. Detail (note lowercase 'filename' here, unlike every other route):")
     print("-" * 50)
     detail = httpx.get(
-        f"{config.base_url}/api/filehandler/file/detail", params={"filename": FILE_NAME},
-        headers=headers, verify=config.verify_ssl, timeout=30.0,
+        f"{config.base_url}/api/filehandler/file/detail",
+        params={"filename": FILE_NAME},
+        headers=headers,
+        verify=config.verify_ssl,
+        timeout=30.0,
     )
     detail.raise_for_status()
     info = detail.json()
@@ -71,8 +79,11 @@ def main() -> None:
     print("\n3. Download:")
     print("-" * 50)
     download = httpx.get(
-        f"{config.base_url}/api/filehandler/file", params={"fileName": FILE_NAME},
-        headers=headers, verify=config.verify_ssl, timeout=30.0,
+        f"{config.base_url}/api/filehandler/file",
+        params={"fileName": FILE_NAME},
+        headers=headers,
+        verify=config.verify_ssl,
+        timeout=30.0,
     )
     download.raise_for_status()
     print(f"  Content matches: {download.content == CONTENT}")
@@ -80,8 +91,11 @@ def main() -> None:
     print("\n4. Delete:")
     print("-" * 50)
     delete = httpx.delete(
-        f"{config.base_url}/api/filehandler/file", params={"fileName": FILE_NAME},
-        headers=headers, verify=config.verify_ssl, timeout=30.0,
+        f"{config.base_url}/api/filehandler/file",
+        params={"fileName": FILE_NAME},
+        headers=headers,
+        verify=config.verify_ssl,
+        timeout=30.0,
     )
     delete.raise_for_status()
     print(f"  Delete response: {delete.json()!r}")
@@ -89,8 +103,11 @@ def main() -> None:
     print("\n5. Confirm gone (200 + null, NOT a 404):")
     print("-" * 50)
     after = httpx.get(
-        f"{config.base_url}/api/filehandler/file/detail", params={"filename": FILE_NAME},
-        headers=headers, verify=config.verify_ssl, timeout=30.0,
+        f"{config.base_url}/api/filehandler/file/detail",
+        params={"filename": FILE_NAME},
+        headers=headers,
+        verify=config.verify_ssl,
+        timeout=30.0,
     )
     print(f"  HTTP {after.status_code}, body: {after.text!r}")
 

@@ -46,10 +46,15 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import httpx
 from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
-from common.interactive_session import (BLOCKED, InteractiveSession, event_value,
-                                        popup_ids)
+from common.interactive_session import (
+    BLOCKED,
+    InteractiveSession,
+    event_value,
+    popup_ids,
+)
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 CALL_PLAN = """\
@@ -84,9 +89,11 @@ def answer_popups(s: InteractiveSession, result: dict) -> str | None:
         tools = s.tools(popup)  # includes the parent's ribbon -- search by name
         if "cb_finish" in tools:  # the Create RFQ/Purchase Orders wizard
             for row in s.rows(popup, "items"):
-                print(f"  wizard line: item={row.get('item_id')} disposition={row.get('disposition')} "
-                      f"supplier={row.get('supplier_id')} quote_item={row.get('quote_item')} "
-                      f"qty={row.get('qty_to_purchase')}")
+                print(
+                    f"  wizard line: item={row.get('item_id')} disposition={row.get('disposition')} "
+                    f"supplier={row.get('supplier_id')} quote_item={row.get('quote_item')} "
+                    f"qty={row.get('qty_to_purchase')}"
+                )
             s.run_tool(popup, "cb_next")  # the PO is COMMITTED here
             page2 = s.active_row(popup, "po_print")
             po_no = page2.get("po_no")
@@ -102,19 +109,31 @@ def answer_popups(s: InteractiveSession, result: dict) -> str | None:
 
 def odata(http: httpx.Client, base_url: str, table: str, flt: str) -> list[dict]:
     """Return the rows of an OData table query."""
-    r = http.get(f"{base_url}/odataservice/odata/table/{table}", params={"$filter": flt})
+    r = http.get(
+        f"{base_url}/odataservice/odata/table/{table}", params={"$filter": flt}
+    )
     r.raise_for_status()
     return r.json()["value"]
 
 
 def main() -> None:
     """Entry point: print the call plan, or enter the order and verify it."""
-    p = argparse.ArgumentParser(description="Order entry with quote OFF (Interactive API)")
-    p.add_argument("--execute", action="store_true", help="Run the session (default: dry run)")
-    p.add_argument("--direct-ship", action="store_true",
-                   help="Enter the line as disposition D and create its PO through the wizard")
-    p.add_argument("--consumer-key", action="store_true",
-                   help="Authenticate with P21_CONSUMER_KEY/P21_CONSUMER_USERNAME (a Buyer ID user)")
+    p = argparse.ArgumentParser(
+        description="Order entry with quote OFF (Interactive API)"
+    )
+    p.add_argument(
+        "--execute", action="store_true", help="Run the session (default: dry run)"
+    )
+    p.add_argument(
+        "--direct-ship",
+        action="store_true",
+        help="Enter the line as disposition D and create its PO through the wizard",
+    )
+    p.add_argument(
+        "--consumer-key",
+        action="store_true",
+        help="Authenticate with P21_CONSUMER_KEY/P21_CONSUMER_USERNAME (a Buyer ID user)",
+    )
     p.add_argument("--location-id", default="10", help="sales_loc_id and source_loc_id")
     p.add_argument("--customer-id", default="100")
     p.add_argument("--ship-to-id", default="100")
@@ -128,20 +147,37 @@ def main() -> None:
     print("Order entry with quote = OFF (Interactive API)")
     print("=" * 60)
     if not args.execute:
-        print(CALL_PLAN.format(
-            loc=args.location_id, cust=args.customer_id, ship=args.ship_to_id,
-            contact=args.contact_id, po=args.po_no, item=args.item_id, qty=args.quantity,
-            ds=(f",\n                 disposition=D, po_cost={args.po_cost};"
-                "\n  PUT  v2/change TABPAGE_1/order: c_create_po=ON") if args.direct_ship else "",
-            wiz="; wizard (cb_finish present) -> cb_next, cb_finish" if args.direct_ship else "",
-            ds_verify="\n         oe_line_po -> po_hdr.po_type must be 'D'" if args.direct_ship else ""))
+        print(
+            CALL_PLAN.format(
+                loc=args.location_id,
+                cust=args.customer_id,
+                ship=args.ship_to_id,
+                contact=args.contact_id,
+                po=args.po_no,
+                item=args.item_id,
+                qty=args.quantity,
+                ds=(
+                    f",\n                 disposition=D, po_cost={args.po_cost};"
+                    "\n  PUT  v2/change TABPAGE_1/order: c_create_po=ON"
+                )
+                if args.direct_ship
+                else "",
+                wiz="; wizard (cb_finish present) -> cb_next, cb_finish"
+                if args.direct_ship
+                else "",
+                ds_verify="\n         oe_line_po -> po_hdr.po_type must be 'D'"
+                if args.direct_ship
+                else "",
+            )
+        )
         print("Re-run with --execute to enter the order.")
         return
 
     config = load_config()
     if args.consumer_key:
-        token = get_token(config, consumer_key=config.consumer_key,
-                          username=config.consumer_username)["AccessToken"]
+        token = get_token(
+            config, consumer_key=config.consumer_key, username=config.consumer_username
+        )["AccessToken"]
     else:
         token = get_token(config)["AccessToken"]
     headers = get_auth_headers(token)
@@ -155,12 +191,14 @@ def main() -> None:
         print(f"\nquote default on open: {s.active_row(window, 'order').get('quote')}")
         s.change(window, "TABPAGE_1", "order", "quote", "OFF")  # first header edit
         print(f"quote after OFF:       {s.active_row(window, 'order').get('quote')}")
-        for field, value in [("sales_loc_id", args.location_id),
-                             ("source_loc_id", args.location_id),
-                             ("customer_id", args.customer_id),
-                             ("ship_to_id", args.ship_to_id),
-                             ("contact_id", args.contact_id),
-                             ("po_no", args.po_no)]:
+        for field, value in [
+            ("sales_loc_id", args.location_id),
+            ("source_loc_id", args.location_id),
+            ("customer_id", args.customer_id),
+            ("ship_to_id", args.ship_to_id),
+            ("contact_id", args.contact_id),
+            ("po_no", args.po_no),
+        ]:
             s.change(window, "TABPAGE_1", "order", field, value)
 
         s.select_tab(window, "TP_ITEMS")
@@ -168,7 +206,9 @@ def main() -> None:
         oe_line_uid = event_value(result, "keygenerated", "value")
         s.change(window, "TP_ITEMS", "items", "unit_quantity", args.quantity)
         if args.direct_ship:
-            s.change(window, "TP_ITEMS", "items", "disposition", "D")  # at entry, or later once the line holds no allocation
+            s.change(
+                window, "TP_ITEMS", "items", "disposition", "D"
+            )  # at entry, or later once the line holds no allocation
             s.change(window, "TP_ITEMS", "items", "po_cost", args.po_cost)
             s.select_tab(window, "TABPAGE_1")
             s.change(window, "TABPAGE_1", "order", "c_create_po", "ON")
@@ -180,23 +220,38 @@ def main() -> None:
 
     if not oe_line_uid:
         raise SystemExit("No oe_line_uid came back from the item change")
-    with httpx.Client(headers=headers, verify=config.verify_ssl,
-                      follow_redirects=True, timeout=60) as http:
-        line = odata(http, config.base_url, "oe_line", f"oe_line_uid eq {oe_line_uid}")[0]
+    with httpx.Client(
+        headers=headers, verify=config.verify_ssl, follow_redirects=True, timeout=60
+    ) as http:
+        line = odata(http, config.base_url, "oe_line", f"oe_line_uid eq {oe_line_uid}")[
+            0
+        ]
         order_no = line["order_no"]
         hdr = odata(http, config.base_url, "oe_hdr", f"order_no eq '{order_no}'")[0]
-        print(f"\nVerify: order {order_no} projected_order={hdr['projected_order']} -> "
-              f"{'OK (order)' if hdr['projected_order'] == 'N' else 'QUOTE'}")
-        print(f"  line {line['line_no']}: disposition={line['disposition']!r} "
-              f"qty_ordered={line['qty_ordered']}")
+        print(
+            f"\nVerify: order {order_no} projected_order={hdr['projected_order']} -> "
+            f"{'OK (order)' if hdr['projected_order'] == 'N' else 'QUOTE'}"
+        )
+        print(
+            f"  line {line['line_no']}: disposition={line['disposition']!r} "
+            f"qty_ordered={line['qty_ordered']}"
+        )
         if args.direct_ship:
-            links = odata(http, config.base_url, "oe_line_po", f"order_number eq '{order_no}'")
+            links = odata(
+                http, config.base_url, "oe_line_po", f"order_number eq '{order_no}'"
+            )
             for link in links:
-                po = odata(http, config.base_url, "po_hdr", f"po_no eq {link['po_no']}")[0]
-                print(f"  oe_line_po: po_no={link['po_no']} connection_type={link['connection_type']} "
-                      f"po_type={po['po_type']} -> {'OK' if po['po_type'] == 'D' else 'CHECK'}")
+                po = odata(
+                    http, config.base_url, "po_hdr", f"po_no eq {link['po_no']}"
+                )[0]
+                print(
+                    f"  oe_line_po: po_no={link['po_no']} connection_type={link['connection_type']} "
+                    f"po_type={po['po_type']} -> {'OK' if po['po_type'] == 'D' else 'CHECK'}"
+                )
             if not links:
-                print("  no oe_line_po row -> no PO was created (check Buyer ID and supplier)")
+                print(
+                    "  no oe_line_po row -> no PO was created (check Buyer ID and supplier)"
+                )
 
 
 if __name__ == "__main__":

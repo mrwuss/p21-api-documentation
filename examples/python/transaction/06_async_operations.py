@@ -33,6 +33,7 @@ from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -49,43 +50,64 @@ def build_test_payload(description: str) -> dict:
                         "Name": "FORM.form",
                         "Type": "Form",
                         "Keys": [],
-                        "Rows": [{
-                            "Edits": [
-                                {"Name": "price_page_type_cd", "Value": "Supplier / Product Group"},
-                                {"Name": "company_id", "Value": "ACME"},
-                                {"Name": "supplier_id", "Value": "10"},
-                                {"Name": "product_group_id", "Value": "MISC"},
-                                {"Name": "description", "Value": description},
-                                {"Name": "pricing_method_cd", "Value": "Source"},
-                                {"Name": "source_price_cd", "Value": "Supplier List Price"},
-                                {"Name": "effective_date", "Value": datetime.now().strftime("%Y-%m-%d")},
-                                {"Name": "expiration_date", "Value": "2030-12-31"},
-                                {"Name": "totaling_method_cd", "Value": "Item"},
-                                {"Name": "totaling_basis_cd", "Value": "Supplier List Price"},
-                                {"Name": "row_status_flag", "Value": "Active"}
-                            ],
-                            "RelativeDateEdits": []
-                        }]
+                        "Rows": [
+                            {
+                                "Edits": [
+                                    {
+                                        "Name": "price_page_type_cd",
+                                        "Value": "Supplier / Product Group",
+                                    },
+                                    {"Name": "company_id", "Value": "ACME"},
+                                    {"Name": "supplier_id", "Value": "10"},
+                                    {"Name": "product_group_id", "Value": "MISC"},
+                                    {"Name": "description", "Value": description},
+                                    {"Name": "pricing_method_cd", "Value": "Source"},
+                                    {
+                                        "Name": "source_price_cd",
+                                        "Value": "Supplier List Price",
+                                    },
+                                    {
+                                        "Name": "effective_date",
+                                        "Value": datetime.now().strftime("%Y-%m-%d"),
+                                    },
+                                    {"Name": "expiration_date", "Value": "2030-12-31"},
+                                    {"Name": "totaling_method_cd", "Value": "Item"},
+                                    {
+                                        "Name": "totaling_basis_cd",
+                                        "Value": "Supplier List Price",
+                                    },
+                                    {"Name": "row_status_flag", "Value": "Active"},
+                                ],
+                                "RelativeDateEdits": [],
+                            }
+                        ],
                     },
                     {
                         "Name": "VALUES.values",
                         "Type": "Form",
                         "Keys": [],
-                        "Rows": [{
-                            "Edits": [
-                                {"Name": "calculation_method_cd", "Value": "Multiplier"},
-                                {"Name": "calculation_value1", "Value": "0.5"}
-                            ],
-                            "RelativeDateEdits": []
-                        }]
-                    }
-                ]
+                        "Rows": [
+                            {
+                                "Edits": [
+                                    {
+                                        "Name": "calculation_method_cd",
+                                        "Value": "Multiplier",
+                                    },
+                                    {"Name": "calculation_value1", "Value": "0.5"},
+                                ],
+                                "RelativeDateEdits": [],
+                            }
+                        ],
+                    },
+                ],
             }
-        ]
+        ],
     }
 
 
-def submit_async(ui_server_url: str, payload: dict, headers: dict, verify_ssl: bool) -> dict:
+def submit_async(
+    ui_server_url: str, payload: dict, headers: dict, verify_ssl: bool
+) -> dict:
     """Submit an async transaction request."""
     response = httpx.post(
         f"{ui_server_url}/api/v2/transaction/async",
@@ -93,13 +115,15 @@ def submit_async(ui_server_url: str, payload: dict, headers: dict, verify_ssl: b
         json=payload,
         verify=verify_ssl,
         follow_redirects=True,
-        timeout=30.0
+        timeout=30.0,
     )
     response.raise_for_status()
     return response.json()
 
 
-def check_async_status(ui_server_url: str, request_id: str, headers: dict, verify_ssl: bool) -> dict:
+def check_async_status(
+    ui_server_url: str, request_id: str, headers: dict, verify_ssl: bool
+) -> dict:
     """Check the status of an async request."""
     response = httpx.get(
         f"{ui_server_url}/api/v2/transaction/async",
@@ -107,14 +131,20 @@ def check_async_status(ui_server_url: str, request_id: str, headers: dict, verif
         headers=headers,
         verify=verify_ssl,
         follow_redirects=True,
-        timeout=30.0
+        timeout=30.0,
     )
     response.raise_for_status()
     return response.json()
 
 
-def wait_for_completion(ui_server_url: str, request_id: str, headers: dict,
-                        verify_ssl: bool, timeout: int = 60, poll_interval: int = 2) -> dict:
+def wait_for_completion(
+    ui_server_url: str,
+    request_id: str,
+    headers: dict,
+    verify_ssl: bool,
+    timeout: int = 60,
+    poll_interval: int = 2,
+) -> dict:
     """Poll for async request completion."""
     start_time = time.time()
 
@@ -129,7 +159,9 @@ def wait_for_completion(ui_server_url: str, request_id: str, headers: dict,
 
         time.sleep(poll_interval)
 
-    raise TimeoutError(f"Request {request_id} did not complete within {timeout} seconds")
+    raise TimeoutError(
+        f"Request {request_id} did not complete within {timeout} seconds"
+    )
 
 
 def read_back_by_description(config, headers: dict, description: str) -> list:
@@ -148,16 +180,21 @@ def read_back_by_description(config, headers: dict, description: str) -> list:
         headers=headers,
         verify=config.verify_ssl,
         follow_redirects=True,
-        timeout=30.0
+        timeout=30.0,
     )
     response.raise_for_status()
     return response.json().get("value", [])
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Submit an async transaction to the Transaction API")
-    parser.add_argument("--execute", action="store_true",
-                        help="Actually POST the transaction (default: dry run, print payload only)")
+    parser = argparse.ArgumentParser(
+        description="Submit an async transaction to the Transaction API"
+    )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Actually POST the transaction (default: dry run, print payload only)",
+    )
     args = parser.parse_args()
 
     print("Transaction API - Async Operations")
@@ -166,7 +203,9 @@ def main():
     config = load_config()
     token_data = get_token(config)
     headers = get_auth_headers(token_data["AccessToken"])
-    ui_server_url = get_ui_server_url(config.base_url, token_data["AccessToken"], config.verify_ssl)
+    ui_server_url = get_ui_server_url(
+        config.base_url, token_data["AccessToken"], config.verify_ssl
+    )
 
     print(f"UI Server: {ui_server_url}")
 
@@ -206,8 +245,12 @@ def main():
         print("-" * 50)
 
         final_status = wait_for_completion(
-            ui_server_url, request_id, headers, config.verify_ssl,
-            timeout=60, poll_interval=2
+            ui_server_url,
+            request_id,
+            headers,
+            config.verify_ssl,
+            timeout=60,
+            poll_interval=2,
         )
 
         print(f"\n  Final Result:")
@@ -226,8 +269,10 @@ def main():
             rows = read_back_by_description(config, headers, description)
             if rows:
                 row = rows[0]
-                print(f"  VERIFIED: price_page_uid {row.get('price_page_uid')} "
-                      f"created with description '{row.get('description')}'")
+                print(
+                    f"  VERIFIED: price_page_uid {row.get('price_page_uid')} "
+                    f"created with description '{row.get('description')}'"
+                )
             else:
                 print(f"  WARNING: no price_page row found for '{description}' -")
                 print("  the async request completed but the record did not persist")
@@ -249,13 +294,13 @@ def main():
     print()
     print("  POST /api/v2/transaction/async/callback")
     print("  {")
-    print("    \"Content\": { ... transaction payload ... },")
-    print("    \"Callback\": {")
-    print("      \"Url\": \"https://p21.example.com/webhook\",")
-    print("      \"Method\": \"POST\",")
-    print("      \"ContentType\": \"application/json\",")
-    print("      \"Headers\": [")
-    print("        {\"Name\": \"X-API-Key\", \"Value\": \"your-key\"}")
+    print('    "Content": { ... transaction payload ... },')
+    print('    "Callback": {')
+    print('      "Url": "https://p21.example.com/webhook",')
+    print('      "Method": "POST",')
+    print('      "ContentType": "application/json",')
+    print('      "Headers": [')
+    print('        {"Name": "X-API-Key", "Value": "your-key"}')
     print("      ]")
     print("    }")
     print("  }")

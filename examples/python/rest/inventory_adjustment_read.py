@@ -38,29 +38,38 @@ from common.auth import get_token, get_auth_headers
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
-def get_adjustment(base_url: str, headers: dict, verify_ssl: bool,
-                    adjustment_no: str) -> dict:
+def get_adjustment(
+    base_url: str, headers: dict, verify_ssl: bool, adjustment_no: str
+) -> dict:
     """GET one adjustment header by AdjustmentNo."""
     response = httpx.get(
         f"{base_url}/api/inventory/inventoryadjustments/{adjustment_no}",
-        headers=headers, verify=verify_ssl, follow_redirects=True, timeout=60.0,
+        headers=headers,
+        verify=verify_ssl,
+        follow_redirects=True,
+        timeout=60.0,
     )
     response.raise_for_status()
     return response.json()
 
 
-def get_gl_lines(base_url: str, headers: dict, verify_ssl: bool,
-                  transaction_number: str) -> list[dict]:
+def get_gl_lines(
+    base_url: str, headers: dict, verify_ssl: bool, transaction_number: str
+) -> list[dict]:
     """GET the GL journal entry the adjustment posted, if known.
 
     See gl_journal_entry.py for the general-purpose version of this call.
     """
     response = httpx.get(
         f"{base_url}/api/accounting/gl/{transaction_number}",
-        headers=headers, verify=verify_ssl, follow_redirects=True, timeout=60.0,
+        headers=headers,
+        verify=verify_ssl,
+        follow_redirects=True,
+        timeout=60.0,
     )
     response.raise_for_status()
     return response.json()
@@ -69,13 +78,15 @@ def get_gl_lines(base_url: str, headers: dict, verify_ssl: bool,
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Read an inventory adjustment header "
-                     "(docs/15 inventory/inventoryadjustments)"
+        "(docs/15 inventory/inventoryadjustments)"
     )
     parser.add_argument("adjustment_no", help="inv_adj_hdr.adjustment_number")
-    parser.add_argument("--gl-transaction",
-                        help="Also read this gl.transaction_number, to show the "
-                             "adjustment's own GL posting (found via JournalId "
-                             "'IA' + Source on the accounting/gl family)")
+    parser.add_argument(
+        "--gl-transaction",
+        help="Also read this gl.transaction_number, to show the "
+        "adjustment's own GL posting (found via JournalId "
+        "'IA' + Source on the accounting/gl family)",
+    )
     args = parser.parse_args()
 
     print("Other REST Families - Inventory Adjustment (inventory/inventoryadjustments)")
@@ -86,21 +97,30 @@ def main() -> None:
     headers = get_auth_headers(token_data["AccessToken"])
     print(f"Server: {config.base_url}")
 
-    adj = get_adjustment(config.base_url, headers, config.verify_ssl, args.adjustment_no)
+    adj = get_adjustment(
+        config.base_url, headers, config.verify_ssl, args.adjustment_no
+    )
 
-    print(f"\nAdjustment {adj['AdjustmentNo']}  location={adj['LocationId']}  "
-          f"reason={adj['Reason']!r}  approved={adj['Approved']!r} "
-          f"(real bool, not 'Y'/'N')  delete={adj['Delete']!r}")
-    print(f"Lines: {adj.get('Lines')!r}  (always null on this family -- "
-          f"read inv_adj_line over OData)")
+    print(
+        f"\nAdjustment {adj['AdjustmentNo']}  location={adj['LocationId']}  "
+        f"reason={adj['Reason']!r}  approved={adj['Approved']!r} "
+        f"(real bool, not 'Y'/'N')  delete={adj['Delete']!r}"
+    )
+    print(
+        f"Lines: {adj.get('Lines')!r}  (always null on this family -- "
+        f"read inv_adj_line over OData)"
+    )
 
     if args.gl_transaction:
         print(f"\nGL journal entry for transaction {args.gl_transaction}:")
         print("-" * 50)
-        for line in get_gl_lines(config.base_url, headers, config.verify_ssl,
-                                  args.gl_transaction):
-            print(f"  {line['AccountNumber']:14} {line['Amount']:>14,.2f}  "
-                  f"journal={line['JournalId']}  source={line['Source']}")
+        for line in get_gl_lines(
+            config.base_url, headers, config.verify_ssl, args.gl_transaction
+        ):
+            print(
+                f"  {line['AccountNumber']:14} {line['Amount']:>14,.2f}  "
+                f"journal={line['JournalId']}  source={line['Source']}"
+            )
 
 
 if __name__ == "__main__":

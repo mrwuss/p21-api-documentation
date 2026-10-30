@@ -29,6 +29,7 @@ from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -39,20 +40,21 @@ class InteractiveSession:
         self.ui_server_url = ui_server_url
         self.headers = headers
         self.verify_ssl = verify_ssl
-        self.client = httpx.Client(verify=verify_ssl, timeout=30.0, follow_redirects=True)
+        self.client = httpx.Client(
+            verify=verify_ssl, timeout=30.0, follow_redirects=True
+        )
 
     def start(self):
         response = self.client.post(
             f"{self.ui_server_url}/api/ui/interactive/sessions/",
             headers=self.headers,
-            json={"ResponseWindowHandlingEnabled": False}
+            json={"ResponseWindowHandlingEnabled": False},
         )
         response.raise_for_status()
 
     def end(self):
         self.client.delete(
-            f"{self.ui_server_url}/api/ui/interactive/sessions/",
-            headers=self.headers
+            f"{self.ui_server_url}/api/ui/interactive/sessions/", headers=self.headers
         )
         self.client.close()
 
@@ -60,7 +62,7 @@ class InteractiveSession:
         response = self.client.post(
             f"{self.ui_server_url}/api/ui/interactive/v2/window",
             headers=self.headers,
-            json={"ServiceName": service_name}
+            json={"ServiceName": service_name},
         )
         response.raise_for_status()
         return response.json()
@@ -70,7 +72,7 @@ class InteractiveSession:
         self.client.delete(
             f"{self.ui_server_url}/api/ui/interactive/v2/window",
             params={"id": window_id},
-            headers=self.headers
+            headers=self.headers,
         )
 
     def change_data(self, window_id: str, changes: list) -> dict:
@@ -87,15 +89,12 @@ class InteractiveSession:
         Returns:
             API response with Status (int), Messages, Events
         """
-        payload = {
-            "WindowId": window_id,
-            "List": changes
-        }
+        payload = {"WindowId": window_id, "List": changes}
 
         response = self.client.put(
             f"{self.ui_server_url}/api/ui/interactive/v2/change",
             headers=self.headers,
-            json=payload
+            json=payload,
         )
         response.raise_for_status()
         return response.json()
@@ -105,7 +104,7 @@ class InteractiveSession:
         response = self.client.put(
             f"{self.ui_server_url}/api/ui/interactive/v2/tab",
             headers=self.headers,
-            json={"WindowId": window_id, "PageName": tab_name}
+            json={"WindowId": window_id, "PageName": tab_name},
         )
         response.raise_for_status()
         return response.json()
@@ -116,7 +115,7 @@ class InteractiveSession:
         response = self.client.get(
             f"{self.ui_server_url}/api/ui/interactive/v2/data",
             params={"id": window_id},
-            headers=self.headers
+            headers=self.headers,
         )
         response.raise_for_status()
         return response.json()
@@ -129,7 +128,9 @@ def main():
     config = load_config()
     token_data = get_token(config)
     headers = get_auth_headers(token_data["AccessToken"])
-    ui_server_url = get_ui_server_url(config.base_url, token_data["AccessToken"], config.verify_ssl)
+    ui_server_url = get_ui_server_url(
+        config.base_url, token_data["AccessToken"], config.verify_ssl
+    )
 
     print(f"UI Server: {ui_server_url}")
 
@@ -151,14 +152,17 @@ def main():
         print("\n3. Changing single field:")
         print("-" * 50)
 
-        result = session.change_data(window_id, [
-            {
-                "TabName": "FORM",
-                "DatawindowName": "form",
-                "FieldName": "price_page_type_cd",
-                "Value": "Supplier / Product Group"
-            }
-        ])
+        result = session.change_data(
+            window_id,
+            [
+                {
+                    "TabName": "FORM",
+                    "DatawindowName": "form",
+                    "FieldName": "price_page_type_cd",
+                    "Value": "Supplier / Product Group",
+                }
+            ],
+        )
         print("  Changed price_page_type_cd")
         print(f"  Status: {result.get('Status')} (1=Success, 2=Failure)")
 
@@ -168,10 +172,30 @@ def main():
 
         timestamp = datetime.now().strftime("%H%M%S")
         changes = [
-            {"TabName": "FORM", "DatawindowName": "form", "FieldName": "company_id", "Value": "ACME"},
-            {"TabName": "FORM", "DatawindowName": "form", "FieldName": "supplier_id", "Value": "10"},
-            {"TabName": "FORM", "DatawindowName": "form", "FieldName": "product_group_id", "Value": "MISC"},
-            {"TabName": "FORM", "DatawindowName": "form", "FieldName": "description", "Value": f"IAPI-TEST-{timestamp}"},
+            {
+                "TabName": "FORM",
+                "DatawindowName": "form",
+                "FieldName": "company_id",
+                "Value": "ACME",
+            },
+            {
+                "TabName": "FORM",
+                "DatawindowName": "form",
+                "FieldName": "supplier_id",
+                "Value": "10",
+            },
+            {
+                "TabName": "FORM",
+                "DatawindowName": "form",
+                "FieldName": "product_group_id",
+                "Value": "MISC",
+            },
+            {
+                "TabName": "FORM",
+                "DatawindowName": "form",
+                "FieldName": "description",
+                "Value": f"IAPI-TEST-{timestamp}",
+            },
         ]
 
         result = session.change_data(window_id, changes)
@@ -191,10 +215,23 @@ def main():
         print(f"  Status: {result.get('Status')}")
 
         # Change fields on new tab
-        result = session.change_data(window_id, [
-            {"TabName": "VALUES", "DatawindowName": "values", "FieldName": "calculation_method_cd", "Value": "Multiplier"},
-            {"TabName": "VALUES", "DatawindowName": "values", "FieldName": "calculation_value1", "Value": "0.75"},
-        ])
+        result = session.change_data(
+            window_id,
+            [
+                {
+                    "TabName": "VALUES",
+                    "DatawindowName": "values",
+                    "FieldName": "calculation_method_cd",
+                    "Value": "Multiplier",
+                },
+                {
+                    "TabName": "VALUES",
+                    "DatawindowName": "values",
+                    "FieldName": "calculation_value1",
+                    "Value": "0.75",
+                },
+            ],
+        )
         print("  Changed calculation fields")
         print(f"  Status: {result.get('Status')}")
 

@@ -28,12 +28,13 @@ from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # --- Configuration (generic placeholders -- substitute your own) ------------
 LOCATION_ID = "10"
-VENDOR_ID = "99001"            # vendor_id != supplier_id -- different records
-VENDOR_SUPPLIER_ID = "10050"   # goes on the HEADER (omitting it fails at the line)
+VENDOR_ID = "99001"  # vendor_id != supplier_id -- different records
+VENDOR_SUPPLIER_ID = "10050"  # goes on the HEADER (omitting it fails at the line)
 
 # (item_id, quantity) -- item must have inv_loc.requisition = 'Y' at LOCATION_ID
 PO_LINES = [
@@ -51,39 +52,49 @@ def build_requisition_po_payload() -> dict:
         dict: Complete Transaction API payload.
     """
     line_rows = [
-        {"Edits": [
-            {"Name": "item_id",       "Value": item_id},
-            {"Name": "unit_quantity", "Value": qty},
-        ], "RelativeDateEdits": []}
+        {
+            "Edits": [
+                {"Name": "item_id", "Value": item_id},
+                {"Name": "unit_quantity", "Value": qty},
+            ],
+            "RelativeDateEdits": [],
+        }
         for item_id, qty in PO_LINES
     ]
     return {
         "Name": "RequisitionPurchaseOrder",
         "UseCodeValues": False,
-        "Transactions": [{
-            "Status": "New",
-            "DataElements": [
-                {
-                    "Name": "TABPAGE_1.tp_1_dw_1",
-                    "Type": "Form",
-                    "Keys": [],
-                    "Rows": [{
-                        "Edits": [
-                            {"Name": "location_id",        "Value": LOCATION_ID},
-                            {"Name": "vendor_id",          "Value": VENDOR_ID},
-                            {"Name": "vendor_supplier_id", "Value": VENDOR_SUPPLIER_ID},
+        "Transactions": [
+            {
+                "Status": "New",
+                "DataElements": [
+                    {
+                        "Name": "TABPAGE_1.tp_1_dw_1",
+                        "Type": "Form",
+                        "Keys": [],
+                        "Rows": [
+                            {
+                                "Edits": [
+                                    {"Name": "location_id", "Value": LOCATION_ID},
+                                    {"Name": "vendor_id", "Value": VENDOR_ID},
+                                    {
+                                        "Name": "vendor_supplier_id",
+                                        "Value": VENDOR_SUPPLIER_ID,
+                                    },
+                                ],
+                                "RelativeDateEdits": [],
+                            }
                         ],
-                        "RelativeDateEdits": [],
-                    }],
-                },
-                {
-                    "Name": "TABPAGE_17.tp_17_dw_17",
-                    "Type": "List",
-                    "Keys": [],
-                    "Rows": line_rows,
-                },
-            ],
-        }],
+                    },
+                    {
+                        "Name": "TABPAGE_17.tp_17_dw_17",
+                        "Type": "List",
+                        "Keys": [],
+                        "Rows": line_rows,
+                    },
+                ],
+            }
+        ],
     }
 
 
@@ -113,9 +124,13 @@ def extract_po_no(result: dict) -> str | None:
 def main() -> None:
     """Entry point: build payload, POST on --execute, then verify via OData."""
     parser = argparse.ArgumentParser(
-        description="Create a requisition PO (docs/recipes/create-requisition-po.md)")
-    parser.add_argument("--execute", action="store_true",
-                        help="Actually POST the transaction (default: dry run)")
+        description="Create a requisition PO (docs/recipes/create-requisition-po.md)"
+    )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Actually POST the transaction (default: dry run)",
+    )
     args = parser.parse_args()
 
     print("Recipe - Create a Requisition Purchase Order")
@@ -124,7 +139,9 @@ def main() -> None:
     payload = build_requisition_po_payload()
 
     if not args.execute:
-        print("\nDRY RUN - payload that would be POSTed to {ui_server}/api/v2/transaction:")
+        print(
+            "\nDRY RUN - payload that would be POSTed to {ui_server}/api/v2/transaction:"
+        )
         print(json.dumps(payload, indent=2))
         print("\nRe-run with --execute to POST it.")
         return
@@ -132,12 +149,19 @@ def main() -> None:
     config = load_config()
     token_data = get_token(config)
     headers = get_auth_headers(token_data["AccessToken"])
-    ui_server = get_ui_server_url(config.base_url, token_data["AccessToken"], config.verify_ssl)
+    ui_server = get_ui_server_url(
+        config.base_url, token_data["AccessToken"], config.verify_ssl
+    )
     print(f"UI Server: {ui_server}")
 
-    response = httpx.post(f"{ui_server}/api/v2/transaction",
-                          headers=headers, json=payload, verify=config.verify_ssl,
-                          follow_redirects=True, timeout=120)
+    response = httpx.post(
+        f"{ui_server}/api/v2/transaction",
+        headers=headers,
+        json=payload,
+        verify=config.verify_ssl,
+        follow_redirects=True,
+        timeout=120,
+    )
     response.raise_for_status()
     result = response.json()
 
@@ -160,21 +184,26 @@ def main() -> None:
     print("\nVerify (OData read-back):")
     hdr_resp = httpx.get(
         f"{config.base_url}/odataservice/odata/table/po_hdr",
-        params={"$filter": f"po_no eq {po_no}",
-                "$select": "po_no,po_type,vendor_id"},
-        headers=headers, verify=config.verify_ssl, follow_redirects=True,
+        params={"$filter": f"po_no eq {po_no}", "$select": "po_no,po_type,vendor_id"},
+        headers=headers,
+        verify=config.verify_ssl,
+        follow_redirects=True,
     )
     hdr_resp.raise_for_status()
     for hdr in hdr_resp.json()["value"]:
         po_type = hdr.get("po_type")
         flag = "OK" if po_type == "R" else "WARNING: expected R"
-        print(f"  po_no={hdr.get('po_no')} po_type={po_type} [{flag}] "
-              f"vendor_id={hdr.get('vendor_id')}")
+        print(
+            f"  po_no={hdr.get('po_no')} po_type={po_type} [{flag}] "
+            f"vendor_id={hdr.get('vendor_id')}"
+        )
 
     line_resp = httpx.get(
         f"{config.base_url}/odataservice/odata/table/po_line",
         params={"$filter": f"po_no eq {po_no}"},
-        headers=headers, verify=config.verify_ssl, follow_redirects=True,
+        headers=headers,
+        verify=config.verify_ssl,
+        follow_redirects=True,
     )
     line_resp.raise_for_status()
     lines = line_resp.json()["value"]

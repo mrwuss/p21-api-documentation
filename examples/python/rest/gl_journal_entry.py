@@ -29,6 +29,7 @@ from common.auth import get_token, get_auth_headers
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # JournalId -> the family that reads Source back. Extend as more are verified.
@@ -37,8 +38,9 @@ SOURCE_FAMILY = {
 }
 
 
-def get_gl_lines(base_url: str, headers: dict, verify_ssl: bool,
-                  transaction_number: str) -> list[dict]:
+def get_gl_lines(
+    base_url: str, headers: dict, verify_ssl: bool, transaction_number: str
+) -> list[dict]:
     """GET every distribution line of one GL transaction.
 
     Args:
@@ -73,8 +75,10 @@ def follow_source(base_url: str, headers: dict, verify_ssl: bool, line: dict) ->
     """
     family = SOURCE_FAMILY.get(line.get("JournalId"))
     if not family:
-        print(f"  (no known family for JournalId {line.get('JournalId')!r} -- "
-              f"add it to SOURCE_FAMILY once verified)")
+        print(
+            f"  (no known family for JournalId {line.get('JournalId')!r} -- "
+            f"add it to SOURCE_FAMILY once verified)"
+        )
         return
     source = line["Source"]
     response = httpx.get(
@@ -97,8 +101,9 @@ def main() -> None:
     )
     parser.add_argument("transaction_number", help="gl.transaction_number")
     parser.add_argument(
-        "--follow-source", action="store_true",
-        help="Also read the document named by the first line's Source"
+        "--follow-source",
+        action="store_true",
+        help="Also read the document named by the first line's Source",
     )
     args = parser.parse_args()
 
@@ -110,12 +115,15 @@ def main() -> None:
     headers = get_auth_headers(token_data["AccessToken"])
     print(f"Server: {config.base_url}")
 
-    lines = get_gl_lines(config.base_url, headers, config.verify_ssl,
-                         args.transaction_number)
+    lines = get_gl_lines(
+        config.base_url, headers, config.verify_ssl, args.transaction_number
+    )
 
     if not lines:
-        print(f"\nTransaction {args.transaction_number}: no lines "
-              f"(HTTP 200 [] -- unknown transaction number)")
+        print(
+            f"\nTransaction {args.transaction_number}: no lines "
+            f"(HTTP 200 [] -- unknown transaction number)"
+        )
         return
 
     print(f"\nTransaction {args.transaction_number}: {len(lines)} line(s)")
@@ -123,9 +131,13 @@ def main() -> None:
     total = 0.0
     for line in lines:
         total += line["Amount"]
-        print(f"  {line['AccountNumber']:14} {line['Amount']:>14,.2f}  "
-              f"journal={line['JournalId']}  source={line['Source']}")
-    print(f"\n  Balance: {total:,.2f}  ({'balanced' if abs(total) < 0.005 else 'NOT BALANCED'})")
+        print(
+            f"  {line['AccountNumber']:14} {line['Amount']:>14,.2f}  "
+            f"journal={line['JournalId']}  source={line['Source']}"
+        )
+    print(
+        f"\n  Balance: {total:,.2f}  ({'balanced' if abs(total) < 0.005 else 'NOT BALANCED'})"
+    )
 
     if args.follow_source:
         print("\nFollowing Source on the first line:")

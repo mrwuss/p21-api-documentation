@@ -52,6 +52,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from common.tapi import connect, edit, odata, odata_quote, post_transaction
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 HEADER = "TABPAGE_1.assemblyhdr"
@@ -68,9 +69,17 @@ def header_element(item_id: str, extra: list[dict] | None = None) -> dict:
     Returns:
         dict: The TABPAGE_1.assemblyhdr DataElement.
     """
-    return {"Name": HEADER, "Type": "Form", "Keys": ["inv_mast_item_id"],
-            "Rows": [{"Edits": [edit("inv_mast_item_id", item_id)] + (extra or []),
-                      "RelativeDateEdits": []}]}
+    return {
+        "Name": HEADER,
+        "Type": "Form",
+        "Keys": ["inv_mast_item_id"],
+        "Rows": [
+            {
+                "Edits": [edit("inv_mast_item_id", item_id)] + (extra or []),
+                "RelativeDateEdits": [],
+            }
+        ],
+    }
 
 
 def component_element(rows: list[list[dict]]) -> dict:
@@ -82,8 +91,12 @@ def component_element(rows: list[list[dict]]) -> dict:
     Returns:
         dict: The TABPAGE_17.tp_17_dw_17 DataElement.
     """
-    return {"Name": COMPONENTS, "Type": "List", "Keys": ["item_id_service_labor_id"],
-            "Rows": [{"Edits": edits, "RelativeDateEdits": []} for edits in rows]}
+    return {
+        "Name": COMPONENTS,
+        "Type": "List",
+        "Keys": ["item_id_service_labor_id"],
+        "Rows": [{"Edits": edits, "RelativeDateEdits": []} for edits in rows],
+    }
 
 
 def build_payload(args: argparse.Namespace) -> dict:
@@ -99,25 +112,47 @@ def build_payload(args: argparse.Namespace) -> dict:
         components = []
         for spec in args.component:
             component_id, _, qty = spec.rpartition(":")
-            components.append([edit("item_id_service_labor_id", component_id),
-                               edit("quantity", qty)])
+            components.append(
+                [edit("item_id_service_labor_id", component_id), edit("quantity", qty)]
+            )
         elements = [
-            header_element(args.item_id, [
-                edit("production_order_processing", args.production_order_processing)]),
+            header_element(
+                args.item_id,
+                [edit("production_order_processing", args.production_order_processing)],
+            ),
             component_element(components),
         ]
     elif args.mode == "set-flag":
         elements = [header_element(args.item_id, [edit(args.field, args.value)])]
     elif args.mode == "set-qty":
-        elements = [header_element(args.item_id), component_element([[
-            edit("item_id_service_labor_id", args.component_id),
-            edit("quantity", args.quantity)]])]
+        elements = [
+            header_element(args.item_id),
+            component_element(
+                [
+                    [
+                        edit("item_id_service_labor_id", args.component_id),
+                        edit("quantity", args.quantity),
+                    ]
+                ]
+            ),
+        ]
     else:  # delete-component
-        elements = [header_element(args.item_id), component_element([[
-            edit("item_id_service_labor_id", args.component_id),
-            edit("delete_flag", "ON")]])]
-    return {"Name": "Assembly", "UseCodeValues": False,
-            "Transactions": [{"Status": "New", "DataElements": elements}]}
+        elements = [
+            header_element(args.item_id),
+            component_element(
+                [
+                    [
+                        edit("item_id_service_labor_id", args.component_id),
+                        edit("delete_flag", "ON"),
+                    ]
+                ]
+            ),
+        ]
+    return {
+        "Name": "Assembly",
+        "UseCodeValues": False,
+        "Transactions": [{"Status": "New", "DataElements": elements}],
+    }
 
 
 def item_uid(session, item_id: str) -> int:
@@ -130,8 +165,12 @@ def item_uid(session, item_id: str) -> int:
     Returns:
         int: The item's inv_mast_uid.
     """
-    rows = odata(session, "inv_mast",
-                 f"item_id eq {odata_quote(item_id)} and delete_flag eq 'N'", "inv_mast_uid")
+    rows = odata(
+        session,
+        "inv_mast",
+        f"item_id eq {odata_quote(item_id)} and delete_flag eq 'N'",
+        "inv_mast_uid",
+    )
     if not rows:
         raise SystemExit(f"Item {item_id} not found")
     return rows[0]["inv_mast_uid"]
@@ -144,13 +183,25 @@ def show_assembly(session, uid: int) -> None:
         session: Session from connect().
         uid: The assembly item's inv_mast_uid.
     """
-    hdr = odata(session, "assembly_hdr", f"inv_mast_uid eq {uid}",
-                "inv_mast_uid,production_order_processing,allow_disassembly,delete_flag")
+    hdr = odata(
+        session,
+        "assembly_hdr",
+        f"inv_mast_uid eq {uid}",
+        "inv_mast_uid,production_order_processing,allow_disassembly,delete_flag",
+    )
     print(f"  assembly_hdr: {hdr if hdr else 'NONE'}")
-    for line in odata(session, "assembly_line", f"inv_mast_uid eq {uid}",
-                      "sequence_number,component_inv_mast_uid,quantity,delete_flag"):
-        component = odata(session, "inv_mast",
-                          f"inv_mast_uid eq {line['component_inv_mast_uid']}", "item_id")
+    for line in odata(
+        session,
+        "assembly_line",
+        f"inv_mast_uid eq {uid}",
+        "sequence_number,component_inv_mast_uid,quantity,delete_flag",
+    ):
+        component = odata(
+            session,
+            "inv_mast",
+            f"inv_mast_uid eq {line['component_inv_mast_uid']}",
+            "item_id",
+        )
         line["component_item_id"] = component[0]["item_id"] if component else None
         print(f"  assembly_line: {line}")
 
@@ -158,13 +209,20 @@ def show_assembly(session, uid: int) -> None:
 def main() -> None:
     """Entry point: dry run prints the payload; --execute checks, posts, reads back."""
     parser = argparse.ArgumentParser(
-        description="Create or edit an assembly (docs/03-Transaction-API.md#assembly-service)")
+        description="Create or edit an assembly (docs/03-Transaction-API.md#assembly-service)"
+    )
     sub = parser.add_subparsers(dest="mode", required=True)
     create = sub.add_parser("create")
     create.add_argument("item_id")
-    create.add_argument("--component", action="append", required=True,
-                        help="COMPONENT_ID:QTY (repeat per component)")
-    create.add_argument("--production-order-processing", choices=["ON", "OFF"], default="OFF")
+    create.add_argument(
+        "--component",
+        action="append",
+        required=True,
+        help="COMPONENT_ID:QTY (repeat per component)",
+    )
+    create.add_argument(
+        "--production-order-processing", choices=["ON", "OFF"], default="OFF"
+    )
     flag = sub.add_parser("set-flag")
     flag.add_argument("item_id")
     flag.add_argument("--field", default="production_order_processing")
@@ -177,15 +235,20 @@ def main() -> None:
     delete.add_argument("item_id")
     delete.add_argument("component_id")
     for p in (create, flag, qty, delete):
-        p.add_argument("--execute", action="store_true",
-                       help="Actually POST the transaction (default: dry run)")
+        p.add_argument(
+            "--execute",
+            action="store_true",
+            help="Actually POST the transaction (default: dry run)",
+        )
     args = parser.parse_args()
 
     print(f"Recipe - Assembly: {args.mode} (Assembly service)")
     print("=" * 60)
     payload = build_payload(args)
     if not args.execute:
-        print("\nDRY RUN - payload that would be POSTed to {ui_server}/api/v2/transaction:")
+        print(
+            "\nDRY RUN - payload that would be POSTed to {ui_server}/api/v2/transaction:"
+        )
         print(json.dumps(payload, indent=2))
         print("\nRe-run with --execute to POST it.")
         return
@@ -196,14 +259,21 @@ def main() -> None:
 
     if args.mode == "create":
         if odata(session, "assembly_hdr", f"inv_mast_uid eq {uid}", "inv_mast_uid"):
-            raise SystemExit(f"{args.item_id} already has an assembly -- edit it instead")
-        used_in = odata(session, "assembly_line",
-                        f"component_inv_mast_uid eq {uid} and delete_flag eq 'N'",
-                        "inv_mast_uid")
+            raise SystemExit(
+                f"{args.item_id} already has an assembly -- edit it instead"
+            )
+        used_in = odata(
+            session,
+            "assembly_line",
+            f"component_inv_mast_uid eq {uid} and delete_flag eq 'N'",
+            "inv_mast_uid",
+        )
         if used_in:
-            raise SystemExit(f"{args.item_id} is a component of {len(used_in)} assembly(ies): "
-                             "the Transaction API cannot answer the popup -- use the "
-                             "Interactive Assembly window")
+            raise SystemExit(
+                f"{args.item_id} is a component of {len(used_in)} assembly(ies): "
+                "the Transaction API cannot answer the popup -- use the "
+                "Interactive Assembly window"
+            )
     else:
         print("\nBefore:")
         show_assembly(session, uid)

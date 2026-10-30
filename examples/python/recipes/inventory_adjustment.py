@@ -26,15 +26,16 @@ from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # --- Configuration (generic placeholders -- substitute your own) ------------
 COMPANY_ID = "ACME"
 LOCATION_ID = "10"
-REASON_ID = "ADJUST"          # the reason's DISPLAY TEXT (UseCodeValues: false)
+REASON_ID = "ADJUST"  # the reason's DISPLAY TEXT (UseCodeValues: false)
 DESCRIPTION = "Cycle count write-off"
 ITEM_ID = "WIDGET-001"
-UNIT_QUANTITY = "-5"          # SIGNED delta, NOT the new on-hand
+UNIT_QUANTITY = "-5"  # SIGNED delta, NOT the new on-hand
 
 
 def build_adjustment_payload() -> dict:
@@ -49,37 +50,52 @@ def build_adjustment_payload() -> dict:
     return {
         "Name": "InventoryAdjustment",
         "UseCodeValues": False,  # reason_id is the display text, not the code
-        "Transactions": [{
-            "Status": "New",
-            "DataElements": [
-                {
-                    "Name": "TABPAGE_1.tp_1_dw_1",
-                    "Type": "Form",
-                    "Keys": [],
-                    "Rows": [{
-                        "Edits": [
-                            {"Name": "company_id", "Value": COMPANY_ID},
-                            {"Name": "location_id", "Value": LOCATION_ID},
-                            {"Name": "reason_id", "Value": REASON_ID},  # display text
-                            {"Name": "inv_adj_description", "Value": DESCRIPTION},
+        "Transactions": [
+            {
+                "Status": "New",
+                "DataElements": [
+                    {
+                        "Name": "TABPAGE_1.tp_1_dw_1",
+                        "Type": "Form",
+                        "Keys": [],
+                        "Rows": [
+                            {
+                                "Edits": [
+                                    {"Name": "company_id", "Value": COMPANY_ID},
+                                    {"Name": "location_id", "Value": LOCATION_ID},
+                                    {
+                                        "Name": "reason_id",
+                                        "Value": REASON_ID,
+                                    },  # display text
+                                    {
+                                        "Name": "inv_adj_description",
+                                        "Value": DESCRIPTION,
+                                    },
+                                ],
+                                "RelativeDateEdits": [],
+                            }
                         ],
-                        "RelativeDateEdits": [],
-                    }],
-                },
-                {
-                    "Name": "TABPAGE_17.tp_17_dw_17",
-                    "Type": "List",
-                    "Keys": [],
-                    "Rows": [{
-                        "Edits": [
-                            {"Name": "item_id", "Value": ITEM_ID},
-                            {"Name": "unit_quantity", "Value": UNIT_QUANTITY},  # signed delta
+                    },
+                    {
+                        "Name": "TABPAGE_17.tp_17_dw_17",
+                        "Type": "List",
+                        "Keys": [],
+                        "Rows": [
+                            {
+                                "Edits": [
+                                    {"Name": "item_id", "Value": ITEM_ID},
+                                    {
+                                        "Name": "unit_quantity",
+                                        "Value": UNIT_QUANTITY,
+                                    },  # signed delta
+                                ],
+                                "RelativeDateEdits": [],
+                            }
                         ],
-                        "RelativeDateEdits": [],
-                    }],
-                },
-            ],
-        }],
+                    },
+                ],
+            }
+        ],
     }
 
 
@@ -103,8 +119,9 @@ def extract_adjustment_number(result: dict) -> str | None:
     return adjustment_number
 
 
-def read_adjustment(ui_server: str, headers: dict, verify_ssl: bool,
-                    adjustment_number: str) -> None:
+def read_adjustment(
+    ui_server: str, headers: dict, verify_ssl: bool, adjustment_number: str
+) -> None:
     """Read the adjustment back by its key and print the fields that matter.
 
     Args:
@@ -115,17 +132,30 @@ def read_adjustment(ui_server: str, headers: dict, verify_ssl: bool,
     """
     get_payload = {
         "ServiceName": "InventoryAdjustment",
-        "TransactionStates": [{
-            "DataElementName": "TABPAGE_1.tp_1_dw_1",
-            "Keys": [{"Name": "adjustment_number", "Value": adjustment_number}],
-        }],
+        "TransactionStates": [
+            {
+                "DataElementName": "TABPAGE_1.tp_1_dw_1",
+                "Keys": [{"Name": "adjustment_number", "Value": adjustment_number}],
+            }
+        ],
     }
-    resp = httpx.post(f"{ui_server}/api/v2/transaction/get",
-                      headers=headers, json=get_payload, verify=verify_ssl,
-                      follow_redirects=True, timeout=60)
+    resp = httpx.post(
+        f"{ui_server}/api/v2/transaction/get",
+        headers=headers,
+        json=get_payload,
+        verify=verify_ssl,
+        follow_redirects=True,
+        timeout=60,
+    )
     resp.raise_for_status()
-    wanted = ("adjustment_number", "location_id", "reason_id",
-              "item_id", "unit_quantity", "new_qoh")
+    wanted = (
+        "adjustment_number",
+        "location_id",
+        "reason_id",
+        "item_id",
+        "unit_quantity",
+        "new_qoh",
+    )
     for txn in resp.json().get("Transactions", []):
         for de in txn.get("DataElements", []):
             for row in de.get("Rows", []):
@@ -137,10 +167,14 @@ def read_adjustment(ui_server: str, headers: dict, verify_ssl: bool,
 def main() -> None:
     """Entry point: build payload, POST on --execute, then read it back."""
     parser = argparse.ArgumentParser(
-        description="Inventory adjustment (docs/recipes/inventory-adjustment.md)")
-    parser.add_argument("--execute", action="store_true",
-                        help="Actually POST the adjustment -- the save POSTS it "
-                             "immediately, no draft state (default: dry run)")
+        description="Inventory adjustment (docs/recipes/inventory-adjustment.md)"
+    )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Actually POST the adjustment -- the save POSTS it "
+        "immediately, no draft state (default: dry run)",
+    )
     args = parser.parse_args()
 
     print("Recipe - Adjust On-Hand Quantity (InventoryAdjustment)")
@@ -149,7 +183,9 @@ def main() -> None:
     payload = build_adjustment_payload()
 
     if not args.execute:
-        print("\nDRY RUN - payload that would be POSTed to {ui_server}/api/v2/transaction:")
+        print(
+            "\nDRY RUN - payload that would be POSTed to {ui_server}/api/v2/transaction:"
+        )
         print(json.dumps(payload, indent=2))
         print("\nRe-run with --execute to POST it.")
         return
@@ -157,12 +193,19 @@ def main() -> None:
     config = load_config()
     token_data = get_token(config)
     headers = get_auth_headers(token_data["AccessToken"])
-    ui_server = get_ui_server_url(config.base_url, token_data["AccessToken"], config.verify_ssl)
+    ui_server = get_ui_server_url(
+        config.base_url, token_data["AccessToken"], config.verify_ssl
+    )
     print(f"UI Server: {ui_server}")
 
-    resp = httpx.post(f"{ui_server}/api/v2/transaction",
-                      headers=headers, json=payload, verify=config.verify_ssl,
-                      follow_redirects=True, timeout=120)
+    resp = httpx.post(
+        f"{ui_server}/api/v2/transaction",
+        headers=headers,
+        json=payload,
+        verify=config.verify_ssl,
+        follow_redirects=True,
+        timeout=120,
+    )
     resp.raise_for_status()  # HTTP 200 even on failure -- check the Summary
     result = resp.json()
 

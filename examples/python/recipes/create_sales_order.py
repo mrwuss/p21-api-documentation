@@ -27,12 +27,13 @@ from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # --- Configuration (generic placeholders -- substitute your own) ------------
 CUSTOMER_ID = "100198"
 SALES_LOC_ID = "10"
-SOURCE_LOC_ID = "10"       # effectively required -- omitting it fails on tax jurisdiction
+SOURCE_LOC_ID = "10"  # effectively required -- omitting it fails on tax jurisdiction
 ORDER_DATE = "2030-01-05"
 REQUESTED_DATE = "2030-01-06"  # must be AFTER order_date
 PO_NO = "PO-TEST-001"
@@ -56,46 +57,53 @@ def build_order_payload() -> dict:
         dict: Complete Transaction API payload.
     """
     item_rows = [
-        {"Edits": [
-            {"Name": "oe_order_item_id", "Value": item_id},
-            {"Name": "unit_quantity",    "Value": qty},
-        ], "RelativeDateEdits": []}
+        {
+            "Edits": [
+                {"Name": "oe_order_item_id", "Value": item_id},
+                {"Name": "unit_quantity", "Value": qty},
+            ],
+            "RelativeDateEdits": [],
+        }
         for item_id, qty in ORDER_LINES
     ]
     return {
         "Name": "Order",
         "UseCodeValues": False,
-        "Transactions": [{
-            "Status": "New",
-            "DataElements": [
-                {
-                    "Name": "TABPAGE_1.order",
-                    "Type": "Form",
-                    "Keys": [],
-                    "Rows": [{
-                        "Edits": [
-                            {"Name": "quote",          "Value": "OFF"},  # else a quote
-                            {"Name": "customer_id",    "Value": CUSTOMER_ID},
-                            {"Name": "sales_loc_id",   "Value": SALES_LOC_ID},
-                            {"Name": "source_loc_id",  "Value": SOURCE_LOC_ID},
-                            {"Name": "order_date",     "Value": ORDER_DATE},
-                            {"Name": "requested_date", "Value": REQUESTED_DATE},
-                            {"Name": "po_no",          "Value": PO_NO},
-                            {"Name": "taker",          "Value": TAKER},
-                            {"Name": "ship_to_id",     "Value": SHIP_TO_ID},
-                            {"Name": "contact_id",     "Value": CONTACT_ID},
+        "Transactions": [
+            {
+                "Status": "New",
+                "DataElements": [
+                    {
+                        "Name": "TABPAGE_1.order",
+                        "Type": "Form",
+                        "Keys": [],
+                        "Rows": [
+                            {
+                                "Edits": [
+                                    {"Name": "quote", "Value": "OFF"},  # else a quote
+                                    {"Name": "customer_id", "Value": CUSTOMER_ID},
+                                    {"Name": "sales_loc_id", "Value": SALES_LOC_ID},
+                                    {"Name": "source_loc_id", "Value": SOURCE_LOC_ID},
+                                    {"Name": "order_date", "Value": ORDER_DATE},
+                                    {"Name": "requested_date", "Value": REQUESTED_DATE},
+                                    {"Name": "po_no", "Value": PO_NO},
+                                    {"Name": "taker", "Value": TAKER},
+                                    {"Name": "ship_to_id", "Value": SHIP_TO_ID},
+                                    {"Name": "contact_id", "Value": CONTACT_ID},
+                                ],
+                                "RelativeDateEdits": [],
+                            }
                         ],
-                        "RelativeDateEdits": [],
-                    }],
-                },
-                {
-                    "Name": "TP_ITEMS.items",
-                    "Type": "List",
-                    "Keys": [],
-                    "Rows": item_rows,
-                },
-            ],
-        }],
+                    },
+                    {
+                        "Name": "TP_ITEMS.items",
+                        "Type": "List",
+                        "Keys": [],
+                        "Rows": item_rows,
+                    },
+                ],
+            }
+        ],
     }
 
 
@@ -125,9 +133,13 @@ def extract_order_no(result: dict) -> str | None:
 def main() -> None:
     """Entry point: build payload, POST on --execute, then verify via OData."""
     parser = argparse.ArgumentParser(
-        description="Create a sales order (docs/recipes/create-sales-order.md)")
-    parser.add_argument("--execute", action="store_true",
-                        help="Actually POST the transaction (default: dry run)")
+        description="Create a sales order (docs/recipes/create-sales-order.md)"
+    )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Actually POST the transaction (default: dry run)",
+    )
     args = parser.parse_args()
 
     print("Recipe - Create a Sales Order (Order service)")
@@ -136,7 +148,9 @@ def main() -> None:
     payload = build_order_payload()
 
     if not args.execute:
-        print("\nDRY RUN - payload that would be POSTed to {ui_server}/api/v2/transaction:")
+        print(
+            "\nDRY RUN - payload that would be POSTed to {ui_server}/api/v2/transaction:"
+        )
         print(json.dumps(payload, indent=2))
         print("\nRe-run with --execute to POST it.")
         return
@@ -144,12 +158,19 @@ def main() -> None:
     config = load_config()
     token_data = get_token(config)
     headers = get_auth_headers(token_data["AccessToken"])
-    ui_server = get_ui_server_url(config.base_url, token_data["AccessToken"], config.verify_ssl)
+    ui_server = get_ui_server_url(
+        config.base_url, token_data["AccessToken"], config.verify_ssl
+    )
     print(f"UI Server: {ui_server}")
 
-    response = httpx.post(f"{ui_server}/api/v2/transaction",
-                          headers=headers, json=payload, verify=config.verify_ssl,
-                          follow_redirects=True, timeout=120)
+    response = httpx.post(
+        f"{ui_server}/api/v2/transaction",
+        headers=headers,
+        json=payload,
+        verify=config.verify_ssl,
+        follow_redirects=True,
+        timeout=120,
+    )
     response.raise_for_status()
     result = response.json()
 
@@ -172,20 +193,26 @@ def main() -> None:
     hdr_resp = httpx.get(
         f"{config.base_url}/odataservice/odata/table/oe_hdr",
         params={"$filter": f"order_no eq '{order_no}'"},
-        headers=headers, verify=config.verify_ssl, follow_redirects=True,
+        headers=headers,
+        verify=config.verify_ssl,
+        follow_redirects=True,
     )
     hdr_resp.raise_for_status()
     for hdr in hdr_resp.json()["value"]:
-        print(f"  Header: taker={hdr.get('taker')} po_no={hdr.get('po_no')} "
-              f"ship2={hdr.get('ship2_name') or hdr.get('address_id')} "
-              f"projected_order={hdr.get('projected_order')}")
+        print(
+            f"  Header: taker={hdr.get('taker')} po_no={hdr.get('po_no')} "
+            f"ship2={hdr.get('ship2_name') or hdr.get('address_id')} "
+            f"projected_order={hdr.get('projected_order')}"
+        )
         if hdr.get("projected_order") != "N":
             print("  WARNING: saved as a quote (projected_order is not 'N')")
 
     line_resp = httpx.get(
         f"{config.base_url}/odataservice/odata/table/oe_line",
         params={"$filter": f"order_no eq '{order_no}'"},
-        headers=headers, verify=config.verify_ssl, follow_redirects=True,
+        headers=headers,
+        verify=config.verify_ssl,
+        follow_redirects=True,
     )
     line_resp.raise_for_status()
     lines = line_resp.json()["value"]
@@ -193,8 +220,10 @@ def main() -> None:
     for line in lines:
         print(f"    line {line.get('line_no')}: qty_ordered={line.get('qty_ordered')}")
     if len(lines) != len(ORDER_LINES):
-        print("  WARNING: line count mismatch -- a DynaChange auto-answer may have "
-              "dropped a line while the transaction still reported Succeeded")
+        print(
+            "  WARNING: line count mismatch -- a DynaChange auto-answer may have "
+            "dropped a line while the transaction still reported Succeeded"
+        )
 
 
 if __name__ == "__main__":

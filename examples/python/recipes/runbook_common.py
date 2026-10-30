@@ -35,6 +35,7 @@ TIMEOUT = 180  # saves that ship, invoice or post can take well over httpx's 5 s
 
 # --- Payload builders --------------------------------------------------------
 
+
 def edit(name: str, value: str) -> dict:
     """One Transaction API edit."""
     return {"Name": name, "Value": value}
@@ -42,14 +43,21 @@ def edit(name: str, value: str) -> dict:
 
 def element(name: str, type_: str, keys: list[str], rows: list[list[dict]]) -> dict:
     """One DataElement; rows is a list of edit lists."""
-    return {"Name": name, "Type": type_, "Keys": keys,
-            "Rows": [{"Edits": r, "RelativeDateEdits": []} for r in rows]}
+    return {
+        "Name": name,
+        "Type": type_,
+        "Keys": keys,
+        "Rows": [{"Edits": r, "RelativeDateEdits": []} for r in rows],
+    }
 
 
 def payload(service: str, elements: list[dict], ignore_disabled: bool = False) -> dict:
     """A one-Transaction Status "New" payload (the only Status the enum accepts)."""
-    body = {"Name": service, "UseCodeValues": False,
-            "Transactions": [{"Status": "New", "DataElements": elements}]}
+    body = {
+        "Name": service,
+        "UseCodeValues": False,
+        "Transactions": [{"Status": "New", "DataElements": elements}],
+    }
     if ignore_disabled:
         body["IgnoreDisabled"] = True  # top level -- inside a Transaction it is ignored
     return body
@@ -76,6 +84,7 @@ def show(title: str, body: dict) -> None:
 
 # --- Connection --------------------------------------------------------------
 
+
 class RunbookSession(InteractiveOrderSession):
     """Interactive v2 driver: order_with_assembly's session with runbook additions."""
 
@@ -97,24 +106,46 @@ class RunbookSession(InteractiveOrderSession):
                 print("    (PO wizard opened by this save -- cancelled before cb_next)")
                 result = self.click(popup_id, "cb_cancel")
                 continue
-            pick = button or next((b for b in ("cb_ok", "cb_1", "cb_yes") if b in available), None)
+            pick = button or next(
+                (b for b in ("cb_ok", "cb_1", "cb_yes") if b in available), None
+            )
             if pick is None or pick not in available:
-                raise RuntimeError(f"Popup {popup_id}: buttons {available}, wanted {button}")
+                raise RuntimeError(
+                    f"Popup {popup_id}: buttons {available}, wanted {button}"
+                )
             result = self.click(popup_id, pick)
         return result
 
-    def change(self, window_id: str, tab: str, dw: str, field: str, value: str,
-               answer: str | None = None) -> dict:
+    def change(
+        self,
+        window_id: str,
+        tab: str,
+        dw: str,
+        field: str,
+        value: str,
+        answer: str | None = None,
+    ) -> dict:
         """Change one field and answer any popup it raises (see the parent class).
 
         Raises:
             RuntimeError: When the change fails (HTTP 4xx or Status 2).
         """
         resp = httpx.put(
-            f"{self.iapi}/v2/change", headers=self.headers, verify=self.verify,
+            f"{self.iapi}/v2/change",
+            headers=self.headers,
+            verify=self.verify,
             timeout=TIMEOUT,
-            json={"WindowId": window_id, "List": [{
-                "TabName": tab, "DatawindowName": dw, "FieldName": field, "Value": value}]},
+            json={
+                "WindowId": window_id,
+                "List": [
+                    {
+                        "TabName": tab,
+                        "DatawindowName": dw,
+                        "FieldName": field,
+                        "Value": value,
+                    }
+                ],
+            },
         )
         if resp.status_code >= 400:  # e.g. "Column is disabled" comes back as HTTP 400
             raise RuntimeError(f"{field}: HTTP {resp.status_code} {resp.text[:300]}")
@@ -127,8 +158,13 @@ class RunbookSession(InteractiveOrderSession):
 
     def save_raw(self, window_id: str) -> dict:
         """Save without answering anything -- for saves that open a wizard."""
-        resp = httpx.put(f"{self.iapi}/v2/data", headers=self.headers,
-                         verify=self.verify, json=window_id, timeout=TIMEOUT)
+        resp = httpx.put(
+            f"{self.iapi}/v2/data",
+            headers=self.headers,
+            verify=self.verify,
+            json=window_id,
+            timeout=TIMEOUT,
+        )
         resp.raise_for_status()
         return resp.json()
 
@@ -149,22 +185,37 @@ class RunbookSession(InteractiveOrderSession):
 
     def tools(self, popup_id: str) -> list[str]:
         """Button names on a popup (GET /v2/tools takes ?windowId=, not ?id=)."""
-        resp = httpx.get(f"{self.iapi}/v2/tools", params={"windowId": popup_id},
-                         headers=self.headers, verify=self.verify, timeout=TIMEOUT)
+        resp = httpx.get(
+            f"{self.iapi}/v2/tools",
+            params={"windowId": popup_id},
+            headers=self.headers,
+            verify=self.verify,
+            timeout=TIMEOUT,
+        )
         resp.raise_for_status()
         return [t.get("Name") or t.get("ToolName") for t in resp.json()]
 
     def click(self, popup_id: str, tool: str) -> dict:
         """Press one button on a popup."""
-        resp = httpx.post(f"{self.iapi}/v2/tools", headers=self.headers, verify=self.verify,
-                          json={"WindowId": popup_id, "ToolName": tool}, timeout=TIMEOUT)
+        resp = httpx.post(
+            f"{self.iapi}/v2/tools",
+            headers=self.headers,
+            verify=self.verify,
+            json={"WindowId": popup_id, "ToolName": tool},
+            timeout=TIMEOUT,
+        )
         resp.raise_for_status()
         return resp.json()
 
     def get_data(self, window_id: str) -> list[dict]:
         """Datawindows on the window's (or popup's) active surface."""
-        resp = httpx.get(f"{self.iapi}/v2/data", params={"id": window_id},
-                         headers=self.headers, verify=self.verify, timeout=TIMEOUT)
+        resp = httpx.get(
+            f"{self.iapi}/v2/data",
+            params={"id": window_id},
+            headers=self.headers,
+            verify=self.verify,
+            timeout=TIMEOUT,
+        )
         resp.raise_for_status()
         return resp.json()
 
@@ -192,18 +243,26 @@ class P21Runbook:
         has_password = bool(self.config.username and self.config.password)
         if auth == "consumer":
             if not (self.config.consumer_key and self.config.consumer_username):
-                raise SystemExit("--auth consumer needs P21_CONSUMER_KEY and "
-                                 "P21_CONSUMER_USERNAME in .env")
-            token = get_token(self.config, consumer_key=self.config.consumer_key,
-                              username=self.config.consumer_username)["AccessToken"]
+                raise SystemExit(
+                    "--auth consumer needs P21_CONSUMER_KEY and "
+                    "P21_CONSUMER_USERNAME in .env"
+                )
+            token = get_token(
+                self.config,
+                consumer_key=self.config.consumer_key,
+                username=self.config.consumer_username,
+            )["AccessToken"]
         else:
             token = get_token(self.config)["AccessToken"]
         self.headers = get_auth_headers(token)
         # A consumer key's OData table allow-list can leave out a table a
         # read-back needs (401) -- read back with the password login when
         # there is one.
-        self.read_headers = (get_auth_headers(get_token(self.config)["AccessToken"])
-                             if auth == "consumer" and has_password else self.headers)
+        self.read_headers = (
+            get_auth_headers(get_token(self.config)["AccessToken"])
+            if auth == "consumer" and has_password
+            else self.headers
+        )
         self.base_url = self.config.base_url
         self.verify = self.config.verify_ssl
         self.ui_server = get_ui_server_url(self.base_url, token, self.verify)
@@ -217,8 +276,13 @@ class P21Runbook:
         Raises:
             SystemExit: When the transaction failed or did nothing.
         """
-        resp = httpx.post(f"{self.ui_server}/api/v2/transaction", headers=self.headers,
-                          json=body, verify=self.verify, timeout=TIMEOUT)
+        resp = httpx.post(
+            f"{self.ui_server}/api/v2/transaction",
+            headers=self.headers,
+            json=body,
+            verify=self.verify,
+            timeout=TIMEOUT,
+        )
         resp.raise_for_status()
         result = resp.json()
         summary = result["Summary"]
@@ -226,12 +290,20 @@ class P21Runbook:
         for msg in result.get("Messages", []):
             print(f"    {msg}")
         if summary["Failed"] > 0 or summary["Succeeded"] == 0:
-            raise SystemExit(f"{label} failed -- read the tables before retrying: "
-                             "a Failed summary does not always mean nothing was written")
+            raise SystemExit(
+                f"{label} failed -- read the tables before retrying: "
+                "a Failed summary does not always mean nothing was written"
+            )
         return result
 
-    def odata(self, table: str, filter_: str, select: str | None = None,
-              orderby: str | None = None, top: int | None = None) -> list[dict]:
+    def odata(
+        self,
+        table: str,
+        filter_: str,
+        select: str | None = None,
+        orderby: str | None = None,
+        top: int | None = None,
+    ) -> list[dict]:
         """Read rows from the OData table surface."""
         params = {"$filter": filter_}
         if select:
@@ -240,13 +312,23 @@ class P21Runbook:
             params["$orderby"] = orderby
         if top:
             params["$top"] = str(top)
-        resp = httpx.get(f"{self.base_url}/odataservice/odata/table/{table}", params=params,
-                         headers=self.read_headers, verify=self.verify, timeout=TIMEOUT)
+        resp = httpx.get(
+            f"{self.base_url}/odataservice/odata/table/{table}",
+            params=params,
+            headers=self.read_headers,
+            verify=self.verify,
+            timeout=TIMEOUT,
+        )
         resp.raise_for_status()
         return resp.json()["value"]
 
-    def one(self, table: str, filter_: str, select: str | None = None,
-            orderby: str | None = None) -> dict:
+    def one(
+        self,
+        table: str,
+        filter_: str,
+        select: str | None = None,
+        orderby: str | None = None,
+    ) -> dict:
         """Read exactly one row (the first by orderby).
 
         Raises:
@@ -259,7 +341,9 @@ class P21Runbook:
 
     def item_uid(self, item_id: str) -> int:
         """inv_mast_uid for an item ID (OData has no joins -- chain the uids)."""
-        return self.one("inv_mast", f"item_id eq '{item_id}'", "inv_mast_uid")["inv_mast_uid"]
+        return self.one("inv_mast", f"item_id eq '{item_id}'", "inv_mast_uid")[
+            "inv_mast_uid"
+        ]
 
     def session(self) -> RunbookSession:
         """A new Interactive session with response-window handling on."""
@@ -271,17 +355,28 @@ class P21Runbook:
 def check(label: str, actual, expected) -> None:
     """Print one read-back comparison and stop the runbook on a mismatch."""
     ok = str(actual) == str(expected)
-    print(f"    {label} = {actual} (expected {expected}) -> {'OK' if ok else 'MISMATCH'}")
+    print(
+        f"    {label} = {actual} (expected {expected}) -> {'OK' if ok else 'MISMATCH'}"
+    )
     if not ok:
         raise SystemExit(f"Read-back mismatch on {label}")
 
 
 # --- Steps shared by several runbooks -----------------------------------------
 
-def build_order_payload(customer: str, ship_to: str, contact: str, sales_loc: str,
-                        source_loc: str, order_date: str, requested_date: str,
-                        po_no: str, taker: str,
-                        lines: list[tuple[str, str, str | None]]) -> dict:
+
+def build_order_payload(
+    customer: str,
+    ship_to: str,
+    contact: str,
+    sales_loc: str,
+    source_loc: str,
+    order_date: str,
+    requested_date: str,
+    po_no: str,
+    taker: str,
+    lines: list[tuple[str, str, str | None]],
+) -> dict:
     """Transaction sales order: header plus every line in one POST.
 
     quote = OFF goes first: when the API user's default is "quote", a header
@@ -289,23 +384,40 @@ def build_order_payload(customer: str, ship_to: str, contact: str, sales_loc: st
     refuses a pick ticket. A line price of None leaves unit_price unset so a
     contract price can bind.
     """
-    header = [edit("quote", "OFF"), edit("customer_id", customer),
-              edit("sales_loc_id", sales_loc), edit("source_loc_id", source_loc),
-              edit("order_date", order_date), edit("requested_date", requested_date),
-              edit("po_no", po_no), edit("taker", taker),
-              edit("ship_to_id", ship_to), edit("contact_id", contact)]
+    header = [
+        edit("quote", "OFF"),
+        edit("customer_id", customer),
+        edit("sales_loc_id", sales_loc),
+        edit("source_loc_id", source_loc),
+        edit("order_date", order_date),
+        edit("requested_date", requested_date),
+        edit("po_no", po_no),
+        edit("taker", taker),
+        edit("ship_to_id", ship_to),
+        edit("contact_id", contact),
+    ]
     rows = []
     for item_id, qty, price in lines:
         row = [edit("oe_order_item_id", item_id), edit("unit_quantity", qty)]
         if price is not None:
             row.append(edit("unit_price", price))
         rows.append(row)
-    return payload("Order", [element("TABPAGE_1.order", "Form", [], [header]),
-                             element("TP_ITEMS.items", "List", [], rows)])
+    return payload(
+        "Order",
+        [
+            element("TABPAGE_1.order", "Form", [], [header]),
+            element("TP_ITEMS.items", "List", [], rows),
+        ],
+    )
 
 
-def enter_order(rb: P21Runbook, header: dict[str, str], lines: list[list[tuple[str, str]]],
-                salesrep: str | None = None, hold: bool = False) -> str:
+def enter_order(
+    rb: P21Runbook,
+    header: dict[str, str],
+    lines: list[list[tuple[str, str]]],
+    salesrep: str | None = None,
+    hold: bool = False,
+) -> str:
     """Enter and save a sales order in the Interactive Order window; return its order_no.
 
     Header fields go one change at a time, quote = OFF first (the window can
@@ -333,27 +445,40 @@ def enter_order(rb: P21Runbook, header: dict[str, str], lines: list[list[tuple[s
             session.change(window_id, "TABPAGE_1", "order", field, value, answer=answer)
         if salesrep:
             session.tab(window_id, "TP_SALESREPS")
-            session.change(window_id, "TP_SALESREPS", "tp_salesreps", "salesrep_id", salesrep)
+            session.change(
+                window_id, "TP_SALESREPS", "tp_salesreps", "salesrep_id", salesrep
+            )
             session.tab(window_id, "TABPAGE_1")
         if hold:
             session.change(window_id, "TABPAGE_1", "order", "packing_basis", "Hold")
         session.tab(window_id, "TP_ITEMS")
         for i, line in enumerate(lines):
             if i > 0:
-                httpx.post(f"{session.iapi}/v2/row", headers=session.headers,
-                           verify=session.verify, timeout=TIMEOUT,
-                           json={"WindowId": window_id, "DatawindowName": "items"}
-                           ).raise_for_status()
+                httpx.post(
+                    f"{session.iapi}/v2/row",
+                    headers=session.headers,
+                    verify=session.verify,
+                    timeout=TIMEOUT,
+                    json={"WindowId": window_id, "DatawindowName": "items"},
+                ).raise_for_status()
             for field, value in line:
                 answer = "cb_2" if field == "oe_order_item_id" else None
-                session.change(window_id, "TP_ITEMS", "items", field, value, answer=answer)
+                session.change(
+                    window_id, "TP_ITEMS", "items", field, value, answer=answer
+                )
         session.save(window_id)
     finally:
         session.cleanup(window_id)
-    hdr = rb.one("oe_hdr", f"po_no eq '{header['po_no']}'",
-                 "order_no,projected_order,packing_basis,taker", orderby="oe_hdr_uid desc")
-    print(f"    order_no = {hdr['order_no']} (projected_order={hdr['projected_order']}, "
-          f"packing_basis={hdr['packing_basis']}, taker={hdr['taker']})")
+    hdr = rb.one(
+        "oe_hdr",
+        f"po_no eq '{header['po_no']}'",
+        "order_no,projected_order,packing_basis,taker",
+        orderby="oe_hdr_uid desc",
+    )
+    print(
+        f"    order_no = {hdr['order_no']} (projected_order={hdr['projected_order']}, "
+        f"packing_basis={hdr['packing_basis']}, taker={hdr['taker']})"
+    )
     if hdr["projected_order"] != "N":
         raise SystemExit("The order saved as a quote -- quote = OFF did not take")
     return str(hdr["order_no"])
@@ -361,10 +486,20 @@ def enter_order(rb: P21Runbook, header: dict[str, str], lines: list[list[tuple[s
 
 def build_print_tix_payload(order_no: str) -> dict:
     """Print the sales-order pick ticket: Order keyed on order_no + print_tix ON."""
-    return payload("Order", [
-        element("TABPAGE_1.order", "Form", ["order_no"], [[edit("order_no", order_no)]]),
-        element("TP_FRONTCOUNTER.tp_frontcounter", "Form", [], [[edit("print_tix", "ON")]]),
-    ])
+    return payload(
+        "Order",
+        [
+            element(
+                "TABPAGE_1.order", "Form", ["order_no"], [[edit("order_no", order_no)]]
+            ),
+            element(
+                "TP_FRONTCOUNTER.tp_frontcounter",
+                "Form",
+                [],
+                [[edit("print_tix", "ON")]],
+            ),
+        ],
+    )
 
 
 def print_pick_ticket(rb: P21Runbook, order_no: str) -> str:
@@ -373,9 +508,15 @@ def print_pick_ticket(rb: P21Runbook, order_no: str) -> str:
     The PDF's file name carries a different number -- read the table instead.
     """
     rb.transaction(build_print_tix_payload(order_no), "Pick ticket (print_tix)")
-    ticket = rb.one("oe_pick_ticket", f"order_no eq '{order_no}' and delete_flag eq 'N'",
-                    "pick_ticket_no,location_id,invoice_no", orderby="pick_ticket_no desc")
-    print(f"    pick_ticket_no = {ticket['pick_ticket_no']} at location {ticket['location_id']}")
+    ticket = rb.one(
+        "oe_pick_ticket",
+        f"order_no eq '{order_no}' and delete_flag eq 'N'",
+        "pick_ticket_no,location_id,invoice_no",
+        orderby="pick_ticket_no desc",
+    )
+    print(
+        f"    pick_ticket_no = {ticket['pick_ticket_no']} at location {ticket['location_id']}"
+    )
     return str(ticket["pick_ticket_no"])
 
 
@@ -389,12 +530,17 @@ def ship_and_invoice(rb: P21Runbook, pick_ticket_no: str) -> str:
     session = rb.session()
     window_id = session.open_window("Shipping")
     try:
-        session.change(window_id, "TABPAGE_1", "tp_1_dw_1", "pick_ticket_no", pick_ticket_no)
+        session.change(
+            window_id, "TABPAGE_1", "tp_1_dw_1", "pick_ticket_no", pick_ticket_no
+        )
         session.save(window_id)
     finally:
         session.cleanup(window_id)
-    ticket = rb.one("oe_pick_ticket", f"pick_ticket_no eq {pick_ticket_no}",
-                    "pick_ticket_no,ship_date,invoice_no")
+    ticket = rb.one(
+        "oe_pick_ticket",
+        f"pick_ticket_no eq {pick_ticket_no}",
+        "pick_ticket_no,ship_date,invoice_no",
+    )
     if not ticket.get("invoice_no"):
         raise SystemExit(f"Pick ticket {pick_ticket_no} has no invoice after the save")
     print(f"    shipped {ticket['ship_date']}, invoice_no = {ticket['invoice_no']}")
@@ -403,14 +549,25 @@ def ship_and_invoice(rb: P21Runbook, pick_ticket_no: str) -> str:
 
 def print_invoice(rb: P21Runbook, invoice_no: str) -> list[dict]:
     """Read back the invoice header and lines; return the lines."""
-    hdr = rb.one("invoice_hdr", f"invoice_no eq '{invoice_no}'", "invoice_no,order_no,total_amount")
-    print(f"    invoice {hdr['invoice_no']} for order {hdr['order_no']}: "
-          f"total {hdr['total_amount']}")
-    lines = rb.odata("invoice_line", f"invoice_no eq '{invoice_no}'",
-                     "line_no,item_id,qty_shipped,unit_price,cogs_amount,other_cost,"
-                     "commission_cost,invoice_line_uid,invoice_line_uid_parent")
+    hdr = rb.one(
+        "invoice_hdr",
+        f"invoice_no eq '{invoice_no}'",
+        "invoice_no,order_no,total_amount",
+    )
+    print(
+        f"    invoice {hdr['invoice_no']} for order {hdr['order_no']}: "
+        f"total {hdr['total_amount']}"
+    )
+    lines = rb.odata(
+        "invoice_line",
+        f"invoice_no eq '{invoice_no}'",
+        "line_no,item_id,qty_shipped,unit_price,cogs_amount,other_cost,"
+        "commission_cost,invoice_line_uid,invoice_line_uid_parent",
+    )
     for line in sorted(lines, key=lambda x: x["line_no"]):
-        print(f"      line {line['line_no']} {line['item_id']}: qty {line['qty_shipped']} "
-              f"price {line['unit_price']} cogs {line['cogs_amount']} "
-              f"other_cost {line['other_cost']} commission_cost {line['commission_cost']}")
+        print(
+            f"      line {line['line_no']} {line['item_id']}: qty {line['qty_shipped']} "
+            f"price {line['unit_price']} cogs {line['cogs_amount']} "
+            f"other_cost {line['other_cost']} commission_cost {line['commission_cost']}"
+        )
     return lines

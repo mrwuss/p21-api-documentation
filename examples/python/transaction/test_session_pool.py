@@ -30,12 +30,14 @@ USERNAME = _config.username
 PASSWORD = _config.password
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
 @dataclass
 class TestResult:
     """Result of a single API call."""
+
     attempt: int
     timestamp: str
     elapsed_ms: int
@@ -64,7 +66,7 @@ class SessionPoolTester:
             f"{self.base_url}/api/security/token/v2",
             json={"username": self.username, "password": self.password},
             headers={"Accept": "application/json"},
-            follow_redirects=True
+            follow_redirects=True,
         )
         resp.raise_for_status()
         self.token = resp.json()["AccessToken"]
@@ -72,8 +74,11 @@ class SessionPoolTester:
         # Get UI server URL
         resp = await client.get(
             f"{self.base_url}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
-            headers={"Authorization": f"Bearer {self.token}", "Accept": "application/json"},
-            follow_redirects=True
+            headers={
+                "Authorization": f"Bearer {self.token}",
+                "Accept": "application/json",
+            },
+            follow_redirects=True,
         )
         resp.raise_for_status()
         self.ui_server_url = resp.json()["Url"].rstrip("/")
@@ -93,40 +98,68 @@ class SessionPoolTester:
                             "Name": "FORM.form",
                             "Type": "Form",
                             "Keys": [],
-                            "Rows": [{
-                                "Edits": [
-                                    {"Name": "price_page_type_cd", "Value": "Supplier / Product Group"},
-                                    {"Name": "company_id", "Value": "ACME"},
-                                    {"Name": "supplier_id", "Value": "10"},
-                                    {"Name": "product_group_id", "Value": "MISC"},
-                                    {"Name": "description", "Value": f"SESSION-TEST-{datetime.now().strftime('%H%M%S%f')}"},
-                                    {"Name": "pricing_method_cd", "Value": "Source"},
-                                    {"Name": "source_price_cd", "Value": "Supplier List Price"},
-                                    {"Name": "effective_date", "Value": "2025-01-01"},
-                                    {"Name": "expiration_date", "Value": "2030-12-31"},
-                                    {"Name": "totaling_method_cd", "Value": "Item"},
-                                    {"Name": "totaling_basis_cd", "Value": "Supplier List Price"},
-                                    {"Name": "row_status_flag", "Value": "Active"}
-                                ],
-                                "RelativeDateEdits": []
-                            }]
+                            "Rows": [
+                                {
+                                    "Edits": [
+                                        {
+                                            "Name": "price_page_type_cd",
+                                            "Value": "Supplier / Product Group",
+                                        },
+                                        {"Name": "company_id", "Value": "ACME"},
+                                        {"Name": "supplier_id", "Value": "10"},
+                                        {"Name": "product_group_id", "Value": "MISC"},
+                                        {
+                                            "Name": "description",
+                                            "Value": f"SESSION-TEST-{datetime.now().strftime('%H%M%S%f')}",
+                                        },
+                                        {
+                                            "Name": "pricing_method_cd",
+                                            "Value": "Source",
+                                        },
+                                        {
+                                            "Name": "source_price_cd",
+                                            "Value": "Supplier List Price",
+                                        },
+                                        {
+                                            "Name": "effective_date",
+                                            "Value": "2025-01-01",
+                                        },
+                                        {
+                                            "Name": "expiration_date",
+                                            "Value": "2030-12-31",
+                                        },
+                                        {"Name": "totaling_method_cd", "Value": "Item"},
+                                        {
+                                            "Name": "totaling_basis_cd",
+                                            "Value": "Supplier List Price",
+                                        },
+                                        {"Name": "row_status_flag", "Value": "Active"},
+                                    ],
+                                    "RelativeDateEdits": [],
+                                }
+                            ],
                         },
                         {
                             "Name": "VALUES.values",
                             "Type": "Form",
                             "Keys": [],
-                            "Rows": [{
-                                "Edits": [
-                                    {"Name": "calculation_method_cd", "Value": "Multiplier"},
-                                    {"Name": "calculation_value1", "Value": "0.5"}
-                                ],
-                                "RelativeDateEdits": []
-                            }]
-                        }
+                            "Rows": [
+                                {
+                                    "Edits": [
+                                        {
+                                            "Name": "calculation_method_cd",
+                                            "Value": "Multiplier",
+                                        },
+                                        {"Name": "calculation_value1", "Value": "0.5"},
+                                    ],
+                                    "RelativeDateEdits": [],
+                                }
+                            ],
+                        },
                     ],
-                    "Status": "New"
+                    "Status": "New",
                 }
-            ]
+            ],
         }
 
     async def make_request(self, client: httpx.AsyncClient, attempt: int) -> TestResult:
@@ -142,19 +175,22 @@ class SessionPoolTester:
                 headers={
                     "Authorization": f"Bearer {self.token}",
                     "Content-Type": "application/json",
-                    "Accept": "application/json"
+                    "Accept": "application/json",
                 },
                 json=payload,
                 follow_redirects=True,
-                timeout=30.0
+                timeout=30.0,
             )
 
             elapsed_ms = int((time.perf_counter() - start) * 1000)
 
             # Capture session-related headers
             session_headers = {
-                k: v for k, v in resp.headers.items()
-                if any(x in k.lower() for x in ['session', 'x-p21', 'server', 'instance'])
+                k: v
+                for k, v in resp.headers.items()
+                if any(
+                    x in k.lower() for x in ["session", "x-p21", "server", "instance"]
+                )
             }
 
             if resp.status_code == 200:
@@ -172,7 +208,7 @@ class SessionPoolTester:
                         success=True,
                         status_code=200,
                         session_headers=session_headers,
-                        response_preview=f"Succeeded: {succeeded}"
+                        response_preview=f"Succeeded: {succeeded}",
                     )
                 else:
                     error_msg = messages[0] if messages else "Unknown error"
@@ -185,11 +221,15 @@ class SessionPoolTester:
                         error_type="ValidationError",
                         error_message=str(error_msg)[:200],
                         session_headers=session_headers,
-                        response_preview=f"Failed: {failed}, Messages: {len(messages)}"
+                        response_preview=f"Failed: {failed}, Messages: {len(messages)}",
                     )
             else:
                 error_text = resp.text[:500]
-                error_type = "UnexpectedWindow" if "Unexpected response window" in error_text else "HTTPError"
+                error_type = (
+                    "UnexpectedWindow"
+                    if "Unexpected response window" in error_text
+                    else "HTTPError"
+                )
 
                 return TestResult(
                     attempt=attempt,
@@ -200,7 +240,7 @@ class SessionPoolTester:
                     error_type=error_type,
                     error_message=error_text[:200],
                     session_headers=session_headers,
-                    response_preview=error_text[:100]
+                    response_preview=error_text[:100],
                 )
 
         except Exception as e:
@@ -213,10 +253,12 @@ class SessionPoolTester:
                 status_code=0,
                 error_type=type(e).__name__,
                 error_message=str(e)[:200],
-                response_preview=""
+                response_preview="",
             )
 
-    async def run_rapid_test(self, count: int = 10, delay_ms: int = 0) -> list[TestResult]:
+    async def run_rapid_test(
+        self, count: int = 10, delay_ms: int = 0
+    ) -> list[TestResult]:
         """Run rapid successive requests with optional delay."""
         results = []
 
@@ -228,7 +270,9 @@ class SessionPoolTester:
                 results.append(result)
 
                 status = "OK" if result.success else "FAIL"
-                print(f"  [{i+1:2d}] {status} {result.elapsed_ms:4d}ms - {result.response_preview[:50]}")
+                print(
+                    f"  [{i + 1:2d}] {status} {result.elapsed_ms:4d}ms - {result.response_preview[:50]}"
+                )
 
                 if delay_ms > 0 and i < count - 1:
                     await asyncio.sleep(delay_ms / 1000)
@@ -245,7 +289,9 @@ class SessionPoolTester:
 
             for result in results:
                 status = "OK" if result.success else "FAIL"
-                print(f"  [{result.attempt:2d}] {status} {result.elapsed_ms:4d}ms - {result.response_preview[:50]}")
+                print(
+                    f"  [{result.attempt:2d}] {status} {result.elapsed_ms:4d}ms - {result.response_preview[:50]}"
+                )
 
             return list(results)
 
@@ -291,7 +337,9 @@ class SessionPoolTester:
                 result = await self.make_request(client, i + 1)
                 results.append(result)
                 status = "OK" if result.success else "FAIL"
-                print(f"  [{i+1:2d}] {status} {result.elapsed_ms:4d}ms - {result.response_preview[:50]}")
+                print(
+                    f"  [{i + 1:2d}] {status} {result.elapsed_ms:4d}ms - {result.response_preview[:50]}"
+                )
                 if i < 9:
                     jitter = random.uniform(0.1, 1.0)
                     await asyncio.sleep(jitter)
@@ -317,8 +365,10 @@ class SessionPoolTester:
             total_failures += failures
 
             report.append(f"\n{test_name.upper()}:")
-            report.append(f"  Total: {len(results)}, Success: {successes}, Failed: {failures}")
-            report.append(f"  Success Rate: {successes/len(results)*100:.1f}%")
+            report.append(
+                f"  Total: {len(results)}, Success: {successes}, Failed: {failures}"
+            )
+            report.append(f"  Success Rate: {successes / len(results) * 100:.1f}%")
 
             # Track failure patterns
             for r in results:
@@ -329,7 +379,9 @@ class SessionPoolTester:
             # Check for alternating pattern
             if len(results) >= 4:
                 pattern = [r.success for r in results]
-                alternating = all(pattern[i] != pattern[i+1] for i in range(len(pattern)-1))
+                alternating = all(
+                    pattern[i] != pattern[i + 1] for i in range(len(pattern) - 1)
+                )
                 if alternating:
                     report.append("  [!] ALTERNATING PATTERN DETECTED!")
 
@@ -339,7 +391,9 @@ class SessionPoolTester:
             for r in results:
                 if not r.success:
                     current_consecutive += 1
-                    max_consecutive_fail = max(max_consecutive_fail, current_consecutive)
+                    max_consecutive_fail = max(
+                        max_consecutive_fail, current_consecutive
+                    )
                 else:
                     current_consecutive = 0
             if max_consecutive_fail > 2:
@@ -349,11 +403,15 @@ class SessionPoolTester:
         report.append("SUMMARY:")
         report.append(f"  Total Requests: {total_requests}")
         report.append(f"  Total Failures: {total_failures}")
-        report.append(f"  Overall Success Rate: {(total_requests-total_failures)/total_requests*100:.1f}%")
+        report.append(
+            f"  Overall Success Rate: {(total_requests - total_failures) / total_requests * 100:.1f}%"
+        )
 
         if failure_patterns:
             report.append("\n  Failure Types:")
-            for error_type, count in sorted(failure_patterns.items(), key=lambda x: -x[1]):
+            for error_type, count in sorted(
+                failure_patterns.items(), key=lambda x: -x[1]
+            ):
                 report.append(f"    - {error_type}: {count}")
 
         # Conclusions
@@ -363,15 +421,21 @@ class SessionPoolTester:
         if total_failures == 0:
             report.append("  [OK] No failures detected - session pool appears healthy")
         elif total_failures / total_requests > 0.3:
-            report.append("  [!] High failure rate (>30%) - likely session pool contamination")
-            report.append("  [!] Consider using async endpoint or implementing retry logic")
+            report.append(
+                "  [!] High failure rate (>30%) - likely session pool contamination"
+            )
+            report.append(
+                "  [!] Consider using async endpoint or implementing retry logic"
+            )
         else:
             report.append("  [!] Intermittent failures detected")
             report.append("  [!] Pattern suggests session pool issues")
 
         if "UnexpectedWindow" in failure_patterns:
             report.append("  [!] 'Unexpected window' errors confirm dirty session pool")
-            report.append("  [!] Previous operations left dialogs open in pooled sessions")
+            report.append(
+                "  [!] Previous operations left dialogs open in pooled sessions"
+            )
 
         return "\n".join(report)
 
@@ -387,7 +451,9 @@ async def main():
     # Require explicit confirmation before running.
     print("\nWARNING: this test creates temporary SalesPricePage records")
     print("on the target server (one per request, ~40 total).")
-    answer = input('Type EXECUTE to run the session-pool test (creates temporary price pages): ')
+    answer = input(
+        "Type EXECUTE to run the session-pool test (creates temporary price pages): "
+    )
     if answer.strip() != "EXECUTE":
         print("Aborted - nothing was created.")
         return
@@ -413,7 +479,7 @@ async def main():
                 "status_code": r.status_code,
                 "error_type": r.error_type,
                 "error_message": r.error_message,
-                "session_headers": r.session_headers
+                "session_headers": r.session_headers,
             }
             for r in results
         ]

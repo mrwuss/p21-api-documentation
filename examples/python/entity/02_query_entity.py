@@ -19,11 +19,18 @@ from common.auth import get_token, get_auth_headers
 from common.config import load_config
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
-def query_entity(base_url: str, endpoint: str, query: str, headers: dict,
-                  verify_ssl: bool, top: int = 10) -> list:
+def query_entity(
+    base_url: str,
+    endpoint: str,
+    query: str,
+    headers: dict,
+    verify_ssl: bool,
+    top: int = 10,
+) -> list:
     """Query an entity with a filter expression."""
     params = {"$query": query}
     if top:
@@ -35,7 +42,7 @@ def query_entity(base_url: str, endpoint: str, query: str, headers: dict,
         headers=headers,
         verify=verify_ssl,
         follow_redirects=True,
-        timeout=30.0
+        timeout=30.0,
     )
     response.raise_for_status()
     return response.json()
@@ -62,7 +69,7 @@ def main():
             "State eq 'NY'",
             headers,
             config.verify_ssl,
-            top=5
+            top=5,
         )
 
         print(f"  Found {len(customers)} customer(s) in NY:")
@@ -88,7 +95,7 @@ def main():
             "CreditLimit gt 10000",
             headers,
             config.verify_ssl,
-            top=5
+            top=5,
         )
 
         print(f"  Found {len(customers)} customer(s) with high credit:")
@@ -114,7 +121,7 @@ def main():
             "startswith(CustomerName, 'A')",
             headers,
             config.verify_ssl,
-            top=5
+            top=5,
         )
 
         print(f"  Found {len(customers)} customer(s) starting with 'A':")
@@ -139,7 +146,7 @@ def main():
             "State eq 'NY' and CreditLimit gt 5000",
             headers,
             config.verify_ssl,
-            top=5
+            top=5,
         )
 
         print(f"  Found {len(customers)} NY customer(s) with credit > $5000:")
@@ -165,7 +172,7 @@ def main():
             "State eq 'NY' or State eq 'IL'",
             headers,
             config.verify_ssl,
-            top=5
+            top=5,
         )
 
         print(f"  Found {len(customers)} customer(s) in NY or IL:")

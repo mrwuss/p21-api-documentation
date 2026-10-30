@@ -43,6 +43,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from common.tapi import connect, edit, odata, odata_quote, post_transaction
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 HEADER_COLUMNS = "order_no,packing_basis,cancel_flag,completed,delete_flag"
@@ -61,8 +62,14 @@ def build_payload(args: argparse.Namespace) -> dict:
     header_edits = [edit("order_no", args.order_no)]
     if args.mode == "cancel":
         header_edits.append(edit("cancel_flag", "ON"))
-    elements = [{"Name": "TABPAGE_1.order", "Type": "Form", "Keys": ["order_no"],
-                 "Rows": [{"Edits": header_edits, "RelativeDateEdits": []}]}]
+    elements = [
+        {
+            "Name": "TABPAGE_1.order",
+            "Type": "Form",
+            "Keys": ["order_no"],
+            "Rows": [{"Edits": header_edits, "RelativeDateEdits": []}],
+        }
+    ]
 
     if args.mode == "append":
         rows = []
@@ -73,14 +80,29 @@ def build_payload(args: argparse.Namespace) -> dict:
                 edits.append(edit("unit_price", price[0]))
             rows.append({"Edits": edits, "RelativeDateEdits": []})
         # Every new line is a row of ONE element in ONE Transaction.
-        elements.append({"Name": "TP_ITEMS.items", "Type": "List", "Keys": [], "Rows": rows})
+        elements.append(
+            {"Name": "TP_ITEMS.items", "Type": "List", "Keys": [], "Rows": rows}
+        )
     elif args.mode == "release-hold":
-        elements.append({"Name": "TP_SHIPINFO.shipinfo", "Type": "Form", "Keys": [],
-                         "Rows": [{"Edits": [edit("packing_basis", args.packing_basis)],
-                                   "RelativeDateEdits": []}]})
+        elements.append(
+            {
+                "Name": "TP_SHIPINFO.shipinfo",
+                "Type": "Form",
+                "Keys": [],
+                "Rows": [
+                    {
+                        "Edits": [edit("packing_basis", args.packing_basis)],
+                        "RelativeDateEdits": [],
+                    }
+                ],
+            }
+        )
 
-    return {"Name": "Order", "UseCodeValues": False,
-            "Transactions": [{"Status": "New", "DataElements": elements}]}
+    return {
+        "Name": "Order",
+        "UseCodeValues": False,
+        "Transactions": [{"Status": "New", "DataElements": elements}],
+    }
 
 
 def read_order(session, order_no: str) -> tuple[dict | None, list[dict]]:
@@ -93,9 +115,15 @@ def read_order(session, order_no: str) -> tuple[dict | None, list[dict]]:
     Returns:
         tuple: (oe_hdr row or None, live oe_line rows).
     """
-    hdr = odata(session, "oe_hdr", f"order_no eq {odata_quote(order_no)}", HEADER_COLUMNS)
-    lines = odata(session, "oe_line",
-                  f"order_no eq {odata_quote(order_no)} and delete_flag eq 'N'", LINE_COLUMNS)
+    hdr = odata(
+        session, "oe_hdr", f"order_no eq {odata_quote(order_no)}", HEADER_COLUMNS
+    )
+    lines = odata(
+        session,
+        "oe_line",
+        f"order_no eq {odata_quote(order_no)} and delete_flag eq 'N'",
+        LINE_COLUMNS,
+    )
     return (hdr[0] if hdr else None), sorted(lines, key=lambda r: r["line_no"])
 
 
@@ -116,15 +144,26 @@ def show(label: str, hdr: dict | None, lines: list[dict]) -> None:
 def main() -> None:
     """Entry point: dry run prints the payload; --execute checks, posts, reads back."""
     parser = argparse.ArgumentParser(
-        description="Append lines, release a hold, or cancel a saved order")
+        description="Append lines, release a hold, or cancel a saved order"
+    )
     parser.add_argument("mode", choices=["append", "release-hold", "cancel"])
     parser.add_argument("order_no")
-    parser.add_argument("--line", action="append", metavar="ITEM:QTY[:PRICE]",
-                        help="Line to append (repeatable; append mode)")
-    parser.add_argument("--packing-basis", default="Partial",
-                        help="Value that replaces Hold (release-hold mode)")
-    parser.add_argument("--execute", action="store_true",
-                        help="Actually POST the transaction (default: dry run)")
+    parser.add_argument(
+        "--line",
+        action="append",
+        metavar="ITEM:QTY[:PRICE]",
+        help="Line to append (repeatable; append mode)",
+    )
+    parser.add_argument(
+        "--packing-basis",
+        default="Partial",
+        help="Value that replaces Hold (release-hold mode)",
+    )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Actually POST the transaction (default: dry run)",
+    )
     args = parser.parse_args()
     if args.mode == "append" and not args.line:
         parser.error("append needs at least one --line ITEM:QTY")
@@ -133,7 +172,9 @@ def main() -> None:
     print("=" * 60)
     payload = build_payload(args)
     if not args.execute:
-        print("\nDRY RUN - payload that would be POSTed to {ui_server}/api/v2/transaction:")
+        print(
+            "\nDRY RUN - payload that would be POSTed to {ui_server}/api/v2/transaction:"
+        )
         print(json.dumps(payload, indent=2))
         print("\nRe-run with --execute to POST it.")
         return
@@ -147,24 +188,35 @@ def main() -> None:
     if hdr["delete_flag"] == "Y" or hdr["cancel_flag"] == "Y":
         raise SystemExit("Order is deleted or canceled")
     if hdr["completed"] == "T":
-        raise SystemExit("Order is held open (completed = 'T') -- every write would be refused")
+        raise SystemExit(
+            "Order is held open (completed = 'T') -- every write would be refused"
+        )
 
     if args.mode == "append":
         on_order = {line["inv_mast_uid"] for line in lines}
         for spec in args.line:
             item_id = spec.split(":")[0]
-            found = odata(session, "inv_mast",
-                          f"item_id eq {odata_quote(item_id)} and delete_flag eq 'N'",
-                          "inv_mast_uid")
+            found = odata(
+                session,
+                "inv_mast",
+                f"item_id eq {odata_quote(item_id)} and delete_flag eq 'N'",
+                "inv_mast_uid",
+            )
             if not found:
-                raise SystemExit(f"Item {item_id} not found (exact ID, live items only)")
+                raise SystemExit(
+                    f"Item {item_id} not found (exact ID, live items only)"
+                )
             if found[0]["inv_mast_uid"] in on_order:
-                raise SystemExit(f"{item_id} is already on the order -- the row would "
-                                 "update that line, not add one")
+                raise SystemExit(
+                    f"{item_id} is already on the order -- the row would "
+                    "update that line, not add one"
+                )
 
     print()
-    post_transaction(session, payload, timeout=900)   # a cancel reloads the whole order
-    show("After (OData read-back, live lines only):", *read_order(session, args.order_no))
+    post_transaction(session, payload, timeout=900)  # a cancel reloads the whole order
+    show(
+        "After (OData read-back, live lines only):", *read_order(session, args.order_no)
+    )
 
 
 if __name__ == "__main__":
