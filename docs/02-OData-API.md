@@ -1527,6 +1527,118 @@ static string ReadField(string payload, string field)
 }
 ```
 
+**PHP**
+
+```php
+// The following example uses Laravel 13. For brevity, multiple classes and functions are combined for this example
+
+use App\Models\ApiAuthService;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
+class P21ApiClient {
+
+    private string $api_base_url;
+    private string $auth_token;
+    private int $timeout;
+    private bool $verify_ssl;
+
+    public function __construct()
+    {
+        // Pull variables from application config/environment file
+        $this->api_base_url = config('services.p21.base_url');
+        $this->timeout = config('services.p21.api_timeout');
+        $this->verify_ssl = config('services.p21.verify_ssl');
+
+        // Pull stored auth token from app database
+        $this->auth_token = ApiAuthService::where('service', 'p21')->first()->token;
+    }
+
+    /**
+     * Generic GET request app function
+     */
+    public function get(string $endpoint, array $query = []): array
+    {
+        $response = $this->sendGetRequest($endpoint, $query);
+
+        if ($response->status() === 401) {
+            ApiAuthService::where('service', 'p21')->update(['expires_at' => Carbon::now()]);
+        }
+
+        $response->throw();
+
+        return $response->json() ?? [];
+    }
+
+    /**
+     * Send GET requests to P21 and return the response
+     */
+    private function sendGetRequest(string $endpoint, array $query = []): Response
+    {
+        $url = $this->api_base_url.'/'.ltrim($endpoint, '/');
+
+        $request = Http::timeout($this->timeout)
+            ->acceptJson()
+            ->withToken($this->auth_token);
+
+        if ($this->verify_ssl === false) {
+            $request = $request->withoutVerifying();
+        }
+
+        return $request->get($url, $query);
+    }
+
+    /**
+     * Make P21 API call to request token and insert into database
+     */
+    public function getToken(): void
+    {
+        $response = Http::withOptions([
+            'verify' => config('services.p21.verify_ssl'),
+            'timeout' => config('services.p21.api_timeout'),
+        ])->acceptJson()
+            ->post(config('services.p21.base_url').'/api/security/token/v2', [
+                'ConsumerKey' => config('services.p21.api_consumer_key'),
+                'GrantType' => config('services.p21.api_grant_type'),
+            ]);
+
+        if ($response->successful()) {
+            try {
+                $token = ApiAuthService::updateOrCreate(
+                    ['service' => 'p21'],
+                    ['token' => $response->json('AccessToken'), 'expires_at' => Carbon::now()->addSeconds(3600)],
+                );
+                Log::info('P21 API token successfully refreshed.');
+            } catch (QueryException $e) {
+                Log::error('The API auth token management process was unsuccessful: '.$e->getMessage());
+            }
+        } else {
+            Log::error('The P21 API authentication process failed.');
+        }
+    }
+
+    /**
+     * Get supplier id and supplier name from supplier table
+     */
+    public function getSuppliers(): array
+    {
+        $response = $this->get('/odataservice/odata/table/supplier', [
+            '$select' => "supplier_id,supplier_name",
+            '$top' => '10',
+        ]);
+
+        return $response['values'];
+    }
+}
+
+// To then iterate over the data, you can do the following:
+foreach($response_arry as $key => $row) {
+    print_r($row['supplier_id'].': '.$row['supplier_name']);
+}
+```
+
 <!-- /tabs -->
 
 ### Filtered Query
