@@ -266,6 +266,7 @@ Filter records based on conditions:
 ```
 
 Dates are bare `yyyy-MM-dd` literals, and `now()` is not supported — see [Non-Expired Records](#non-expired-records).
+To filter by date and time, values need to be in a format without spaces (i.e., `2026-11-05T10:16:00.234-05:00`).
 
 ### $orderby - Sort Results
 
