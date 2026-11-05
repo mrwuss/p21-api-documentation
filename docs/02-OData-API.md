@@ -255,6 +255,12 @@ Return only specific fields:
 /odata/table/supplier?$select=supplier_id,supplier_name
 ```
 
+See all fields:
+
+```http
+/odata/table/supplier?$select=*
+```
+
 > ⚠️ **An unknown `$select` column returns 404, not 400.** Naming a column that doesn't exist fails the whole request with an empty-bodied **404** — indistinguishable at a glance from "table not exposed" or "no permission". If a table you know exists suddenly 404s, drop the `$select` and retry before chasing Data Service permissions; a misremembered column name (e.g. `supplier_id` on `po_hdr`, which actually has `vendor_id`) is the more common cause. Verified on 2026.1.
 
 ### $filter - Filter Results
