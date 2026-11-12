@@ -21,7 +21,9 @@ A version-indexed registry of P21 middleware changes that **break or silently co
 
 ## P21 2026.1
 
-Originally found on **2026.1.5873.1** during upgrade validation (June 2026), where none of it reproduced on 2025.2.5855.0 with identical requests. Re-verified against **26.1.5894.1** (July 2026), **26.1.5910.3** (August 2026) and **26.1.5940.0** (August 2026), then re-run in full against **26.1.5950.0** (September 2026).
+Originally found on **2026.1.5873.1** during upgrade validation (June 2026), where none of it reproduced on 2025.2.5855.0 with identical requests. Re-verified against **26.1.5894.1** (July 2026), **26.1.5910.3** (August 2026) and **26.1.5940.0** (August 2026), then re-run in full against **26.1.5950.0** (September 2026) and **26.1.6004.0** (November 2026).
+
+**Re-run on 26.1.6004.0 (November 2026): unchanged.** Entries 3–9 still reproduce and entries 1 and 2 are still fixed; each entry carries a 6004.0 note. Entry 8 was re-run on a new instance (a disabled `PurchaseOrder` column), not on its contract and order-note cases. Two behaviours elsewhere did change on this build, neither a registry entry: [a raw `Item` create now works](03-Transaction-API.md#creating-a-new-item-in-one-item-post), and [`ufc_*` fields can differ by identity](03-Transaction-API.md#invalid-column-name-ufc_-the-user-defined-fields-differ-by-user).
 
 **On 26.1.5950.0 this page is unchanged: entries 3–9 all still reproduce, and entries 1 and 2 are still fixed.** Every entry below carries its own 5950.0 note. Nothing moved between the live and resolved halves of this section, no entry changed mechanism, and no new entry was found — a maintenance build that touched none of this. The one correction the re-run did force is in [entry 5](#5-silent-false-success-loading-a-nonexistent-record-returns-status-2-with-an-empty-window): **a successful load does not always return `Messages: []`**, so an empty message list is not the discriminator.
 
@@ -38,6 +40,8 @@ The empty-500 defect was reported to Epicor and is fixed as of 5940.0; the contr
 **Mitigation:** read both (`data.get("Id") or data.get("SessionId")` / the C# equivalent) so one client works across versions.
 
 Still `Id` on 26.1.5950.0, with no `SessionId` key present at all — the rename was permanent, not a transitional build.
+
+Still `Id` on **26.1.6004.0** (2026-11-11), no `SessionId` key; the session-create response carries `Properties[0].Properties.fullversion` = `26.1.6004.0`.
 
 ### 4. `PUT /v2/tab` binds only `PageName`; `TabName` is ignored
 
@@ -63,6 +67,8 @@ The last row is the proof: when the two disagree, `PageName` wins and `TabName` 
 
 Note the error text when it does fail: **the tab name in the message is blank**, because the server is reporting on the `PageName` it never received rather than on the `TabName` you sent. It reads as "your tab name is wrong" when the real problem is the field name. If you see `Tab with name or display text of  does not exist.` with that empty slot, check the *key* you used before you check the tab.
 
+Unchanged on **26.1.6004.0** (2026-11-11), PurchaseOrder: `TabName` alone → 400 *"Tab with name or display text of  does not exist."*; `PageName` → `Status: 1` and the tab's datawindow on the page; `TabName` sent with a different `PageName` → the `PageName` tab.
+
 ### 5. Silent false success: loading a nonexistent record returns `Status: 2` with an **empty window**
 
 **Data-integrity hazard.**
@@ -85,6 +91,8 @@ Re-verified on **26.1.5940.0** and again on **26.1.5950.0**, `PurchaseOrder` key
 > **Read `Type`, not length.** The nonexistent-record message is `Type: 2`; the informational one is `Type: 1`. A client that treats "`Messages` is non-empty" as failure will reject real records on windows that have notes attached, which is a worse failure than the one this entry warns about.
 
 **Mitigation (verified):** do not infer existence from the load status at all. Gate with an **existence pre-read** (OData or `POST /api/v2/transaction/get`) *before* opening/keying the window, and abort on no-match. Treat any non-Success load status as fatal, and inspect `Messages` when logging the reason — filtering to `Type: 2` if you log them as errors.
+
+Unchanged on **26.1.6004.0** (2026-11-11), PurchaseOrder keyed by `po_no`: a nonexistent PO → `Status: 2`, *"Enter a valid ID or leave ID blank."* (`Type: 2`); the control (a throwaway PO) → `Status: 1`.
 
 ### 6. Batched `/v2/change` is not atomic — it is sequential and fail-fast
 
@@ -122,6 +130,8 @@ A client that treats the 400 as "the change did not happen" is wrong: part of it
 > **The 5894.1 repro is also dead as of 5940.0, for an unrelated reason.** That example used `TABPAGE_18.extended_info.extended_desc` as its disabled field; on 5940.0 that column is **no longer disabled** and writes cleanly (`Status: 1`, value in the buffer). Nothing about entry 6 changed — the field did. The table above re-establishes the behavior with `company_id`, which is disabled on a saved PO on every build we have tested. Worth noting generally: **which columns a window disables shifts between builds**, so a repro pinned to one field name has a shorter shelf life than the behavior it demonstrates.
 >
 > **Write tab-by-tab anyway.** The client that filed the original report still groups its field writes by tab and switches before each group, and that remains the right shape regardless of which build you are on: it costs one `/v2/tab` call per tab, removes the question entirely, and matches how the window behaves for a human. Treat it as cheap insurance, not as a workaround for a bug we can currently demonstrate.
+
+Unchanged on **26.1.6004.0** (2026-11-11), a saved throwaway PO, no save: `[external_po_no, company_id]` → HTTP 400 *"Column is disabled: company_id"* with no `Status` key, and `external_po_no` applied in the buffer; `[company_id, external_po_no]` → 400 and nothing applied.
 
 ### 7. UDT Service update/delete ignore a name/value condition on a UDT created on 2026.1
 
@@ -177,6 +187,8 @@ GET /odataservice/odata/table/{udt}?$top=1
 **Mitigation:** read the target rows' `udt_{tablename}_uid` values over OData, send one `{"rowuid": N}` per row, **parse the `[N]` row count out of `errorMessage`** and treat `[0]` as a failure; never trust `errorNo: 0` alone. Whether `rowuid` maps to a literal `row_uid` column on an older table that has one could not be tested.
 
 Related payload trap: **delete reads `conditions` from the payload's top level**, not from inside `rows[]`. The nested form returns `400 {"error":["Conditions cannot be blank or none!"]}`, re-verified on 26.1.5950.0. See [UDT Service API § Delete](13-UDT-Service-API.md#delete).
+
+Unchanged on **26.1.6004.0** (2026-11-11), on a row added to the test UDT for the run: `name`/`value` conditions on `row_uid` and on the primary key → 400 `Invalid Row Uid!`; `{"rowuid": N}` → `[1] row updated`; delete with a `name`/`value` condition → `[0] rows deleted`, row still there; delete with `rowuid` → `[1] row deleted`.
 
 ### 8. `IgnoreDisabled: true` reports success on writes that write nothing
 
@@ -264,6 +276,8 @@ So `IgnoreDisabled` has two outcomes that are **indistinguishable in the respons
 
 **Mitigation:** always read back after any write that used `IgnoreDisabled: true`, on any service — whether updating an existing line, inserting a new line, or creating a brand-new contract. Treat `Status: "Passed"` under `IgnoreDisabled` as **unverified** until a read-back confirms the value actually changed; per the control above, the Transaction API cannot currently be relied on to write `VALUES.values` at all, on any of the three paths. See [Transaction API § IgnoreDisabled](03-Transaction-API.md#ignoredisabled) and [Verifying Writes](04-Interactive-API.md#verifying-writes-dont-trust-save-status-alone) for the same read-back discipline applied elsewhere in this repo.
 
+Reproduced on **26.1.6004.0** (2026-11-11) on a new instance rather than the cases above: `PurchaseOrder` on a saved throwaway PO, `company_id` → `Failed: 1`, *"Column is disabled: company_id"*; the same payload with `IgnoreDisabled: true` → `Succeeded: 1`, `Status: "Passed"`, and `po_hdr.company_no` unchanged on read-back. The `JobContractPricing` and `Order` note cases were not re-run on this build.
+
 ### 9. A bad `DatawindowName` eats the **next** request on that window (empty HTTP 500)
 
 **Diagnosis trap — and the reason an empty 500 no longer means what entry 1 says it means.**
@@ -290,6 +304,8 @@ The burnt call does not have to be a change — `GET /v2/data` and `PUT /v2/tab`
 **Why this one matters out of proportion to its size.** [Entry 1](#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header) taught a generation of P21 integrations that an empty 500 on the interactive surface means a missing `Accept` header. That defect is **fixed** as of 26.1.5940.0 and stays fixed on 5950.0 — so on a current build, an empty 500 here is this instead, and chasing the header will waste the afternoon. The two are easy to tell apart: entry 1's fires on **session-create, every time**; this one fires **once, immediately after a 400 you already received**.
 
 **Mitigation:** get the datawindow name right — `GET /api/v2/definition/{Service}` or the committed [`definitions/{Service}.json`](../definitions/README.md) lists every `TAB.datawindow` pair for the window, so there is no reason to guess. If you do take the 400, treat the following request as **lost**: re-send it, and check its result rather than assuming the first attempt landed. A client that retries the *failed* change but not the one after it will silently drop a field — the 500 carries no body to tell you otherwise.
+
+Unchanged on **26.1.6004.0** (2026-11-11), PurchaseOrder: `DatawindowName` `dw_1` → 400 *"Unable to find datawindow named dw_1"*; the next valid change → 500, empty body; the same change again → `Status: 1`, applied. Control: after a `Column is disabled` 400 the next change is `Status: 1`.
 
 ### Related 2026.1 observations (not breaking changes)
 
@@ -442,6 +458,8 @@ Both confirmed on 26.1.5940.0 and again on 26.1.5950.0. So the failure moved fro
 
 **The mitigation is unchanged and still required: send `Accept: application/json` on every P21 request.** If you fixed your headers for the 500, you are already correct on 5940.0 and need do nothing.
 
+Still fixed on **26.1.6004.0** (2026-11-11), session create: `Accept: application/json` → 200 JSON; header omitted, `*/*` and `application/xml` → 200 XML. No empty 500.
+
 ### 2. Ghost sessions: the failed create still half-creates the session (alternating 500/409)
 
 > **No longer reachable as of 26.1.5940.0, and still not on 26.1.5950.0.** Affected builds: **5873.1 through 5910.3**. This entry is downstream of [entry 1](#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header) — it needs a *failed* session create to produce the ghost, and creates no longer fail that way. **The token-scoping rule at the bottom of this entry is not part of the defect and still applies on every build** — re-verified on 5940.0.
@@ -457,6 +475,8 @@ The ghost also **masks the original error**: once one call has poisoned the sess
 **To clear a ghost, `DELETE` the session — don't wait it out.** `DELETE {uiserver}/api/ui/interactive/sessions` returns 200 and a clean create succeeds **immediately** afterward (verified on 26.1.5894.1). Waiting for `SessionCleanupExpiration` (~6 min) also works but is unnecessary; make the delete the first step of your retry path.
 
 > **This only works while you still hold the token that created the session.** Verified on 26.1.5910.3 and re-verified on 26.1.5940.0 and 26.1.5950.0 — **this half is current behavior, not a resolved defect.** The delete is scoped to the bearer token, so a ghost left by a *previous* token — a crashed process, a worker that re-authenticated, a retry path that fetched a fresh token before cleaning up — cannot be deleted at all. Query parameters and body forms carrying the session id are all refused with `400 {"ErrorMessage":"Invalid session"}`, and only `SessionCleanupExpiration` will reap it. Keep the token alive until the session is closed; do not re-authenticate as part of your recovery path before deleting. Full attempt matrix: [Interactive API § End Session](04-Interactive-API.md#6-end-session).
+
+Still not reachable on **26.1.6004.0** (2026-11-11): no session create failed with an empty 500 in the run above. A second create while a session is open returns 409 *"Session already exists."*, which is the normal answer, not a ghost.
 
 ## P21 25.2
 
