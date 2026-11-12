@@ -5132,7 +5132,7 @@ Field mappings, each confirmed by read-back:
 | `buyer_id` | `po_hdr.requested_by` | An employee/user **number** (`829`), not a login name |
 | *(omitted)* `division_id` | defaults — mirrored `supplier_id` | Marked `Required: true`; see [What `Required` actually means](#what-required-actually-means) |
 | *(omitted)* `company_id` | defaults | Also marked required; also omitted |
-| `external_po_no` | `po_hdr.external_po_no` | Useful for tagging test POs |
+| `external_po_no` | `po_hdr.external_po_no` | Useful for tagging test POs. **A value already on another PO is saved as NULL** ([why](#purchaseorder-service-a-duplicate-external_po_no)) |
 
 - **`required_date` genuinely is required** — order date plus a few days.
 - The PO landed **`approved='Y'`** immediately (config-dependent), so it is receivable straight away.
@@ -5166,6 +5166,347 @@ A header edit on a completed PO (`po_hdr.complete = 'Y'`) fails with `Failed: 1`
 | The same + the blank `TABPAGE_17.tp_17_dw_17` row | `Succeeded: 1`; `po_hdr.po_desc` updated, `po_line` count unchanged |
 
 *(Verified on play 26.1.5950.0, 2026-10-29, on a completed test PO. Community lead: John Kennedy and Spencer Smith, P21WWUG forum.)*
+
+### PurchaseOrder Service — A Duplicate `external_po_no`
+
+`po_hdr.external_po_no` holds 40 characters ([Field Length Limits](06-Error-Handling.md#field-length-limits-a-write-that-fails-on-size)), and P21 checks it for duplicates. When the value is already on another PO, the PurchaseOrder window asks:
+
+```text
+w_message: This is a duplicate external PO number.  Do you wish to continue?
+```
+
+**The Transaction API cannot answer that prompt, and it reports success either way.** Verified on play 26.1.6004.0 (November 2026) on throwaway POs, `po_hdr.external_po_no` read back over OData after every call:
+
+| Call | Response | `external_po_no` after |
+|---|---|---|
+| `PurchaseOrder` create with a value already on another PO | `Succeeded: 1` | **NULL**; the PO is created without it |
+| `PurchaseOrder` update (keyed `po_no`) from a unique value to a duplicate | `Succeeded: 1` | **NULL**; the old value is gone too |
+| Interactive window, `PUT /v2/change` with a duplicate | `Status: 3`, the `w_message` above | (prompt open) |
+| … answer **Yes** (`cb_1`), save | `Status: 1` | the duplicate value |
+| … answer **No** (`cb_2`), save | `cb_2` returns `Status: 2`; the save `Status: 1` | **`''`** (empty); the PO's previous value is not restored |
+| Interactive window, a unique value, save | no prompt; `Status: 1` | the new value |
+
+What a reader trips on:
+
+- **A Transaction API write of a duplicate erases the field.** On an update it also wipes the value that was there. Check for the value on other POs first (`po_hdr?$filter=external_po_no eq '...'`), or write through the window and read back.
+- **To keep a duplicate on purpose, use the window and answer Yes.** Identify the prompt by its text before you answer: the text of a `w_message` is not in `GET /v2/data`; it is in the HTTP 400 that any call blocked by the open prompt returns ([why](04-Interactive-API.md#worked-example-w_message-save-changes-before-closing)). The programs below answer only this prompt and stop on any other.
+- **Answering No blanks the field.** The value the PO held before the change is not put back.
+
+<!-- tabs -->
+
+```python
+"""Set a PO's external_po_no through the PurchaseOrder window, answering only the duplicate prompt."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+PO_NO = "500100"
+EXTERNAL_PO_NO = "ACME-REF-001"           # 40 characters at most
+ALLOW_DUPLICATE = True                    # answer the duplicate prompt Yes (True) or No (False)
+# ---------------------------------------------------------------------------
+
+TAB, DW = "TABPAGE_1", "tp_1_dw_1"
+DUPLICATE_PROMPT = "This is a duplicate external PO number"
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+        },
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+def change(client: httpx.Client, base: str, window_id: str, field: str, value: str) -> httpx.Response:
+    return client.put(f"{base}/v2/change", json={
+        "WindowId": window_id,
+        "List": [{"TabName": TAB, "DatawindowName": DW, "FieldName": field, "Value": value}],
+    })
+
+
+def popup_id(result: dict) -> str | None:
+    """The response window a call opened (Status 3, windowopened event)."""
+    for event in result.get("Events") or []:
+        if event.get("Name") == "windowopened":
+            for item in event.get("Data") or []:
+                if item.get("Key") == "windowid":
+                    return item.get("Value")
+    return None
+
+
+def read_external(client: httpx.Client) -> list[dict]:
+    r = client.get(f"{BASE_URL}/odataservice/odata/table/po_hdr",
+                   params={"$filter": f"po_no eq {PO_NO}", "$select": "po_no,external_po_no"})
+    r.raise_for_status()
+    return r.json()["value"]
+
+
+if len(EXTERNAL_PO_NO) > 40:
+    raise SystemExit("external_po_no holds 40 characters; P21 refuses a longer value")
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    client.headers.update({"Authorization": f"Bearer {token}",
+                           "Accept": "application/json"})
+    base = f"{ui_server}/api/ui/interactive"
+    print("before:", read_external(client))
+    client.post(f"{base}/sessions/", json={"ResponseWindowHandlingEnabled": True}).raise_for_status()
+    try:
+        window = client.post(f"{base}/v2/window", json={"ServiceName": "PurchaseOrder"}).json()["WindowId"]
+        try:
+            loaded = change(client, base, window, "po_no", PO_NO).json()
+            if loaded.get("Status") != 1:
+                raise RuntimeError(f"PO did not load: {loaded.get('Messages')}")
+            result = change(client, base, window, "external_po_no", EXTERNAL_PO_NO).json()
+            popup = popup_id(result) if result.get("Status") == 3 else None
+            if popup:
+                # A w_message's text is not in GET /v2/data; it is in the 400 that
+                # any call blocked by the open prompt returns.
+                blocked = change(client, base, window, "external_po_no", EXTERNAL_PO_NO)
+                text = blocked.json().get("ErrorMessage", "") if blocked.status_code >= 400 else ""
+                if DUPLICATE_PROMPT not in text:
+                    raise RuntimeError(f"Unexpected prompt, not answered: {text[:300]}")
+                button = "cb_1" if ALLOW_DUPLICATE else "cb_2"   # Yes / No
+                answered = client.post(f"{base}/v2/tools", json={"WindowId": popup, "ToolName": button}).json()
+                print(f"duplicate prompt answered {button}: Status {answered.get('Status')}")
+            saved = client.put(f"{base}/v2/data", json=window).json()
+            if saved.get("Status") != 1:
+                raise RuntimeError(f"Save failed: {saved.get('Messages')}")
+        finally:
+            client.delete(f"{base}/v2/window", params={"id": window})
+    finally:
+        client.delete(f"{base}/sessions/")
+    # Answering No saves the PO with external_po_no blank: read it back.
+    print("after: ", read_external(client))
+```
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+const string PoNo = "500100";
+const string ExternalPoNo = "ACME-REF-001";          // 40 characters at most
+var allowDuplicate = true;                           // answer the duplicate prompt Yes (true) or No (false)
+// ---------------------------------------------------------------------------
+
+const string Tab = "TABPAGE_1";
+const string Dw = "tp_1_dw_1";
+const string DuplicatePrompt = "This is a duplicate external PO number";
+if (ExternalPoNo.Length > 40)
+{
+    throw new InvalidOperationException("external_po_no holds 40 characters; P21 refuses a longer value");
+}
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(
+    new MediaTypeWithQualityHeaderValue("application/json"));
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", token);
+var api = $"{uiServer}/api/ui/interactive";
+
+Console.WriteLine($"before: {await ReadExternalAsync(client)}");
+(await SendAsync(HttpMethod.Post, $"{api}/sessions/", new { ResponseWindowHandlingEnabled = true })).Dispose();
+try
+{
+    string window;
+    using (var opened = await SendAsync(HttpMethod.Post, $"{api}/v2/window", new { ServiceName = "PurchaseOrder" }))
+    {
+        window = opened.RootElement.GetProperty("WindowId").GetString()!;
+    }
+    try
+    {
+        using (var loaded = await ChangeAsync(window, "po_no", PoNo))
+        {
+            if (loaded.RootElement.GetProperty("Status").GetInt32() != 1)
+            {
+                throw new InvalidOperationException($"PO did not load: {loaded.RootElement.GetProperty("Messages")}");
+            }
+        }
+        using var result = await ChangeAsync(window, "external_po_no", ExternalPoNo);
+        var popup = result.RootElement.GetProperty("Status").GetInt32() == 3 ? PopupId(result.RootElement) : null;
+        if (popup is not null)
+        {
+            // A w_message's text is not in GET /v2/data; it is in the 400 that
+            // any call blocked by the open prompt returns.
+            using var blocked = await ChangeAsync(window, "external_po_no", ExternalPoNo);
+            var text = blocked.RootElement.TryGetProperty("ErrorMessage", out var e) ? e.GetString() ?? "" : "";
+            if (!text.Contains(DuplicatePrompt, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException($"Unexpected prompt, not answered: {text[..Math.Min(300, text.Length)]}");
+            }
+            var button = allowDuplicate ? "cb_1" : "cb_2";   // Yes / No
+            using var answered = await SendAsync(HttpMethod.Post, $"{api}/v2/tools", new { WindowId = popup, ToolName = button });
+            Console.WriteLine($"duplicate prompt answered {button}: Status {answered.RootElement.GetProperty("Status")}");
+        }
+        using var saved = await SendAsync(HttpMethod.Put, $"{api}/v2/data", window);
+        if (saved.RootElement.GetProperty("Status").GetInt32() != 1)
+        {
+            throw new InvalidOperationException($"Save failed: {saved.RootElement.GetProperty("Messages")}");
+        }
+    }
+    finally
+    {
+        await client.DeleteAsync($"{api}/v2/window?id={window}");
+    }
+}
+finally
+{
+    await client.DeleteAsync($"{api}/sessions/");
+}
+// Answering No saves the PO with external_po_no blank: read it back.
+Console.WriteLine($"after:  {await ReadExternalAsync(client)}");
+
+Task<JsonDocument> ChangeAsync(string windowId, string field, string value) =>
+    SendAsync(HttpMethod.Put, $"{api}/v2/change", new
+    {
+        WindowId = windowId,
+        List = new[] { new { TabName = Tab, DatawindowName = Dw, FieldName = field, Value = value } },
+    });
+
+// Returns the body as JSON whatever the status: a blocked call's 400 carries the prompt text.
+async Task<JsonDocument> SendAsync(HttpMethod method, string url, object body)
+{
+    using var q = new HttpRequestMessage(method, url)
+    {
+        Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json"),
+    };
+    using var r = await client.SendAsync(q);
+    var text = await r.Content.ReadAsStringAsync();
+    return JsonDocument.Parse(string.IsNullOrEmpty(text) ? "{}" : text);
+}
+
+// The response window a call opened (Status 3, windowopened event).
+static string? PopupId(JsonElement result)
+{
+    if (!result.TryGetProperty("Events", out var events) || events.ValueKind != JsonValueKind.Array)
+    {
+        return null;
+    }
+    foreach (var ev in events.EnumerateArray())
+    {
+        if (ev.GetProperty("Name").GetString() != "windowopened" || !ev.TryGetProperty("Data", out var data))
+        {
+            continue;
+        }
+        foreach (var item in data.EnumerateArray())
+        {
+            if (item.GetProperty("Key").GetString() == "windowid")
+            {
+                return item.GetProperty("Value").GetString();
+            }
+        }
+    }
+    return null;
+}
+
+static async Task<string> ReadExternalAsync(HttpClient c)
+{
+    using var r = await c.GetAsync($"{BaseUrl}/odataservice/odata/table/po_hdr?$select=po_no,external_po_no&$filter=" +
+        Uri.EscapeDataString($"po_no eq {PoNo}"));
+    r.EnsureSuccessStatusCode();
+    using var d = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+    return d.RootElement.GetProperty("value").ToString();
+}
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient c, string token)
+{
+    using var q = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    q.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    using var r = await c.SendAsync(q);
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on play 26.1.6004.0 against a throwaway PO, with a second throwaway PO holding the duplicate value: Python answered No (value `''`) and then Yes (the duplicate); C# set a unique value with no prompt, then the duplicate with Yes. Both POs were deleted afterwards (`delete_flag` `Y`).
+
+*Verified by @mrwuss* ([#267](https://github.com/mrwuss/p21-api-documentation/issues/267)).
 
 ### PurchaseOrderReceipt Service — Receiving a PO
 
