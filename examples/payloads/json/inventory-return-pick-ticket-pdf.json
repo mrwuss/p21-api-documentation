@@ -1,0 +1,47 @@
+{
+  "Name": "m_inventoryreturnpickticket",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "CRITERIA.criteria",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "company_id",
+                  "Value": "ACME"
+                },
+                {
+                  "Name": "location_id",
+                  "Value": "10"
+                },
+                {
+                  "Name": "beg_return_number",
+                  "Value": "7000200"
+                },
+                {
+                  "Name": "end_return_number",
+                  "Value": "7000200"
+                },
+                {
+                  "Name": "print_qty",
+                  "Value": "1"
+                },
+                {
+                  "Name": "reprint_flag",
+                  "Value": "OFF"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

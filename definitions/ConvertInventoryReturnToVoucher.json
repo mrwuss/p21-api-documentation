@@ -1,0 +1,2087 @@
+{
+ "Name": "ConvertInventoryReturnToVoucher",
+ "Template": {
+  "TransactionSet": {
+   "Description": null,
+   "FieldMap": [],
+   "IgnoreDisabled": false,
+   "Name": "ConvertInventoryReturnToVoucher",
+   "OnBehalfOf": null,
+   "Parameters": null,
+   "Query": null,
+   "TransactionSplitMethod": 0,
+   "Transactions": [
+    {
+     "DataElements": [
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "voucher_no"
+       ],
+       "Name": "FORM.form",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "return_number",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "vendor_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "branch_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "disputed_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "c_vouch_all",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "invoice_date",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "invoice_amount_display",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "invoice_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "period",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "year_for_period",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "freight_amount_display",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "charge_freight_to_vendor",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "restocking_fee_amount_display",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "ap_processing_active",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "voucher_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "po_reference_number",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "currency_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "branch_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "vendor_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rma_number",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "document_link_uid"
+       ],
+       "Name": "DOCUMENT_LINK.document_link",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "link_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "link_path",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "row_status_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "mandatory_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "user_print_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "user_fax_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "user_email_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "outside_use_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "send_outside_use_print_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "document_link_uid",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "send_outside_use_email_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "send_outside_use_fax_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "source_area_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_rowind",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_keylist",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "display_area",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_firstind",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_rowno",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "CHARGES.ap_charges",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "purchase_amt_display",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "purchase_acct_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "purchase_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "disputed_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "take_terms",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "landed_cost_driver_complete",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "account_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "iva_received_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "iva_withheld_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "sum_purchase_amt_display",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_sum_charges_excluded_from_terms",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TP_TRANS_X_GL_DIMENSION.tp_trans_x_gl_dimension",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "gl_dimen_type_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "gl_dimension_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "delete_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "gl_dimen_type_uid",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "gl_dimen_type_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "gl_dimension_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rowfocusindicator",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TABPAGE_MISCELLANEOUS.tabpage_miscellaneous",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "default_invoice_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "voucher_class",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "ACCT.acct",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "ap_account_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "vendor_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "ap_account_no_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "vendor_name",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "return_number"
+       ],
+       "Name": "LIST.list",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "quantity_uom",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "qty_vouched_display",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "price_uom",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unit_price_display",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "vouch_complete",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "disputed_amt",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "disputed_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "type_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "return_number",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "supplier_part_number",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "charges",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "qty_to_invoice",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "extended_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "extended_cost_sum",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "total_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "disputed_total",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "total_wout_vat",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "ACCOUNT.account",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "type_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "purchase_account_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "purchase_account_no_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "space",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "note_id"
+       ],
+       "Name": "HDR_NOTE.hdr_note",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "note",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "note_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "topic",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "notepad_class_desc",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "note_id"
+       ],
+       "Name": "LINE_NOTE.line_note",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "note",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "note_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "topic",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "notepad_class_desc",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "note_id"
+       ],
+       "Name": "ITEM_NOTEPAD.item_notepad",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "note_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "topic",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "notepad_class_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "note",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "document_link_uid"
+       ],
+       "Name": "DOCUMENT_LINK_DETAIL.document_link_detail_detail",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "link_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "link_path",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "row_status_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "mandatory_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "user_print_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "user_fax_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "user_email_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "outside_use_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "send_outside_use_print_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "document_link_uid",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "send_outside_use_email_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "send_outside_use_fax_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "source_area_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_rowind",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_keylist",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "display_area",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_firstind",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_rowno",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      }
+     ],
+     "Documents": null,
+     "Status": "New"
+    }
+   ],
+   "UseCodeValues": false
+  }
+ },
+ "TransactionDefinition": {
+  "DataElementDefinitions": [
+   {
+    "BusinessObjectName": "vendor",
+    "DatawindowName": "d_dw_inv_ret_voucher_main_form",
+    "FieldDefinitions": [
+     {
+      "DataType": "Long",
+      "DbColumnName": "return_number",
+      "Label": "Return Number",
+      "Name": "return_number",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "company.company_id",
+      "Label": "Company ID",
+      "Name": "company_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "vendor.vendor_id",
+      "Label": "Vendor ID",
+      "Name": "vendor_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "branch_id",
+      "Label": "Branch ID",
+      "Name": "branch_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "disputed_flag",
+      "Label": "Disputed",
+      "Name": "disputed_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "c_vouch_all",
+      "Label": "Vouch all",
+      "Name": "c_vouch_all",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "invoice_date",
+      "Label": "Invoice Date",
+      "Name": "invoice_date",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "invoice_amount_display",
+      "Label": "Invoice Amount",
+      "Name": "invoice_amount_display",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "invoice_no",
+      "Label": "Invoice Number",
+      "Name": "invoice_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "period",
+      "Label": "Period",
+      "Name": "period",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "year_for_period",
+      "Label": "Year",
+      "Name": "year_for_period",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "freight_amount_display",
+      "Label": "Freight Charge",
+      "Name": "freight_amount_display",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "charge_freight_to_vendor",
+      "Label": "Charge Freight To Vendor",
+      "Name": "charge_freight_to_vendor",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "restocking_fee_amount_display",
+      "Label": "Restocking Fee",
+      "Name": "restocking_fee_amount_display",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "ap_processing_active",
+      "Label": "Connect to Altec doc-link",
+      "Name": "ap_processing_active",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "voucher_no",
+      "Label": "Voucher Number",
+      "Name": "voucher_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "po_reference_number",
+      "Label": "PO Reference Number",
+      "Name": "po_reference_number",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "vendor.currency_id",
+      "Label": "Currency ID",
+      "Name": "currency_id",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "branch_description",
+      "Label": "",
+      "Name": "branch_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.vendor_name",
+      "Label": "",
+      "Name": "vendor_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "company.company_name",
+      "Label": "",
+      "Name": "company_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "rma_number",
+      "Label": "Authorization Number",
+      "Name": "rma_number",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "voucher_no"
+    ],
+    "Name": "FORM.form",
+    "ParentText": "Voucher Information",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "document_link",
+    "DatawindowName": "d_dw_document_link_display",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link.link_name",
+      "Label": "Link Name",
+      "Name": "link_name",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link.link_path",
+      "Label": "Link Path",
+      "Name": "link_path",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "document_link.row_status_flag",
+      "Label": "Status",
+      "Name": "row_status_flag",
+      "Required": false,
+      "ValidValues": [
+       "Delete",
+       "Active",
+       "Inactive"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link.mandatory_flag",
+      "Label": "Mandatory",
+      "Name": "mandatory_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "user_print_flag",
+      "Label": "Print",
+      "Name": "user_print_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "user_fax_flag",
+      "Label": "Fax",
+      "Name": "user_fax_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "user_email_flag",
+      "Label": "E-mail",
+      "Name": "user_email_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link.outside_use_flag",
+      "Label": "Outside Use",
+      "Name": "outside_use_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link_entity_req.send_outside_use_print_flag",
+      "Label": "OU-Print",
+      "Name": "send_outside_use_print_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "document_link.document_link_uid",
+      "Label": null,
+      "Name": "document_link_uid",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link_entity_req.send_outside_use_email_flag",
+      "Label": "OU-Email",
+      "Name": "send_outside_use_email_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link_entity_req.send_outside_use_fax_flag",
+      "Label": "OU-Fax",
+      "Name": "send_outside_use_fax_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "document_link.source_area_cd",
+      "Label": "Source Area",
+      "Name": "source_area_cd",
+      "Required": true,
+      "ValidValues": [
+       "AP Credit/Debit Memo",
+       "AR Credit/Debit Memo",
+       "Cash Collections",
+       "Cash Receipts",
+       "Contact Maintenance",
+       "Container Receipts Entry",
+       "Convert IR to Voucher",
+       "Convert PO to Voucher",
+       "Customer Maintenance",
+       "Customer Part Number Maintenance",
+       "Direct Ship Confirmation",
+       "Inventory Adjustments",
+       "Inventory Return Shipping",
+       "Inventory Returns",
+       "Invoice Entry",
+       "Item Maintenance",
+       "Job Control Maintenance",
+       "Job Pricing Maintenance",
+       "Journal Entries",
+       "Loan Maintenance",
+       "Lot",
+       "Opportunity Maintenance",
+       "Order Entry/RMA",
+       "Physical Count",
+       "PO Requirements/Generation",
+       "Process Transactions",
+       "Production Order Entry/Processing",
+       "Purchase Order Receipts",
+       "Purchase Orders",
+       "Service Item Maintenance",
+       "Service Order Entry",
+       "Ship To Maintenance",
+       "Supplier Maintenance",
+       "Task Maintenance",
+       "Transfers",
+       "Vendor Maintenance",
+       "Vessel Receipts Entry",
+       "Voucher Entry"
+      ]
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_rowind",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_keylist",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "display_area",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_firstind",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_rowno",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "document_link_uid"
+    ],
+    "Name": "DOCUMENT_LINK.document_link",
+    "ParentText": "Document Links",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "voucher_purchase_acct",
+    "DatawindowName": "d_dw_voucher_purchase_acct_charges",
+    "FieldDefinitions": [
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "voucher_purchase_acct.purchase_amt_display",
+      "Label": "Purchase Amount",
+      "Name": "purchase_amt_display",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "voucher_purchase_acct.purchase_acct_no",
+      "Label": "Purchase Account",
+      "Name": "purchase_acct_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "voucher_purchase_acct.purchase_desc",
+      "Label": "Purchase Description",
+      "Name": "purchase_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "voucher_purchase_acct.disputed_flag",
+      "Label": "Disputed",
+      "Name": "disputed_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "voucher_purchase_acct.take_terms",
+      "Label": "Take Terms",
+      "Name": "take_terms",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "landed_cost_driver_complete",
+      "Label": "Driver Complete",
+      "Name": "landed_cost_driver_complete",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "chart_of_accts.account_desc",
+      "Label": "Account Description",
+      "Name": "account_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "voucher_purchase_acct.iva_received_flag",
+      "Label": "IVA Received",
+      "Name": "iva_received_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "voucher_purchase_acct.iva_withheld_flag",
+      "Label": "IVA Withheld",
+      "Name": "iva_withheld_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "sum_purchase_amt_display",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_sum_charges_excluded_from_terms",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "CHARGES.ap_charges",
+    "ParentText": "Charges",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "trans_x_gl_dimension",
+    "DatawindowName": "d_dw_trans_x_gl_dimension",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "gl_dimen_type.gl_dimen_type_id",
+      "Label": "Type ID",
+      "Name": "gl_dimen_type_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "trans_x_gl_dimension.gl_dimension_id",
+      "Label": "Value",
+      "Name": "gl_dimension_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "delete_flag",
+      "Label": "Delete",
+      "Name": "delete_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "trans_x_gl_dimension.gl_dimen_type_uid",
+      "Label": "Gl Dimen Type Uid",
+      "Name": "gl_dimen_type_uid",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "gl_dimen_type.gl_dimen_type_desc",
+      "Label": "Type Desc",
+      "Name": "gl_dimen_type_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "trans_x_gl_dimension.gl_dimension_desc",
+      "Label": "Value Name",
+      "Name": "gl_dimension_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "rowfocusindicator",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TP_TRANS_X_GL_DIMENSION.tp_trans_x_gl_dimension",
+    "ParentText": "GL Dimensions",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "vendor",
+    "DatawindowName": "d_dw_inv_ret_voucher_misc",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.default_invoice_desc",
+      "Label": "Voucher Description",
+      "Name": "default_invoice_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "voucher_class",
+      "Label": "Voucher Class",
+      "Name": "voucher_class",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TABPAGE_MISCELLANEOUS.tabpage_miscellaneous",
+    "ParentText": "Miscellaneous",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "vendor",
+    "DatawindowName": "d_dw_inv_ret_voucher_main_acct",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.ap_account_no",
+      "Label": "AP Account",
+      "Name": "ap_account_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "vendor.vendor_id",
+      "Label": "Vendor ID",
+      "Name": "vendor_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "ap_account_no_desc",
+      "Label": "",
+      "Name": "ap_account_no_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.vendor_name",
+      "Label": "",
+      "Name": "vendor_name",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "ACCT.acct",
+    "ParentText": "Accounts",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "inventory_return_line",
+    "DatawindowName": "d_dw_inv_ret_voucher_line_list_web",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_return_line.quantity_uom",
+      "Label": "Unit of Measure",
+      "Name": "quantity_uom",
+      "Required": false,
+      "ValidValues": [
+       ""
+      ]
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "qty_vouched_display",
+      "Label": "Quantity Returned",
+      "Name": "qty_vouched_display",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_return_line.price_uom",
+      "Label": "Pricing Unit Of Measure",
+      "Name": "price_uom",
+      "Required": false,
+      "ValidValues": [
+       ""
+      ]
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_return_line.unit_price_display",
+      "Label": "Unit Price",
+      "Name": "unit_price_display",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vouch_complete",
+      "Label": "Vouch Complete",
+      "Name": "vouch_complete",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "disputed_amt",
+      "Label": "Disputed Amount",
+      "Name": "disputed_amt",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "disputed_flag",
+      "Label": "Disputed",
+      "Name": "disputed_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "type_id",
+      "Label": "Purchase Type",
+      "Name": "type_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast.item_id",
+      "Label": "Item ID",
+      "Name": "item_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast.item_desc",
+      "Label": "Item Description",
+      "Name": "item_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "inventory_return_hdr.return_number",
+      "Label": "Return Number",
+      "Name": "return_number",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_return_line.supplier_part_number",
+      "Label": "Supplier Part Number",
+      "Name": "supplier_part_number",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "charges",
+      "Label": "",
+      "Name": "charges",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "qty_to_invoice",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "extended_cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "extended_cost_sum",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "total_cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "disputed_total",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "total_wout_vat",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "return_number"
+    ],
+    "Name": "LIST.list",
+    "ParentText": "Items",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "inventory_return_line",
+    "DatawindowName": "d_dw_inv_ret_voucher_line_account",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "description",
+      "Label": "Description",
+      "Name": "description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "type_id",
+      "Label": "Purchase Type",
+      "Name": "type_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast.item_id",
+      "Label": "Item ID",
+      "Name": "item_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast.item_desc",
+      "Label": "Item Description",
+      "Name": "item_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "purchase_account_no",
+      "Label": "Clearing Account",
+      "Name": "purchase_account_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "purchase_account_no_desc",
+      "Label": "Account Description",
+      "Name": "purchase_account_no_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "space",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "ACCOUNT.account",
+    "ParentText": "Purchase Account",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "inventory_return_hdr_notepad",
+    "DatawindowName": "d_dw_invent_return_hdr_notepad_dataentry",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_return_hdr_notepad.note",
+      "Label": "Note",
+      "Name": "note",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_return_hdr_notepad.note_id",
+      "Label": "Note ID",
+      "Name": "note_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_return_hdr_notepad.topic",
+      "Label": "Topic",
+      "Name": "topic",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "notepad_class.notepad_class_desc",
+      "Label": "Class",
+      "Name": "notepad_class_desc",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "note_id"
+    ],
+    "Name": "HDR_NOTE.hdr_note",
+    "ParentText": "Inventory Return Note",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "inventory_return_line_notepad",
+    "DatawindowName": "d_dw_invent_rtn_line_notepad_dataentry",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_return_line_notepad.note",
+      "Label": "Note",
+      "Name": "note",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_return_line_notepad.note_id",
+      "Label": "Note ID",
+      "Name": "note_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_return_line_notepad.topic",
+      "Label": "Topic",
+      "Name": "topic",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "notepad_class.notepad_class_desc",
+      "Label": "Class",
+      "Name": "notepad_class_desc",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "note_id"
+    ],
+    "Name": "LINE_NOTE.line_note",
+    "ParentText": "Inventory Return Line Note",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "note",
+    "DatawindowName": "d_dw_item_notepad_display",
+    "FieldDefinitions": [
+     {
+      "DataType": "Long",
+      "DbColumnName": "note.note_uid",
+      "Label": "Note ID",
+      "Name": "note_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "note.topic",
+      "Label": "Topic",
+      "Name": "topic",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "notepad_class.notepad_class_desc",
+      "Label": "Class",
+      "Name": "notepad_class_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "note.note",
+      "Label": "Note",
+      "Name": "note",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "note_id"
+    ],
+    "Name": "ITEM_NOTEPAD.item_notepad",
+    "ParentText": "Item Note",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "document_link",
+    "DatawindowName": "d_dw_document_link_display",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link.link_name",
+      "Label": "Link Name",
+      "Name": "link_name",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link.link_path",
+      "Label": "Link Path",
+      "Name": "link_path",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "document_link.row_status_flag",
+      "Label": "Status",
+      "Name": "row_status_flag",
+      "Required": false,
+      "ValidValues": [
+       "Delete",
+       "Active",
+       "Inactive"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link.mandatory_flag",
+      "Label": "Mandatory",
+      "Name": "mandatory_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "user_print_flag",
+      "Label": "Print",
+      "Name": "user_print_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "user_fax_flag",
+      "Label": "Fax",
+      "Name": "user_fax_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "user_email_flag",
+      "Label": "E-mail",
+      "Name": "user_email_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link.outside_use_flag",
+      "Label": "Outside Use",
+      "Name": "outside_use_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link_entity_req.send_outside_use_print_flag",
+      "Label": "OU-Print",
+      "Name": "send_outside_use_print_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "document_link.document_link_uid",
+      "Label": null,
+      "Name": "document_link_uid",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link_entity_req.send_outside_use_email_flag",
+      "Label": "OU-Email",
+      "Name": "send_outside_use_email_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link_entity_req.send_outside_use_fax_flag",
+      "Label": "OU-Fax",
+      "Name": "send_outside_use_fax_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "document_link.source_area_cd",
+      "Label": "Source Area",
+      "Name": "source_area_cd",
+      "Required": true,
+      "ValidValues": [
+       "AP Credit/Debit Memo",
+       "AR Credit/Debit Memo",
+       "Cash Collections",
+       "Cash Receipts",
+       "Contact Maintenance",
+       "Container Receipts Entry",
+       "Convert IR to Voucher",
+       "Convert PO to Voucher",
+       "Customer Maintenance",
+       "Customer Part Number Maintenance",
+       "Direct Ship Confirmation",
+       "Inventory Adjustments",
+       "Inventory Return Shipping",
+       "Inventory Returns",
+       "Invoice Entry",
+       "Item Maintenance",
+       "Job Control Maintenance",
+       "Job Pricing Maintenance",
+       "Journal Entries",
+       "Loan Maintenance",
+       "Lot",
+       "Opportunity Maintenance",
+       "Order Entry/RMA",
+       "Physical Count",
+       "PO Requirements/Generation",
+       "Process Transactions",
+       "Production Order Entry/Processing",
+       "Purchase Order Receipts",
+       "Purchase Orders",
+       "Service Item Maintenance",
+       "Service Order Entry",
+       "Ship To Maintenance",
+       "Supplier Maintenance",
+       "Task Maintenance",
+       "Transfers",
+       "Vendor Maintenance",
+       "Vessel Receipts Entry",
+       "Voucher Entry"
+      ]
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_rowind",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_keylist",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "display_area",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_firstind",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_rowno",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "document_link_uid"
+    ],
+    "Name": "DOCUMENT_LINK_DETAIL.document_link_detail_detail",
+    "ParentText": "Document Links",
+    "Type": "List"
+   }
+  ],
+  "KeyDefinitions": [
+   {
+    "Location": "form",
+    "Name": "voucher_no"
+   }
+  ]
+ }
+}

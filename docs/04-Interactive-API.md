@@ -3025,9 +3025,299 @@ HTTP 200
 That run tried `Status` variants, `receive_all` as both `Y`/`N` and `ON`/`OFF`, with and without `period` / `year_for_period`, and a payload built from the tenant's own `/defaults` output, against an approved `po_type='D'` PO with one open line. Whether the 5950.0 result reflects the build or a difference in that payload is not established. If you get the empty result, check `Summary.Succeeded` and read the PO back; do not assume a confirmation happened.
 
 - **Never send `c_email_invoice`.** It is disabled, and a transaction that tripped on it reported `Failed` **after** writing the receipt, the PO completion and the customer invoice (reported by Alex Westemeier; not re-run here, because the failure leaves those documents behind).
-- **Only a full confirmation (`receive_all` on) was run.** Nothing here drives a **partial** one, which is the case that matters for the date overwrite. `TABPAGE_17.tp_17_dw_17` exposes `unit_quantity` and a `complete` bound to `po_line.complete`, so a partial looks expressible in principle.
+- **A partial confirmation works too, keyed on `item_id`.** See [A partial confirmation through the Transaction API](#a-partial-confirmation-through-the-transaction-api) below.
 
-The date-overwrite behavior above rests on the field binding and on the receipt data. A live **full** confirmation, through the Interactive window below and through the Transaction API above, then wrote the `shipment_date` into `po_line.supplier_ship_date`, as predicted; a **partial** confirmation is still not exercised here.
+The date-overwrite behavior above rests on the field binding and on the receipt data. A live **full** confirmation, through the Interactive window below and through the Transaction API above, then wrote the `shipment_date` into `po_line.supplier_ship_date`, as predicted. A **partial** confirmation, below, wrote it onto the lines it confirmed and left the other lines alone.
+
+##### A partial confirmation through the Transaction API
+
+Verified on play 26.1.6004.0 (November 2026) on two-line `po_type = 'D'` POs built for the test (three units per line), with `po_line` read back after every POST. The header is the full-confirmation header with `receive_all` = `OFF`; with it off, every line's `unit_quantity` on `TABPAGE_17.tp_17_dw_17` starts at `0`. Each row on `TABPAGE_17.tp_17_dw_17` then sets the quantity shipped for one line:
+
+| `TABPAGE_17.tp_17_dw_17` `Keys` | Rows | Result |
+|---|---|---|
+| `[]` | one row, `unit_quantity` 1, meant for line 2 | line **2** (the last line) received 1 |
+| `["item_id"]` | line 1's `item_id`, `unit_quantity` 1 | line **1** received 1; line 2 unchanged |
+| `["item_id"]` | both items, `unit_quantity` 1 each | each line received 1 |
+| *(header only)* | `receive_all` = `ON` on the partly received PO | the remainder of both lines; PO and order complete |
+
+- **Key the rows on `item_id`, and put `item_id` in the row's edits.** Without a key, the row edits the **last** line of the PO, whichever line you meant. `item_id` is disabled as a field but accepted as the key on this build. A forum report of *"Column is disabled: item_id"* with this key on 25.2.5844.160 was not reproduced here (no 25.2 tenant).
+- **Each confirmation writes its own receipt and its own invoice.** Three partial POSTs on one PO left three `inventory_receipts_hdr` rows (`po_number` = the PO) and three `invoice_hdr` rows on the sales order, and each one invoiced only the quantity it confirmed (`oe_line.qty_invoiced` went 1, then 2).
+- **`supplier_ship_date` is written only on the lines the POST confirmed.** On the first partial, line 2 got the confirmation's date and line 1, sent with no row, stayed NULL. A line confirmed in part gets the date for its whole open balance, as described above. The test POs' lines carried no `supplier_ship_date` before the first confirmation, so these runs show the write, not the loss of an earlier promise.
+- Serial numbers (`TABPAGE_SERIAL.serial`) were not tested: the items were not serialized.
+
+Payload: [`direct-ship-confirmation-partial.json`](../examples/payloads/json/direct-ship-confirmation-partial.json).
+
+<!-- tabs -->
+
+```python
+"""Confirm part of a direct-ship PO (DirectShipConfirmation, /transaction), then read the lines back."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+PO_NO = "500100"                          # an approved po_type 'D' PO
+SHIPPED = {"WIDGET-001": "1"}             # item_id -> quantity the supplier shipped
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+        },
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+def edit(name: str, value: str) -> dict:
+    return {"Name": name, "Value": value}
+
+
+def po_lines(client: httpx.Client) -> list[dict]:
+    """The PO's lines over OData; supplier_ship_date is overwritten on confirmed lines."""
+    r = client.get(
+        f"{BASE_URL}/odataservice/odata/table/po_line",
+        params={"$filter": f"po_no eq {PO_NO}",
+                "$select": "line_no,qty_ordered,qty_received,complete,supplier_ship_date",
+                "$orderby": "line_no"},
+    )
+    r.raise_for_status()
+    return r.json()["value"]
+
+
+payload = {
+    "Name": "DirectShipConfirmation",
+    "UseCodeValues": False,
+    "Transactions": [{
+        "Status": "New",
+        "DataElements": [
+            {
+                "Name": "TABPAGE_1.tp_1_dw_po", "Type": "Form", "Keys": ["po_no"],
+                "Rows": [{"Edits": [
+                    edit("po_no", PO_NO),
+                    edit("receive_all", "OFF"),   # every line starts at 0
+                    edit("print_invoice", "OFF"),
+                    edit("fax_invoice", "OFF"),
+                ], "RelativeDateEdits": []}],
+            },
+            {
+                # Keys ["item_id"] picks the line. Without it, every row edits
+                # the LAST line of the PO.
+                "Name": "TABPAGE_17.tp_17_dw_17", "Type": "List", "Keys": ["item_id"],
+                "Rows": [{"Edits": [
+                    edit("item_id", item),
+                    edit("unit_quantity", qty),
+                ], "RelativeDateEdits": []} for item, qty in SHIPPED.items()],
+            },
+        ],
+    }],
+}
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    client.headers.update({"Authorization": f"Bearer {token}",
+                           "Accept": "application/json"})
+    before = po_lines(client)
+    print("before:", before)
+    r = client.post(f"{ui_server}/api/v2/transaction", json=payload)
+    r.raise_for_status()
+    result = r.json()
+    summary = result["Summary"]
+    if summary["Failed"] or not summary["Succeeded"]:
+        raise RuntimeError(f"Confirmation failed: {summary} {result.get('Messages')}")
+    print("summary:", summary)
+    # Each confirmation writes its own receipt and invoice; read the lines back.
+    print("after: ", po_lines(client))
+```
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+const string PoNo = "500100";                        // an approved po_type 'D' PO
+const string Shipped = "WIDGET-001:1";               // item_id:quantity pairs the supplier shipped, comma-separated
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(
+    new MediaTypeWithQualityHeaderValue("application/json"));
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", token);
+
+static object Edit(string name, string value) => new { Name = name, Value = value };
+
+var rows = Shipped.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    .Select(pair => pair.Split(':', 2))
+    .Select(p => new
+    {
+        Edits = new[] { Edit("item_id", p[0]), Edit("unit_quantity", p[1]) },
+        RelativeDateEdits = Array.Empty<object>(),
+    })
+    .ToArray();
+
+var payload = new
+{
+    Name = "DirectShipConfirmation",
+    UseCodeValues = false,
+    Transactions = new[]
+    {
+        new
+        {
+            Status = "New",
+            DataElements = new object[]
+            {
+                new
+                {
+                    Name = "TABPAGE_1.tp_1_dw_po", Type = "Form", Keys = new[] { "po_no" },
+                    Rows = new[]
+                    {
+                        new
+                        {
+                            Edits = new[]
+                            {
+                                Edit("po_no", PoNo),
+                                Edit("receive_all", "OFF"),   // every line starts at 0
+                                Edit("print_invoice", "OFF"),
+                                Edit("fax_invoice", "OFF"),
+                            },
+                            RelativeDateEdits = Array.Empty<object>(),
+                        },
+                    },
+                },
+                // Keys ["item_id"] picks the line. Without it, every row edits
+                // the LAST line of the PO.
+                new { Name = "TABPAGE_17.tp_17_dw_17", Type = "List", Keys = new[] { "item_id" }, Rows = rows },
+            },
+        },
+    },
+};
+
+Console.WriteLine($"before: {await PoLinesAsync(client)}");
+using (var r = await client.PostAsync($"{uiServer}/api/v2/transaction",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")))
+{
+    r.EnsureSuccessStatusCode();
+    using var d = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+    var s = d.RootElement.GetProperty("Summary");
+    if (s.GetProperty("Failed").GetInt32() > 0 || s.GetProperty("Succeeded").GetInt32() == 0)
+    {
+        throw new InvalidOperationException($"Confirmation failed: {s} {d.RootElement.GetProperty("Messages")}");
+    }
+    Console.WriteLine($"summary: {s}");
+}
+// Each confirmation writes its own receipt and invoice; read the lines back.
+Console.WriteLine($"after:  {await PoLinesAsync(client)}");
+
+// The PO's lines over OData; supplier_ship_date is overwritten on confirmed lines.
+static async Task<string> PoLinesAsync(HttpClient c)
+{
+    using var r = await c.GetAsync(
+        $"{BaseUrl}/odataservice/odata/table/po_line" +
+        "?$select=line_no,qty_ordered,qty_received,complete,supplier_ship_date&$orderby=line_no&$filter=" +
+        Uri.EscapeDataString($"po_no eq {PoNo}"));
+    r.EnsureSuccessStatusCode();
+    using var d = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+    return d.RootElement.GetProperty("value").ToString();
+}
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient c, string token)
+{
+    using var q = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    q.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    using var r = await c.SendAsync(q);
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on play 26.1.6004.0 against one two-line direct-ship PO built for the test: Python confirmed one unit of line 1, then C# confirmed one unit of line 2 and then the rest of both lines in one POST. The read-backs above are from those runs.
+
+> **Credit:** John Kennedy, Kevin St Laurent and Juan Rabellino, P21WWUG Forum104 ([Topic237864](https://forums.p21ww.org/Topic237864.aspx)): unkeyed rows fill the last PO line, and `Keys: ["item_id"]` targets the right one. The 25.2 `item_id` report: Juan Rabellino and Felipe Maurer ([Topic247758](https://forums.p21ww.org/Topic247758.aspx)). Verified here on 26.1.6004.0 by @mrwuss ([#232](https://github.com/mrwuss/p21-api-documentation/issues/232)).
 
 ##### The Interactive path works
 

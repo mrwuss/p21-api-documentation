@@ -914,6 +914,10 @@
 <td><a href="03-Transaction-API.html#keys-row-identity-and-the-collapse-trap">03 § Keys — Row Identity and the Collapse Trap</a></td>
 </tr>
 <tr>
+<td>A grid row edited the <strong>wrong (last) line</strong> of a loaded record</td>
+<td><a href="03-Transaction-API.html#what-the-definition-already-tells-you">03 § What the definition already tells you</a> — on grids the service fills from a record, an unkeyed row edits the last line</td>
+</tr>
+<tr>
 <td>Pick the right <code>Keys</code> for an element (and what over-keying breaks)</td>
 <td><a href="03-Transaction-API.html#choosing-a-key">03 § Choosing a key</a> · <a href="03-Transaction-API.html#what-the-definition-already-tells-you">03 § What the definition already tells you</a></td>
 </tr>
@@ -994,12 +998,20 @@
 <td><a href="04-Interactive-API.html#the-interactive-path-works">04 § The Interactive path works</a> (runnable: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/direct_ship_confirmation.py"><code>direct_ship_confirmation.py</code></a>) · <a href="04-Interactive-API.html#the-transaction-api-path-works-on-26159500">04 § The Transaction API path works on 26.1.5950.0</a> — one POST keyed by <code>po_no</code> · <a href="04-Interactive-API.html#directshipconfirmation-writes-its-ship-date-down-onto-every-line">04 § DirectShipConfirmation writes its ship date down</a> — overwrites <code>supplier_ship_date</code> on every line; checkboxes take <code>ON</code>/<code>OFF</code></td>
 </tr>
 <tr>
+<td>Confirm <strong>part</strong> of a direct-ship PO</td>
+<td><a href="04-Interactive-API.html#a-partial-confirmation-through-the-transaction-api">04 § A partial confirmation through the Transaction API</a> — <code>receive_all</code> OFF, <code>TABPAGE_17</code> keyed <code>item_id</code>; unkeyed rows hit the last line; one receipt and one invoice per POST</td>
+</tr>
+<tr>
 <td><strong>Receive</strong> a PO / receipt won't post (bin errors)</td>
 <td><a href="03-Transaction-API.html#purchaseorderreceipt-service-receiving-a-po">03 § PurchaseOrderReceipt Service</a></td>
 </tr>
 <tr>
 <td><strong>Vouch</strong> a receipt against a vendor invoice</td>
 <td><a href="03-Transaction-API.html#convertpotovoucher-service-vouching-a-receipt">03 § ConvertPOToVoucher Service</a></td>
+</tr>
+<tr>
+<td><strong>Return stock to a vendor</strong> and vouch the credit (create → approve → print → ship → vouch); <strong>vouch only some lines</strong></td>
+<td><a href="03-Transaction-API.html#inventory-returns-create-ship-and-vouch-partial-vouchers-key-on-line_number">03 § Inventory Returns</a> — print the pick ticket before shipping; key the voucher grid on <code>line_number</code> or every row hits the last line</td>
 </tr>
 <tr>
 <td><strong><code>Column is disabled</code> for my service account but not for a person</strong></td>

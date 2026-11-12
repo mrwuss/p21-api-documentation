@@ -1,14 +1,17 @@
 {
- "fetched_date": "2026-10-11",
+ "fetched_date": "2026-11-11",
  "ok": [
   "Address",
   "Assembly",
   "BinLocation",
+  "ConvertInventoryReturnToVoucher",
   "ConvertPOToVoucher",
   "Customer",
   "DirectShipConfirmation",
   "InventoryAdjustment",
   "InventoryCostEdit",
+  "InventoryReturn",
+  "InventoryReturnShipping",
   "Item",
   "ItemDefaults",
   "JobContractPricing",

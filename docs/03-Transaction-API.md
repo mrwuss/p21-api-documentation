@@ -389,6 +389,8 @@ The live endpoint carries the same field — see [Get Service Definition](#get-s
 
 **Elements that declare no `KeyFields` never fold.** The collapse runs on the element's *declared* key fields, so on the ~third of `List` elements that declare none, repeated rows simply append in order. Verified on `Order` → `TABPAGE_RELEASE.tabpage_release` (scheduled releases — declared keys: none): two release rows with `Keys: []` landed as **two rows**, and re-sending the *same* row twice was treated as a second new row — it failed business validation (`The release date must be after the previous release date`) rather than folding into the first. So the collapse trap lives only on keyed elements; on keyless ones the trap inverts — nothing deduplicates for you, and a retried payload appends duplicates instead of matching existing rows.
 
+**On a grid the service fills for you, a row with no key edits the last row.** Some services load their lines from the record you name (a return, a PO), so your `List` rows edit existing lines rather than add new ones. Sent with `Keys: []`, every row landed on the **last** loaded line on both services tested on play 26.1.6004.0: `ConvertInventoryReturnToVoucher` → `LIST.list` and `DirectShipConfirmation` → `TABPAGE_17.tp_17_dw_17`. The key that picks the line is not always in `KeyFields`: `line_number` on the voucher grid is not even a field of the element. See [partial inventory-return vouchers](#a-partial-voucher-must-key-listlist-on-line_number) and [partial direct-ship confirmations](04-Interactive-API.md#a-partial-confirmation-through-the-transaction-api).
+
 ### Debugging a key problem
 
 The symptom is always the same shape: **the write succeeded and the data is wrong** — a line missing, a quantity belonging to a different line, or an update that appeared as a new row. When that happens:
@@ -4366,6 +4368,341 @@ Step three of **build → receive → vouch**, and another clean one-POST. Verif
 - The voucher lands `approved='Y'`, `paid_in_full='N'`, ready for the payment run, and writes `apinv_hdr` + `apinv_line` (with `po_line_uid` links) plus the `apinv_hdr_x_inventory_receipts` cross-reference.
 
 *(Cycle and payload shapes from [Alex Westemeier](https://github.com/AWestemeier); all three steps re-verified end-to-end here.)*
+
+### Inventory Returns — Create, Ship, and Vouch (Partial Vouchers Key on `line_number`)
+
+A return to a vendor is four services in a row, each one stateless POST, plus one report call. Verified on play 26.1.6004.0 (November 2026) with throwaway returns of one unit per line at a bin-tracked location, every step read back over OData.
+
+| Step | Service / endpoint | Status after (`inventory_return_hdr.row_status_flag`) |
+|---|---|---|
+| 1. Create | `InventoryReturn` | `971` Unapproved |
+| 2. Approve | `InventoryReturn`, `row_status_flag` = `Approved` | `972` Approved |
+| 3. Print the pick ticket | `POST /api/v2/process/pdfreport`, `m_inventoryreturnpickticket` | `973` Printed |
+| 4. Ship | `InventoryReturnShipping` | `974` Shipped; each line `qty_returned` set |
+| 5. Vouch | `ConvertInventoryReturnToVoucher` | `975` Vouched once every line is vouched |
+
+`976` is Canceled. The codes are the same on every tenant (`code_p21`).
+
+**1. Create.** `FORM.form` keyed `["return_number"]` takes `location_id`, `vendor_id`, `supplier_id` and `return_date`. Send **`vendor_id` before `supplier_id`**: with `supplier_id` alone the transaction fails *"Vendor ID is required. DataElement: form, Column: supplier_id"*. Each line is a `LIST.list` row (`item_id`, `unit_quantity`; keyed `["item_id"]` in the run, although the definition declares no `KeyFields` for that element), and at a bin-tracked location it is followed by its own `TABPAGE_BIN.bin` row (`bin_cd`, `unit_quantity`): [repeat the element pair](#the-general-rule-repeat-the-element-pair-dont-batch-it) per line. The new `return_number` comes back on `FORM.form`. Payload: [`inventory-return-create.json`](../examples/payloads/json/inventory-return-create.json).
+
+**2. Approve.** The same service, keyed on the `return_number`, with `row_status_flag` = `Approved` (the label; `UseCodeValues: false`). Its valid values are `Unapproved`, `Approved`, `Printed`, `Shipped`, `Vouched` and `Canceled`, but only the approval is a status you set: `Printed` fails *"Invalid status."* Payload: [`inventory-return-approve.json`](../examples/payloads/json/inventory-return-approve.json).
+
+**3. Print the pick ticket.** Shipping refuses a return that has not been printed: *"This inventory return must be printed first."* (and refuses an unapproved one with *"Enter a valid ID or leave ID blank."*). Print it through the [report endpoint](#pdf-report-generation) with `m_inventoryreturnpickticket` and `CRITERIA.criteria` set to the one return (`beg_return_number` = `end_return_number`). Build the criteria from `GET /api/v2/defaults/m_inventoryreturnpickticket`, but **drop `company_name`**: the defaults include it, and sending it fails with HTTP 400 *"Column is disabled: company_name"*. The response is a JSON array whose `DocumentData` is the base64 PDF; the return moves to `973`. Payload: [`inventory-return-pick-ticket-pdf.json`](../examples/payloads/json/inventory-return-pick-ticket-pdf.json).
+
+**4. Ship.** `InventoryReturnShipping`: `FORM.form` with the `return_number`, then one `LIST.list` row per line keyed `["item_id"]` with `c_qty_shipped`. Payload: [`inventory-return-ship.json`](../examples/payloads/json/inventory-return-ship.json).
+
+**5. Vouch.** `ConvertInventoryReturnToVoucher` turns the vendor's credit into a voucher. `FORM.form` keyed `["voucher_no"]` takes `return_number`, `invoice_no`, `invoice_date` and `invoice_amount_display`. The voucher lands as a debit memo: `apinv_hdr.voucher_type` = `D`, with `invoice_amount` negative (a 2.28 credit is stored as `-2.28`).
+
+- **`c_vouch_all` defaults to `Y`**, which sets every open line to its full quantity. Set it `OFF` to zero every line, then set the lines you are vouching.
+- The editable quantity is **`qty_vouched_display`**. `qty_to_invoice` and `item_id` on `LIST.list` both fail with *"Column is disabled"*.
+- `invoice_amount_display` must equal the sum of the vouched lines' cost, or the transaction fails *"The invoice total amount does not equal the sum of the extended cost."*
+- `invoice_no` is unique per vendor: a second voucher with the same number fails *"This is a duplicate invoice number for the vendor/company ..."*.
+
+#### A partial voucher must key `LIST.list` on `line_number`
+
+`LIST.list` declares `KeyFields` `["return_number"]`, and `line_number` is not one of its fields in the definition. It is the key that picks the line all the same. Without it, the row edits the **last** line of the return:
+
+| `LIST.list` `Keys` | Rows sent (3 open lines) | Result |
+|---|---|---|
+| `[]` | one row, `qty_vouched_display` 1, meant for line 2 | `invoice_amount_display` equal to line 2's cost and to line 1's cost both failed the total check; line **3**'s cost passed, and line 3 was vouched |
+| `[]` | two rows, `qty_vouched_display` 1 each | only line **3** vouched (amount = line 3's cost) |
+| `["line_number"]` | `line_number` 2 | line **2** vouched; lines 1 and 3 untouched |
+| `["line_number"]` | `line_number` 1 and 3 | lines **1** and **3** vouched |
+
+On a two-line return the unkeyed row also landed on the last line (line 2). The offline validator warns that `line_number` is not in the schema for `LIST.list`; the warning is expected here. Payload: [`convert-inventory-return-to-voucher.json`](../examples/payloads/json/convert-inventory-return-to-voucher.json).
+
+<!-- tabs -->
+
+```python
+"""Vouch chosen lines of a shipped inventory return (ConvertInventoryReturnToVoucher), then read them back."""
+import re
+from datetime import date
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+RETURN_NUMBER = "12345"                   # inventory_return_hdr.return_number (Shipped)
+LINES = {2: "1"}                          # line_number -> quantity to vouch
+INVOICE_NO = "VENDOR-CM-001"              # vendor's credit memo number (unique per vendor)
+INVOICE_AMOUNT = "2.28"                   # must equal the sum of the vouched lines
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+        },
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+def edit(name: str, value: str) -> dict:
+    return {"Name": name, "Value": value}
+
+
+def return_lines(client: httpx.Client) -> list[dict]:
+    """The return's lines with their vouched quantities, over OData."""
+    hdr = client.get(
+        f"{BASE_URL}/odataservice/odata/table/inventory_return_hdr",
+        params={"$filter": f"return_number eq {RETURN_NUMBER}",
+                "$select": "inventory_return_hdr_uid,row_status_flag"},
+    )
+    hdr.raise_for_status()
+    uid = hdr.json()["value"][0]["inventory_return_hdr_uid"]
+    lines = client.get(
+        f"{BASE_URL}/odataservice/odata/table/inventory_return_line",
+        params={"$filter": f"inventory_return_hdr_uid eq {uid}",
+                "$select": "line_number,qty_returned,qty_vouched,row_status_flag",
+                "$orderby": "line_number"},
+    )
+    lines.raise_for_status()
+    return lines.json()["value"]
+
+
+payload = {
+    "Name": "ConvertInventoryReturnToVoucher",
+    "UseCodeValues": False,
+    "Transactions": [{
+        "Status": "New",
+        "DataElements": [
+            {
+                "Name": "FORM.form", "Type": "Form", "Keys": ["voucher_no"],
+                "Rows": [{"Edits": [
+                    edit("return_number", RETURN_NUMBER),
+                    edit("invoice_no", INVOICE_NO),
+                    edit("invoice_date", date.today().strftime("%m/%d/%Y")),
+                    edit("invoice_amount_display", INVOICE_AMOUNT),
+                    # OFF zeroes every line; the rows below set the ones to vouch.
+                    edit("c_vouch_all", "OFF"),
+                ], "RelativeDateEdits": []}],
+            },
+            {
+                # line_number is not in the published definition, but it is the
+                # key that picks the row. Without it, every row edits the LAST line.
+                "Name": "LIST.list", "Type": "List", "Keys": ["line_number"],
+                "Rows": [{"Edits": [
+                    edit("line_number", str(line)),
+                    edit("qty_vouched_display", qty),
+                ], "RelativeDateEdits": []} for line, qty in LINES.items()],
+            },
+        ],
+    }],
+}
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    client.headers.update({"Authorization": f"Bearer {token}",
+                           "Accept": "application/json"})
+    print("before:", return_lines(client))
+    r = client.post(f"{ui_server}/api/v2/transaction", json=payload)
+    r.raise_for_status()
+    result = r.json()
+    summary = result["Summary"]
+    if summary["Failed"] or not summary["Succeeded"]:
+        raise RuntimeError(f"Voucher failed: {summary} {result.get('Messages')}")
+    print("summary:", summary)
+    # HTTP 200 and Succeeded can still mean nothing landed: read the lines back.
+    print("after: ", return_lines(client))
+```
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+const string ReturnNumber = "12345";                 // inventory_return_hdr.return_number (Shipped)
+const string Lines = "2:1";                          // line_number:quantity pairs, comma-separated
+const string InvoiceNo = "VENDOR-CM-001";            // vendor's credit memo number (unique per vendor)
+const string InvoiceAmount = "2.28";                 // must equal the sum of the vouched lines
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(
+    new MediaTypeWithQualityHeaderValue("application/json"));
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", token);
+
+static object Edit(string name, string value) => new { Name = name, Value = value };
+
+var rows = Lines.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    .Select(pair => pair.Split(':', 2))
+    .Select(p => new
+    {
+        Edits = new[] { Edit("line_number", p[0]), Edit("qty_vouched_display", p[1]) },
+        RelativeDateEdits = Array.Empty<object>(),
+    })
+    .ToArray();
+
+var payload = new
+{
+    Name = "ConvertInventoryReturnToVoucher",
+    UseCodeValues = false,
+    Transactions = new[]
+    {
+        new
+        {
+            Status = "New",
+            DataElements = new object[]
+            {
+                new
+                {
+                    Name = "FORM.form", Type = "Form", Keys = new[] { "voucher_no" },
+                    Rows = new[]
+                    {
+                        new
+                        {
+                            Edits = new[]
+                            {
+                                Edit("return_number", ReturnNumber),
+                                Edit("invoice_no", InvoiceNo),
+                                Edit("invoice_date", DateTime.Today.ToString("MM/dd/yyyy")),
+                                Edit("invoice_amount_display", InvoiceAmount),
+                                // OFF zeroes every line; the rows below set the ones to vouch.
+                                Edit("c_vouch_all", "OFF"),
+                            },
+                            RelativeDateEdits = Array.Empty<object>(),
+                        },
+                    },
+                },
+                // line_number is not in the published definition, but it is the
+                // key that picks the row. Without it, every row edits the LAST line.
+                new { Name = "LIST.list", Type = "List", Keys = new[] { "line_number" }, Rows = rows },
+            },
+        },
+    },
+};
+
+Console.WriteLine($"before: {await ReturnLinesAsync(client)}");
+using (var r = await client.PostAsync($"{uiServer}/api/v2/transaction",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")))
+{
+    r.EnsureSuccessStatusCode();
+    using var d = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+    var s = d.RootElement.GetProperty("Summary");
+    if (s.GetProperty("Failed").GetInt32() > 0 || s.GetProperty("Succeeded").GetInt32() == 0)
+    {
+        throw new InvalidOperationException($"Voucher failed: {s} {d.RootElement.GetProperty("Messages")}");
+    }
+    Console.WriteLine($"summary: {s}");
+}
+// HTTP 200 and Succeeded can still mean nothing landed: read the lines back.
+Console.WriteLine($"after:  {await ReturnLinesAsync(client)}");
+
+// The return's lines with their vouched quantities, over OData.
+static async Task<string> ReturnLinesAsync(HttpClient c)
+{
+    using var h = await c.GetAsync(
+        $"{BaseUrl}/odataservice/odata/table/inventory_return_hdr?$select=inventory_return_hdr_uid&$filter=" +
+        Uri.EscapeDataString($"return_number eq {ReturnNumber}"));
+    h.EnsureSuccessStatusCode();
+    using var hd = JsonDocument.Parse(await h.Content.ReadAsStringAsync());
+    var uid = hd.RootElement.GetProperty("value")[0].GetProperty("inventory_return_hdr_uid");
+    using var l = await c.GetAsync(
+        $"{BaseUrl}/odataservice/odata/table/inventory_return_line" +
+        "?$select=line_number,qty_returned,qty_vouched,row_status_flag&$orderby=line_number&$filter=" +
+        Uri.EscapeDataString($"inventory_return_hdr_uid eq {uid}"));
+    l.EnsureSuccessStatusCode();
+    using var ld = JsonDocument.Parse(await l.Content.ReadAsStringAsync());
+    return ld.RootElement.GetProperty("value").ToString();
+}
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient c, string token)
+{
+    using var q = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    q.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    using var r = await c.SendAsync(q);
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on play 26.1.6004.0 against a two-line return created for the test: Python vouched line 2, then C# vouched line 1, and each read-back showed the line moving to `qty_vouched` 1 and status `975`.
+
+> **Credit:** Spencer Smith, P21WWUG Forum104 ([Topic245569](https://forums.p21ww.org/Topic245569.aspx)) — partial vouchers need `line_number` as a key on `LIST.list`. Verified here on 26.1.6004.0, with one correction: without the key the rows landed on the **last** return line, not the first. *Verified by @mrwuss* ([#232](https://github.com/mrwuss/p21-api-documentation/issues/232)).
 
 ### Vendor Service — Creating a Vendor (and Its Supplier)
 
