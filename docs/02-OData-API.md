@@ -255,6 +255,12 @@ Return only specific fields:
 /odata/table/supplier?$select=supplier_id,supplier_name
 ```
 
+Return every field (the same columns as leaving `$select` out):
+
+```http
+/odata/table/supplier?$select=*
+```
+
 > ⚠️ **An unknown `$select` column returns 404, not 400.** Naming a column that doesn't exist fails the whole request with an empty-bodied **404** — indistinguishable at a glance from "table not exposed" or "no permission". If a table you know exists suddenly 404s, drop the `$select` and retry before chasing Data Service permissions; a misremembered column name (e.g. `supplier_id` on `po_hdr`, which actually has `vendor_id`) is the more common cause. Verified on 2026.1.
 
 ### $filter - Filter Results
@@ -266,6 +272,20 @@ Filter records based on conditions:
 ```
 
 Dates are bare `yyyy-MM-dd` literals, and `now()` is not supported — see [Non-Expired Records](#non-expired-records).
+
+To filter on a date **and time**, write an unquoted ISO 8601 literal with a `T` and a UTC offset: `2026-11-05T10:16:00Z`, `2026-11-05T10:16:00-05:00` or `2026-11-05T10:16:00.234-05:00`. `date_last_modified` is an `Edm.DateTimeOffset`, and each near miss fails the whole request with a 404:
+
+| Literal | Result |
+|---|---|
+| `2026-11-05T10:16:00` (no offset) | 404 `The DateTimeOffset text '2026-11-05T10:16:00' should be in format 'yyyy-mm-ddThh:mm:ss('.'s+)?(zzzzzz)?'` |
+| `2026-11-05 10:16:00Z` (a space instead of `T`) | 404 `Syntax error at position 35 in 'date_last_modified gt 2026-11-05 10:16:00Z'` |
+| `'2026-11-05T10:16:00Z'` (quoted) | 404 `A binary operator with incompatible types was detected. Found operand types 'Edm.DateTimeOffset' and 'Edm.String'` |
+
+> ⚠️ **Encode a `+` offset as `%2B`.** In a hand-built URL, `+02:00` decodes to a space, the server sees no offset, and you get the first 404 above. Passing the filter through your HTTP client's query-parameter API (`params=` in `httpx`, `Uri.EscapeDataString` in C#) encodes it for you.
+
+*Verified on play 26.1.6004.0 against `supplier.date_last_modified`, November 2026.*
+
+> **Credit:** [Brian Powell Jr](https://github.com/BPowell76) — reported the date-time format gap ([#256](https://github.com/mrwuss/p21-api-documentation/pull/256)).
 
 ### $orderby - Sort Results
 

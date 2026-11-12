@@ -18,6 +18,10 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-11-11
+
+- **docs:** **[Date-time literals in `$filter`](02-OData-API.md#filter-filter-results)** need a `T` and a UTC offset (`Z`, `-05:00`), unquoted. Verified on play 26.1.6004.0: no offset, a space instead of `T`, and a quoted value each return a 404, and an unencoded `+` offset decodes to a space and fails the same way. [`$select=*`](02-OData-API.md#select-choose-fields) returns the same columns as no `$select`. — *Brian Powell Jr ([#256](https://github.com/mrwuss/p21-api-documentation/pull/256)), verified @mrwuss*
+
 ## 2026-10-29 — v1.30.0
 
 This release also includes the 2026-10-21 and 2026-10-17 entries below.

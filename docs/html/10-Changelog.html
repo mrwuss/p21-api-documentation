@@ -660,6 +660,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-11-11">2026-11-11</a></li>
 <li><a href="#2026-10-29-v1300">2026-10-29 — v1.30.0</a></li>
 <li><a href="#2026-10-21">2026-10-21</a></li>
 <li><a href="#2026-10-17">2026-10-17</a></li>
@@ -766,6 +767,10 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-11-11">2026-11-11</h2>
+<ul>
+<li><strong>docs:</strong> <strong><a href="02-OData-API.html#filter-filter-results">Date-time literals in <code>$filter</code></a></strong> need a <code>T</code> and a UTC offset (<code>Z</code>, <code>-05:00</code>), unquoted. Verified on play 26.1.6004.0: no offset, a space instead of <code>T</code>, and a quoted value each return a 404, and an unencoded <code>+</code> offset decodes to a space and fails the same way. <a href="02-OData-API.html#select-choose-fields"><code>$select=*</code></a> returns the same columns as no <code>$select</code>. — <em>Brian Powell Jr (<a href="https://github.com/mrwuss/p21-api-documentation/pull/256">#256</a>), verified @mrwuss</em></li>
+</ul>
 <h2 id="2026-10-29-v1300">2026-10-29 — v1.30.0</h2>
 <p>This release also includes the 2026-10-21 and 2026-10-17 entries below.</p>
 <ul>
@@ -1755,6 +1760,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-11-11">2026-11-11</a></li>
 <li><a href="#2026-10-29-v1300">2026-10-29 — v1.30.0</a></li>
 <li><a href="#2026-10-21">2026-10-21</a></li>
 <li><a href="#2026-10-17">2026-10-17</a></li>

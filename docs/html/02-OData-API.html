@@ -1077,6 +1077,10 @@
 <div class="highlight"><pre><span></span><code><span class="err">/odata/table/supplier?$select=supplier_id,supplier_name</span>
 </code></pre></div>
 
+<p>Return every field (the same columns as leaving <code>$select</code> out):</p>
+<div class="highlight"><pre><span></span><code><span class="err">/odata/table/supplier?$select=*</span>
+</code></pre></div>
+
 <blockquote>
 <p>⚠️ <strong>An unknown <code>$select</code> column returns 404, not 400.</strong> Naming a column that doesn't exist fails the whole request with an empty-bodied <strong>404</strong> — indistinguishable at a glance from "table not exposed" or "no permission". If a table you know exists suddenly 404s, drop the <code>$select</code> and retry before chasing Data Service permissions; a misremembered column name (e.g. <code>supplier_id</code> on <code>po_hdr</code>, which actually has <code>vendor_id</code>) is the more common cause. Verified on 2026.1.</p>
 </blockquote>
@@ -1086,6 +1090,36 @@
 </code></pre></div>
 
 <p>Dates are bare <code>yyyy-MM-dd</code> literals, and <code>now()</code> is not supported — see <a href="#non-expired-records">Non-Expired Records</a>.</p>
+<p>To filter on a date <strong>and time</strong>, write an unquoted ISO 8601 literal with a <code>T</code> and a UTC offset: <code>2026-11-05T10:16:00Z</code>, <code>2026-11-05T10:16:00-05:00</code> or <code>2026-11-05T10:16:00.234-05:00</code>. <code>date_last_modified</code> is an <code>Edm.DateTimeOffset</code>, and each near miss fails the whole request with a 404:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Literal</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>2026-11-05T10:16:00</code> (no offset)</td>
+<td>404 <code>The DateTimeOffset text '2026-11-05T10:16:00' should be in format 'yyyy-mm-ddThh:mm:ss('.'s+)?(zzzzzz)?'</code></td>
+</tr>
+<tr>
+<td><code>2026-11-05 10:16:00Z</code> (a space instead of <code>T</code>)</td>
+<td>404 <code>Syntax error at position 35 in 'date_last_modified gt 2026-11-05 10:16:00Z'</code></td>
+</tr>
+<tr>
+<td><code>'2026-11-05T10:16:00Z'</code> (quoted)</td>
+<td>404 <code>A binary operator with incompatible types was detected. Found operand types 'Edm.DateTimeOffset' and 'Edm.String'</code></td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p>⚠️ <strong>Encode a <code>+</code> offset as <code>%2B</code>.</strong> In a hand-built URL, <code>+02:00</code> decodes to a space, the server sees no offset, and you get the first 404 above. Passing the filter through your HTTP client's query-parameter API (<code>params=</code> in <code>httpx</code>, <code>Uri.EscapeDataString</code> in C#) encodes it for you.</p>
+</blockquote>
+<p><em>Verified on play 26.1.6004.0 against <code>supplier.date_last_modified</code>, November 2026.</em></p>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/BPowell76">Brian Powell Jr</a> — reported the date-time format gap (<a href="https://github.com/mrwuss/p21-api-documentation/pull/256">#256</a>).</p>
+</blockquote>
 <h3 id="orderby-sort-results">$orderby - Sort Results</h3>
 <p>Sort by one or more fields:</p>
 <div class="highlight"><pre><span></span><code><span class="err">/odata/table/supplier?$orderby=supplier_name asc</span>

@@ -44,6 +44,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Traverse relationships (no joins — chain by `_uid`) | [02 § No Joins](02-OData-API.md#no-joins-chain-queries-by-uid) |
 | Page through large result sets (no nextLink) | [02 § Pagination Helper](02-OData-API.md#pagination-helper) · [02 § Page Size Guidance](02-OData-API.md#page-size-guidance) |
 | Date filters (`now()` is unsupported) | [02 § now() Not Supported](02-OData-API.md#now-function-not-supported) |
+| Filter on a **date and time** — 404 on a value that looks right | [02 § $filter](02-OData-API.md#filter-filter-results) — unquoted, `T`, and a UTC offset (`Z` or `-05:00`); encode `+` as `%2B` |
 | New table/column missing from OData | [02 § OData Schema Refresh](02-OData-API.md#odata-schema-refresh) |
 | **Empty-bodied 404 on a table you know exists** | [02 § The table/view split](02-OData-API.md#the-tableview-split-and-the-404-it-produces) — views live on `/view/`, base tables on `/table/`; asking the wrong one 404s exactly like a missing object |
 | Read a **view** (`p21_view_*`), or a **user-defined** table (`*_ud`, site-custom) | [02 § The table/view split](02-OData-API.md#the-tableview-split-and-the-404-it-produces) — views on `/view/`; `*_ud` are ordinary base tables on `/table/` |
