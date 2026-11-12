@@ -20,6 +20,7 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ## 2026-11-11
 
+- **fix:** **[`po_hdr` names two companies](02-OData-API.md#po_hdr-names-two-companies-supplier_id-is-ordered-from-vendor_id-is-paid)**: `supplier_id` is the company the PO is placed with and `vendor_id` the pay-to vendor. The `$select` note said `po_hdr` has only `vendor_id`; it now uses `invoice_line.line_number` as its example. Measured on play 26.1.6004.0: the two differ on about one active PO in six, the PO contact belongs to the supplier, and the voucher pays the vendor. Fixes [#257](https://github.com/mrwuss/p21-api-documentation/issues/257). — *@mrwuss*
 - **docs:** **[Date-time literals in `$filter`](02-OData-API.md#filter-filter-results)** need a `T` and a UTC offset (`Z`, `-05:00`), unquoted. Verified on play 26.1.6004.0: no offset, a space instead of `T`, and a quoted value each return a 404, and an unencoded `+` offset decodes to a space and fails the same way. [`$select=*`](02-OData-API.md#select-choose-fields) returns the same columns as no `$select`. — *Brian Powell Jr ([#256](https://github.com/mrwuss/p21-api-documentation/pull/256)), verified @mrwuss*
 
 ## 2026-10-29 — v1.30.0
