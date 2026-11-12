@@ -64,6 +64,7 @@ These have no recipe page; each runs the write path of a reference-doc section a
 | `direct_ship_confirmation.py` | `DirectShipConfirmation.cs` (30) | [04 § The Interactive path works](../../../docs/04-Interactive-API.md#the-interactive-path-works) |
 | `customer_price_library.py` | `CustomerPriceLibrary.cs` (31) | [04 § Customer Window: Adding a Price Library](../../../docs/04-Interactive-API.md#customer-window-adding-a-price-library) |
 | `dynachange_rule_toggle.py` | `DynaChangeRuleToggle.cs` (32) | [04 § Managing Business Rules Through the DynaChange Organizer](../../../docs/04-Interactive-API.md#managing-business-rules-through-the-dynachange-organizer) |
+| `inventory_return_note.py` | — | [04 § Inventory Return Notes, and the Lock After Shipping](../../../docs/04-Interactive-API.md#inventory-return-notes-and-the-lock-after-shipping) |
 | `udt_window_edit.py` | `UdtWindowEdit.cs` (38) | [04 § UDT Maintenance Windows](../../../docs/04-Interactive-API.md#udt-maintenance-windows-edit-a-udt-row-through-its-window) |
 
 `purchase_pricing_page_edit.py` reads the page before its dry run, so that dry run needs credentials. The Interactive scripts print their planned calls as the dry run.

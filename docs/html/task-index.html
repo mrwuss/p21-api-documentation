@@ -1054,6 +1054,18 @@
 <td><a href="04-Interactive-API.html#sales-order-notepad-writes-header-vs-line">04 § Sales Order Notepad Writes</a> · <a href="04-Interactive-API.html#purchaseorder-notepad-writes-header-vs-line">04 § PurchaseOrder Notepad Writes</a> — Interactive only; <code>/transaction</code> refuses (<a href="03-Transaction-API.html#limitations">why</a>)</td>
 </tr>
 <tr>
+<td>Write a <strong>note on an inventory return</strong> (return to a supplier), header or line · the save fails or lies after the return ships</td>
+<td><a href="04-Interactive-API.html#inventory-return-notes-and-the-lock-after-shipping">04 § Inventory Return Notes, and the Lock After Shipping</a> — Interactive only, and only at <code>971</code>/<code>972</code>/<code>973</code>; at <code>974</code>/<code>975</code> <code>PUT /v2/data</code> is <code>Status: 2</code> with no message and <strong><code>Quick.Save</code> reports <code>savesucceeded</code> and writes nothing</strong> · runnable: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/inventory_return_note.py"><code>inventory_return_note.py</code></a></td>
+</tr>
+<tr>
+<td><strong>Keep writing on a shipped or vouched return</strong> · link a <strong>task</strong> to a return, PO, order or RMA (<code>transaction_type_cd</code>, <code>transaction_no</code>)</td>
+<td><a href="04-Interactive-API.html#a-task-linked-to-the-return-stays-writable">04 § A task linked to the return stays writable</a> — <code>Task</code> service; <code>company_id</code> is disabled on create; update keyed <code>activity_trans_no</code></td>
+</tr>
+<tr>
+<td>A record load returns <strong><code>Status: 3</code></strong> with <em>"You have tasks associated with this transaction"</em></td>
+<td><a href="04-Interactive-API.html#an-open-task-prompts-on-load-and-blocks-an-api-load">04 § An open task prompts on load</a> — shown to the task's assignees while it is open; answer <code>cb_2</code></td>
+</tr>
+<tr>
 <td>Write a <strong>note on a production order</strong> (<code>note_type_cd</code> 2758)</td>
 <td><a href="04-Interactive-API.html#production-order-notes-header">04 § Production Order Notes</a> — Interactive only; <code>/transaction</code> reports success and writes nothing (<a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">why</a>)</td>
 </tr>

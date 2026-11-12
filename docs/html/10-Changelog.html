@@ -660,6 +660,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-11-12">2026-11-12</a></li>
 <li><a href="#2026-11-11">2026-11-11</a></li>
 <li><a href="#2026-10-29-v1300">2026-10-29 — v1.30.0</a></li>
 <li><a href="#2026-10-21">2026-10-21</a></li>
@@ -767,6 +768,10 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-11-12">2026-11-12</h2>
+<ul>
+<li><strong>docs:</strong> <strong><a href="04-Interactive-API.html#inventory-return-notes-and-the-lock-after-shipping">Inventory return notes, and the lock after shipping</a></strong>, verified on play 26.1.6004.0: header and line notes (<code>inventory_return_hdr_notepad</code>, <code>inventory_return_line_notepad</code>) save through the <code>InventoryReturn</code> window's Notepad Entry popup at <code>971</code>, <code>972</code> and <code>973</code>. At <code>974</code> and <code>975</code> <code>PUT /v2/data</code> returns <code>Status: 2</code> with no message, the <code>Quick.Save</code> tool and the <code>ui/full</code> save report <code>savesucceeded</code> and write nothing, <code>/transaction</code> answers <code>Column is disabled: topic</code> or <code>Save is not enabled.</code>, and <code>/commands</code> returns 204. A note on a shipped return saves only with a voucher in <code>ConvertInventoryReturnToVoucher</code>. A <code>Task</code> with <code>transaction_type_cd</code> <code>Inventory Return</code> stays writable; an open task prompts its assignees on load, and an Interactive load returns <code>Status: 3</code>. Python program and a payload file. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/283">#283</a>. — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-11-11">2026-11-11</h2>
 <ul>
 <li><strong>docs:</strong> <strong><a href="14-Breaking-Changes.html#p21-20261">The 2026.1 registry is re-run on 26.1.6004.0</a>, and it is unchanged.</strong> Entries 3–9 still reproduce and entries 1 and 2 are still fixed, each with a 6004.0 note; entry 8 was reproduced on a new instance (a disabled <code>PurchaseOrder</code> column under <code>IgnoreDisabled</code>), its contract and order-note cases not re-run. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/274">#274</a>. — <em>@mrwuss</em></li>
@@ -1775,6 +1780,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-11-12">2026-11-12</a></li>
 <li><a href="#2026-11-11">2026-11-11</a></li>
 <li><a href="#2026-10-29-v1300">2026-10-29 — v1.30.0</a></li>
 <li><a href="#2026-10-21">2026-10-21</a></li>

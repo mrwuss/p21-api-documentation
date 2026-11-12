@@ -50,6 +50,7 @@ Placeholders (`ACME`, `WIDGET-001`, customer `100198`, …) are generic — subs
 | Contract line with Value commission and other cost + ship-to row (rebate step 5) | [json](json/contract-line-rebate-costs.json) | — | `POST /api/v2/transaction` |
 | Retrieve a record (get request) | [json](json/transaction-get-contract.json) | [xml](xml/transaction-get-contract.xml) | `POST /api/v2/transaction/get` |
 | Create a CRM task | [json](json/sales-task-create.json) | — | `POST /api/sales/tasks/` |
+| Create a task linked to an inventory return (`transaction_type_cd`, `transaction_no`; no `company_id`) | [json](json/task-linked-to-inventory-return.json) | — | `POST /api/v2/transaction` |
 | Generate a production pick ticket PDF | [json](json/generate-pick-ticket-pdf.json) | — | `POST /api/v2/process/pdfreport` |
 | Print or reprint a purchase order PDF (`reprint_flag` is a placeholder for the PO's `po_hdr.printed` — see JSON notes) | [json](json/reprint-purchase-order-pdf.json) | — | `POST /api/v2/process/pdfreport` |
 | Lock a bin (`pick_locked_flag` / `put_locked_flag`) | [json](json/bin-lock.json) | — | `POST /api/v2/transaction` |
