@@ -43,6 +43,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | **Does an OData read immediately after a Transaction write ever return stale data?** | [02 § Read-after-write consistency](02-OData-API.md#read-after-write-consistency) — 125/125 clean on the `table:` surface, light load; `view:` untested |
 | Traverse relationships (no joins — chain by `_uid`) | [02 § No Joins](02-OData-API.md#no-joins-chain-queries-by-uid) |
 | Page through large result sets (no nextLink) | [02 § Pagination Helper](02-OData-API.md#pagination-helper) · [02 § Page Size Guidance](02-OData-API.md#page-size-guidance) |
+| A **direct SQL** lookup by `item_id` or `supplier_part_no` is slow (scans) | [02 § bind `varchar`, not `nvarchar`](02-OData-API.md#item-id-and-supplier-part-number-lookups-bind-varchar-not-nvarchar) — the columns are `varchar(40)`; an `nvarchar` parameter converts the column; `CAST(? AS varchar(40))` restores the seek. OData `eq` is not affected |
 | Date filters (`now()` is unsupported) | [02 § now() Not Supported](02-OData-API.md#now-function-not-supported) |
 | Filter on a **date and time** — 404 on a value that looks right | [02 § $filter](02-OData-API.md#filter-filter-results) — unquoted, `T`, and a UTC offset (`Z` or `-05:00`); encode `+` as `%2B` |
 | New table/column missing from OData | [02 § OData Schema Refresh](02-OData-API.md#odata-schema-refresh) |

@@ -2023,6 +2023,28 @@ The 10x improvement comes entirely from eliminating round-trip overhead.
 | Full table scan | 1000+ | ~500ms |
 | Bulk fetch ($top=5000) | 2,500 | ~1.7s |
 
+### Item ID and supplier part number lookups: bind `varchar`, not `nvarchar`
+
+`inv_mast.item_id` and `inventory_supplier.supplier_part_no` are **`varchar(40)`**, collation `SQL_Latin1_General_CP1_CI_AS`, each with an index that leads on the column. A **direct SQL** read that compares either column to an `nvarchar` parameter makes SQL Server convert the column on every row, so it scans instead of seeking. Many drivers send a text parameter as `nvarchar` unless told otherwise; Python's `pyodbc` does.
+
+Measured on play 26.1.6004.0 (November 2026), read-only, about 330,000 items and 375,000 item-supplier rows, a fresh random set of values for each run, three rounds in rotating order:
+
+| Lookup, one query per value | `nvarchar` parameter (driver default) | `CAST(? AS varchar(40))` | Control: `CONVERT(nvarchar(40), column) = ?` |
+|---|---|---|---|
+| `inv_mast.item_id`, 200 values | 6.5–6.6 s (about 33 ms each) | 0.13–0.16 s (under 1 ms each) | about 33 ms each, the same as the default |
+| `inventory_supplier.supplier_part_no`, 200 values | 22–23 s (about 110 ms each) | 1.0–1.5 s | about 105 ms each |
+
+The default costs the same as a lookup that deliberately converts the column, which is a scan. Fix it in the SQL text, which works with any driver:
+
+```sql
+SELECT inv_mast_uid FROM inv_mast WHERE item_id = CAST(? AS varchar(40));
+SELECT inventory_supplier_uid FROM inventory_supplier WHERE supplier_part_no = CAST(? AS varchar(40));
+```
+
+Or bind the parameter's type. In `pyodbc`, before each `execute`: `cursor.setinputsizes([(pyodbc.SQL_VARCHAR, 40, 0)])` (in a separate run, 0.14 s for 200 item IDs against 0.17 s with the `CAST`, and 0.32 s against 0.34 s for 200 part numbers). In other drivers, declare the parameter as `varchar(40)` rather than relying on the default.
+
+**OData `eq` filters do not show this cost.** Measured the same way over OData (40 lookups per form, median of each, two rounds): `item_id eq '...'` took 285–299 ms and `supplier_part_no eq '...'` 271–282 ms, the same as an integer-key lookup on the same table (283–296 ms and 280–284 ms). A non-sargable `endswith(item_id, '...')` took 348–367 ms. `toupper(...)` in a filter returns 404, so it is not a way to fold case over OData either.
+
 ### Avoiding N+1 Query Patterns
 
 When working with related entities (e.g., pages → books → libraries), avoid fetching related data in a loop:

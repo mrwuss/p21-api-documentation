@@ -1387,7 +1387,7 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 <tr>
 <td><code>inventory_supplier.supplier_part_no</code></td>
 <td><strong>40</strong></td>
-<td><code>varchar(40)</code></td>
+<td><code>varchar(40)</code>; in direct SQL, compare it to a <code>varchar</code> parameter (<a href="02-OData-API.html#item-id-and-supplier-part-number-lookups-bind-varchar-not-nvarchar">why</a>)</td>
 </tr>
 <tr>
 <td><code>po_line_notepad.topic</code></td>
