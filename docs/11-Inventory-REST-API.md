@@ -448,7 +448,7 @@ With `extendedproperties=*`, child collections are populated as `{"list": [...]}
 | `Notes` | — | Item notes |
 | `MSDS` | — | Material Safety Data Sheets |
 | `RestrictedClasses` | — | Class restrictions |
-| `AltCodes` | `alternate_code` | Alternate item codes |
+| `AltCodes` | `alternate_code` | Alternate item codes (item-level; see [03 § Item Service — Alternate Codes](03-Transaction-API.md#item-service-alternate-codes-tabpage_3)) |
 
 ### Data Fields (Partial)
 
