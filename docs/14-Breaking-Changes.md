@@ -162,7 +162,7 @@ The delete is the dangerous half. `errorNo: 0` and the word *"successfully"* rea
 
 The service reads only `rowuid`: a condition carrying both a `rowuid` and a non-matching `name`/`value` pair updated the `rowuid` row. A `rowuid` with no matching row still returns `[0] ... successfully!`, so the row-count check stays. The full matrix is in [UDT Service API § Update](13-UDT-Service-API.md#update) and [§ Delete](13-UDT-Service-API.md#delete).
 
-> **This is why the maintenance window's Row ID and the API agree after all.** P21's generated UDT maintenance windows recall, edit and delete a row by its **Row ID**, which sits over the `udt_{tablename}_uid` primary key. The service's `rowuid` is the same value. *(Window behavior: P21 26.2 help, System Administration > Creating a User-Defined Database Table.)*
+> **This is why the maintenance window's Row ID and the API agree after all.** P21's generated UDT maintenance windows recall, edit and delete a row by its **Row ID**, which sits over the `udt_{tablename}_uid` primary key. The service's `rowuid` is the same value. *(Window behavior: P21 26.2 help, System Administration > Creating a User-Defined Database Table.)* Driving that window through the Interactive API is a second write path, verified on play 26.1.6004.0: [Interactive API § UDT Maintenance Windows](04-Interactive-API.md#udt-maintenance-windows-edit-a-udt-row-through-its-window).
 
 Confirm that the table has no `row_uid` column, and find its key:
 

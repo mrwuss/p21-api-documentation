@@ -65,6 +65,7 @@ while (true)
     Console.WriteLine("  35. Dispose Zero-Value Stock   - Runbook: $0 disposal order to a $0 invoice");
     Console.WriteLine("  36. New Assembled Part         - Runbook: item, BOM, contract line, production order");
     Console.WriteLine("  37. Rebate Assembly Program    - Runbook: rebate vendor, contract costs, rebate invoice");
+    Console.WriteLine("  38. UDT Window Edit            - UDT maintenance window by Title: insert/update/delete");
     Console.WriteLine();
     Console.WriteLine("  Q. Quit");
     Console.WriteLine();
@@ -223,6 +224,10 @@ while (true)
 
             case "37":
                 await RebateAssemblyProgram.RunAsync();
+                break;
+
+            case "38":
+                await UdtWindowEdit.RunAsync();
                 break;
 
             case "Q":

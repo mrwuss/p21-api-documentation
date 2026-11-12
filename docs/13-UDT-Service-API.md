@@ -397,6 +397,8 @@ Update existing rows in a UDT table. Each row object carries the new values in `
 > **A miss still says "successfully".** `errorNo` is `0` whether or not a row matched; **read the `[N]` count in `errorMessage`** and treat `[0]` as a failure.
 >
 > **Find the primary-key column before you start.** `master_udt_definition` over OData gives the table name; the key is `udt_{tablename}_uid`, which you can confirm with `GET /odataservice/odata/table/{udt}?$top=1`. `GET /odataservice/odata/table/{udt}?$select=row_uid` returns 404 *"Could not find a property named 'row_uid'"* on these tables. Whether `rowuid` maps to a literal `row_uid` column on a table that has one could not be tested: no such UDT was available. See [Breaking Changes entry 7](14-Breaking-Changes.md#7-udt-service-updatedelete-ignore-a-namevalue-condition-on-a-udt-created-on-20261).
+>
+> **A second route: the table's maintenance window.** Once a maintenance window has been created for the UDT, the Interactive API can insert, update and delete rows through it, by Row ID, with no SQL. See [Interactive API § UDT Maintenance Windows](04-Interactive-API.md#udt-maintenance-windows-edit-a-udt-row-through-its-window).
 
 ### Request
 
