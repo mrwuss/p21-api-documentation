@@ -255,7 +255,7 @@ Return only specific fields:
 /odata/table/supplier?$select=supplier_id,supplier_name
 ```
 
-See all fields:
+Return every field (the same columns as leaving `$select` out):
 
 ```http
 /odata/table/supplier?$select=*
@@ -272,7 +272,20 @@ Filter records based on conditions:
 ```
 
 Dates are bare `yyyy-MM-dd` literals, and `now()` is not supported — see [Non-Expired Records](#non-expired-records).
-To filter by date and time, values need to be in a format without spaces (i.e., `2026-11-05T10:16:00.234-05:00`).
+
+To filter on a date **and time**, write an unquoted ISO 8601 literal with a `T` and a UTC offset: `2026-11-05T10:16:00Z`, `2026-11-05T10:16:00-05:00` or `2026-11-05T10:16:00.234-05:00`. `date_last_modified` is an `Edm.DateTimeOffset`, and each near miss fails the whole request with a 404:
+
+| Literal | Result |
+|---|---|
+| `2026-11-05T10:16:00` (no offset) | 404 `The DateTimeOffset text '2026-11-05T10:16:00' should be in format 'yyyy-mm-ddThh:mm:ss('.'s+)?(zzzzzz)?'` |
+| `2026-11-05 10:16:00Z` (a space instead of `T`) | 404 `Syntax error at position 35 in 'date_last_modified gt 2026-11-05 10:16:00Z'` |
+| `'2026-11-05T10:16:00Z'` (quoted) | 404 `A binary operator with incompatible types was detected. Found operand types 'Edm.DateTimeOffset' and 'Edm.String'` |
+
+> ⚠️ **Encode a `+` offset as `%2B`.** In a hand-built URL, `+02:00` decodes to a space, the server sees no offset, and you get the first 404 above. Passing the filter through your HTTP client's query-parameter API (`params=` in `httpx`, `Uri.EscapeDataString` in C#) encodes it for you.
+
+*Verified on play 26.1.6004.0 against `supplier.date_last_modified`, November 2026.*
+
+> **Credit:** [Brian Powell Jr](https://github.com/BPowell76) — reported the date-time format gap ([#256](https://github.com/mrwuss/p21-api-documentation/pull/256)).
 
 ### $orderby - Sort Results
 
@@ -1524,118 +1537,6 @@ static string ReadField(string payload, string field)
         throw new InvalidOperationException(
             $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
     return match.Groups[1].Value;
-}
-```
-
-**PHP**
-
-```php
-// The following example uses Laravel 13. For brevity, multiple classes and functions are combined for this example
-
-use App\Models\ApiAuthService;
-use Illuminate\Database\QueryException;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
-
-class P21ApiClient {
-
-    private string $api_base_url;
-    private string $auth_token;
-    private int $timeout;
-    private bool $verify_ssl;
-
-    public function __construct()
-    {
-        // Pull variables from application config/environment file
-        $this->api_base_url = config('services.p21.base_url');
-        $this->timeout = config('services.p21.api_timeout');
-        $this->verify_ssl = config('services.p21.verify_ssl');
-
-        // Pull stored auth token from app database
-        $this->auth_token = ApiAuthService::where('service', 'p21')->first()->token;
-    }
-
-    /**
-     * Generic GET request app function
-     */
-    public function get(string $endpoint, array $query = []): array
-    {
-        $response = $this->sendGetRequest($endpoint, $query);
-
-        if ($response->status() === 401) {
-            ApiAuthService::where('service', 'p21')->update(['expires_at' => Carbon::now()]);
-        }
-
-        $response->throw();
-
-        return $response->json() ?? [];
-    }
-
-    /**
-     * Send GET requests to P21 and return the response
-     */
-    private function sendGetRequest(string $endpoint, array $query = []): Response
-    {
-        $url = $this->api_base_url.'/'.ltrim($endpoint, '/');
-
-        $request = Http::timeout($this->timeout)
-            ->acceptJson()
-            ->withToken($this->auth_token);
-
-        if ($this->verify_ssl === false) {
-            $request = $request->withoutVerifying();
-        }
-
-        return $request->get($url, $query);
-    }
-
-    /**
-     * Make P21 API call to request token and insert into database
-     */
-    public function getToken(): void
-    {
-        $response = Http::withOptions([
-            'verify' => config('services.p21.verify_ssl'),
-            'timeout' => config('services.p21.api_timeout'),
-        ])->acceptJson()
-            ->post(config('services.p21.base_url').'/api/security/token/v2', [
-                'ConsumerKey' => config('services.p21.api_consumer_key'),
-                'GrantType' => config('services.p21.api_grant_type'),
-            ]);
-
-        if ($response->successful()) {
-            try {
-                $token = ApiAuthService::updateOrCreate(
-                    ['service' => 'p21'],
-                    ['token' => $response->json('AccessToken'), 'expires_at' => Carbon::now()->addSeconds(3600)],
-                );
-                Log::info('P21 API token successfully refreshed.');
-            } catch (QueryException $e) {
-                Log::error('The API auth token management process was unsuccessful: '.$e->getMessage());
-            }
-        } else {
-            Log::error('The P21 API authentication process failed.');
-        }
-    }
-
-    /**
-     * Get supplier id and supplier name from supplier table
-     */
-    public function getSuppliers(): array
-    {
-        $response = $this->get('/odataservice/odata/table/supplier', [
-            '$select' => "supplier_id,supplier_name",
-            '$top' => '10',
-        ]);
-
-        return $response['values'];
-    }
-}
-
-// To then iterate over the data, you can do the following:
-foreach($response_arry as $key => $row) {
-    print_r($row['supplier_id'].': '.$row['supplier_name']);
 }
 ```
 
