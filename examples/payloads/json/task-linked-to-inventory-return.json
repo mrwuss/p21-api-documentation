@@ -1,0 +1,51 @@
+{
+  "Name": "Task",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "FORM.form",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "subject",
+                  "Value": "Return 7000200 status"
+                },
+                {
+                  "Name": "activity_id",
+                  "Value": "FOLLOW UP"
+                },
+                {
+                  "Name": "link_type_cd",
+                  "Value": "Supplier"
+                },
+                {
+                  "Name": "link_id",
+                  "Value": "99001"
+                },
+                {
+                  "Name": "transaction_type_cd",
+                  "Value": "Inventory Return"
+                },
+                {
+                  "Name": "transaction_no",
+                  "Value": "7000200"
+                },
+                {
+                  "Name": "comments",
+                  "Value": "Supplier is evaluating the part."
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

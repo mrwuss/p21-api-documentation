@@ -1,5 +1,5 @@
 {
- "fetched_date": "2026-11-11",
+ "fetched_date": "2026-11-12",
  "ok": [
   "Address",
   "Assembly",
@@ -38,6 +38,7 @@
   "ShipTo",
   "Shipping",
   "Supplier",
+  "Task",
   "TimeEntry",
   "Vendor",
   "VoucherByItem",

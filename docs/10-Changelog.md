@@ -18,6 +18,10 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-11-12
+
+- **docs:** **[Inventory return notes, and the lock after shipping](04-Interactive-API.md#inventory-return-notes-and-the-lock-after-shipping)**, verified on play 26.1.6004.0: header and line notes (`inventory_return_hdr_notepad`, `inventory_return_line_notepad`) save through the `InventoryReturn` window's Notepad Entry popup at `971`, `972` and `973`. At `974` and `975` `PUT /v2/data` returns `Status: 2` with no message, the `Quick.Save` tool and the `ui/full` save report `savesucceeded` and write nothing, `/transaction` answers `Column is disabled: topic` or `Save is not enabled.`, and `/commands` returns 204. A note on a shipped return saves only with a voucher in `ConvertInventoryReturnToVoucher`. A `Task` with `transaction_type_cd` `Inventory Return` stays writable; an open task prompts its assignees on load, and an Interactive load returns `Status: 3`. Python program and a payload file. Closes [#283](https://github.com/mrwuss/p21-api-documentation/issues/283). — *@mrwuss*
+
 ## 2026-11-11
 
 - **docs:** **[The 2026.1 registry is re-run on 26.1.6004.0](14-Breaking-Changes.md#p21-20261), and it is unchanged.** Entries 3–9 still reproduce and entries 1 and 2 are still fixed, each with a 6004.0 note; entry 8 was reproduced on a new instance (a disabled `PurchaseOrder` column under `IgnoreDisabled`), its contract and order-note cases not re-run. Closes [#274](https://github.com/mrwuss/p21-api-documentation/issues/274). — *@mrwuss*

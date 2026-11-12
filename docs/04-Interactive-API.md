@@ -4229,6 +4229,122 @@ Only the header pair is verified here; the other three follow the same `{datawin
 
 > **Transaction API cannot substitute.** The same grid is closed to `/transaction`: without `IgnoreDisabled` it refuses with `Column is disabled: note` (or `topic`), and **with** the flag it returns `Succeeded: 1` while writing nothing — see [Breaking Changes entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing).
 
+## Inventory Return Notes, and the Lock After Shipping
+
+An inventory return (a return to a supplier) carries header notes and line notes, entered through the same [Notepad Entry popup](#the-notepad-entry-popup) as the Order and PurchaseOrder windows. The Interactive API writes them while the return is open. **Once the return ships, the `InventoryReturn` window can no longer save, and one of its save paths reports success while writing nothing.** Verified on play 26.1.6004.0 (November 2026), every result read back from the database.
+
+| | Header note | Line note |
+|---|---|---|
+| **Table** | `inventory_return_hdr_notepad` | `inventory_return_line_notepad` |
+| **Keyed by** | `inventory_return_hdr_uid` | `inventory_return_line_uid` |
+| **Tab (`PageName`)** | `HDR_NOTE` | `LINE_NOTE` |
+| **Add / edit tools** | `hdr_note&&cb_addnote` / `hdr_note&&cb_editnote` | `line_note&&cb_addnote` / `line_note&&cb_editnote` |
+| **Before the tool** | nothing extra | select the line's row on `LIST` / `list` |
+
+The display areas of each note are rows in `note_area`, as for the other notepads. The three windows of the [return cycle](03-Transaction-API.md#inventory-returns-create-ship-and-vouch-partial-vouchers-key-on-line_number) (`InventoryReturn`, `InventoryReturnShipping`, `ConvertInventoryReturnToVoucher`) all carry the same two note tabs.
+
+Verified sequence on `InventoryReturn` (session created with `"ResponseWindowHandlingEnabled": true`):
+
+1. Open `{"ServiceName": "InventoryReturn"}` and load the return: `TabName: "FORM"`, `DatawindowName: "form"`, `return_number`.
+2. **Header note:** `PUT /v2/tab` `{"PageName": "HDR_NOTE"}`, then `POST /v2/tools` `{"ToolName": "hdr_note&&cb_addnote"}`. It returns `Status: 3` with the popup's window ID in the `windowopened` event.
+3. **Line note instead:** select `LIST`, pick the row with `PUT /v2/row` `{"DatawindowName": "list", "Row": 2}`, then select `LINE_NOTE` and run `line_note&&cb_addnote`. The `list` grid has no line number column; row N is the Nth line.
+4. In the popup (`w_notepad_response_lite`), set `topic` (30 characters) and `note` on `_dw_hdr` with `TabName: null` and the **popup's** window ID. The area for the window you are in is already selected (`Inventory Return Entry`); `cb_select_all` adds the other three (`Inventory Return Shipping`, `Convert Return to Credit Voucher`, `Print Returns and Packing Lists`). Run `cb_ok`.
+5. Save with `PUT /v2/data` (bare window-GUID body). The response carries `keygenerated` for the notepad row and `savesucceeded` with `__return_number`.
+6. Read back over OData: the header for its `inventory_return_hdr_uid`, then the notepad table.
+
+```http
+GET /odataservice/odata/table/inventory_return_hdr?$filter=return_number eq 7000200
+GET /odataservice/odata/table/inventory_return_hdr_notepad?$filter=inventory_return_hdr_uid eq {uid}
+```
+
+Runnable: [`inventory_return_note.py note`](../examples/python/recipes/inventory_return_note.py). It reads the status first and refuses a shipped return.
+
+### What each status allows
+
+`inventory_return_hdr.row_status_flag` decides everything. One return was created for the test and walked through the cycle, with a header and a line note attempted at each step; `973` and `975` were run on other returns.
+
+| Status | `InventoryReturn` window, `PUT /v2/data` | Result in the database |
+|---|---|---|
+| `971` Unapproved | `Status: 1`, `savesucceeded` | header and line note saved |
+| `972` Approved | `Status: 1`, `savesucceeded` | header and line note saved |
+| `973` Printed | `Status: 1`, `savesucceeded` | header and line note saved |
+| `974` Shipped | `{"Status": 2, "Events": [], "Messages": []}` | nothing written |
+| `975` Vouched | `{"Status": 2, "Events": [], "Messages": []}` | nothing written |
+
+On a shipped or vouched return everything up to the save still works: the tab selects, the add tool opens the popup, `cb_ok` stages the row in the grid with a new `note_id`. Editing an existing note (`hdr_note&&cb_editnote`) on a shipped return behaves the same way. Only the save fails, and it gives no reason.
+
+> **Do not save a shipped or vouched return with the `Quick.Save` tool.** `POST /v2/tools` `{"ToolName": "Quick.Save"}` on the same window, with the note staged, returns `Status: 1` and a `savesucceeded` event carrying the return number, and **writes nothing**. The web client's own call, `POST {ui}/ui/full/v2/window/tools` with `Quick.Save`, returns `Success: true`, `State: "Normal"` and `savesucceeded`, and also writes nothing. On an open return the same tool does save. `PUT /v2/data` is the call that tells the truth here. (Both calls run on a shipped and on a vouched return.)
+
+Nothing in the Interactive API marks the locked state before the save: `GET /v2/tools` lists the same tools, `Quick.Save` and the four note tools included, for an open, a shipped and a vouched return. The signal exists only on the [`ui/full` surface](#the-uifull-surface-the-web-clients-own-rest-api), where loading a shipped or vouched return emits a `toolenabled` event with `tool_id` `Quick.Save` and `tool_enabled` `false`; its Add Note and Edit Note buttons stay `Enabled: true`. **Read `row_status_flag` over OData before you start**, and treat `974` and `975` as closed to this window.
+
+The other routes, same tenant, same day:
+
+| Route | Open return (`973`) | Shipped (`974`) or vouched (`975`) |
+|---|---|---|
+| `/transaction`, `InventoryReturn`, `HDR_NOTE.hdr_note` or `LINE_NOTE.line_note` | `Column is disabled: topic` | `Column is disabled: topic` |
+| The same with `IgnoreDisabled: true` | `Succeeded: 1`, **nothing written** ([entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing)) | `Save is not enabled.` |
+| `/transaction` edit of an existing note keyed `note_id`, `IgnoreDisabled: true` | not run | `Save is not enabled.` (shipped) |
+| `POST /api/v2/commands` (open, load, `hdr_note&&cb_addnote`, popup fields, `cb_ok`, save) | HTTP 204, empty body, nothing written | HTTP 204, empty body, nothing written |
+| `InventoryReturnShipping` window | return loads | `Enter a valid ID or leave ID blank.` |
+
+`Save is not enabled.` is the only response that names the cause.
+
+### The one write after shipping: a note saved with the voucher
+
+`ConvertInventoryReturnToVoucher` turns its `HDR_NOTE` and `LINE_NOTE` tabs on when a **shipped** return is loaded (`tabpageenabled` events on the load), with the same four tools. A note added there is saved by the save that creates the voucher, and only by that save:
+
+- With `invoice_no`, `invoice_date` and `invoice_amount_display` set and the line vouched, a header note and a line note added through the popup were both written (`savesucceeded`), and the return moved to `975`. The popup opens with `Convert Return to Credit Voucher` selected.
+- With `c_vouch_all` set `OFF` and no line vouched, the save fails `There are no line items to post.` and the staged note is not written.
+- A vouched return does not load: `Enter a valid ID or leave ID blank.`, and the note tabs stay disabled.
+
+So a note can ride along when the credit is vouched. Between shipping and the voucher there is no note write.
+
+### A task linked to the return stays writable
+
+For a running record on a return that has shipped (what the supplier found, when a repaired part is due back), write a **task linked to the transaction**. The `Task` service (Task Maintenance, table `activity_trans`) takes a transaction type and number, and it does not open the return, so the return's status does not matter. Created against a shipped and against a vouched return, then updated:
+
+```json
+POST /api/v2/transaction
+{
+  "Name": "Task",
+  "UseCodeValues": false,
+  "Transactions": [{"Status": "New", "DataElements": [{
+    "Name": "FORM.form", "Type": "Form", "Keys": [],
+    "Rows": [{"Edits": [
+      {"Name": "subject",             "Value": "Return 7000200 status"},
+      {"Name": "activity_id",         "Value": "FOLLOW UP"},
+      {"Name": "link_type_cd",        "Value": "Supplier"},
+      {"Name": "link_id",             "Value": "99001"},
+      {"Name": "transaction_type_cd", "Value": "Inventory Return"},
+      {"Name": "transaction_no",      "Value": "7000200"},
+      {"Name": "comments",            "Value": "Supplier is evaluating the part."}
+    ], "RelativeDateEdits": []}]
+  }]}]
+}
+```
+
+- The new `activity_trans_no` comes back on `FORM.form`. The row stores `transaction_type_cd` `987` (Inventory Return), `transaction_no` as the return number, `link_type_cd` `216` (Supplier).
+- **Do not send `company_id`.** It fails `Column is disabled: company_id`; the row saves with it NULL.
+- `activity_id` must be an activity that exists on your tenant.
+- `transaction_type_cd` accepts `Inventory Return`, `Manufacturer Rep Order`, `None`, `Opportunity`, `Order`, `Purchase Order`, `Quote`, `Requisition PO`, `RMA`, `Service Order`, `Service Quote`, `Task` and `Vendor RFQ` (labels, `UseCodeValues: false`). Only `Inventory Return` was run here.
+- **Update** with `Keys: ["activity_trans_no"]` and the number in `Edits`: `comments` replaces the text, `completed_flag` `ON` completes the task. `assigned_to_id` defaults to the calling user.
+- **More people:** add rows to `TABPAGE_TASKAUXILIARYASSIGNEE.tabpage_taskauxiliaryassignee` (keyed `assigned_to_id`). Making an auxiliary assignee the main assignee fails *"This user is already listed in the auxiliary assignees for the Task."*
+- **Over OData `activity_trans_no` is a string.** `$filter=activity_trans_no eq 5001` is a 404; quote it: `activity_trans_no eq '5001'`.
+
+Payload: [`task-linked-to-inventory-return.json`](../examples/payloads/json/task-linked-to-inventory-return.json). Runnable: [`inventory_return_note.py task`](../examples/python/recipes/inventory_return_note.py).
+
+### An open task prompts on load, and blocks an API load
+
+P21 shows the link to people. When a user who is the task's assignee or an auxiliary assignee loads the return, and the task is not completed, the window opens a `w_message` (caption `Epicor Prophet 21 - Startup`): *"You have tasks associated with this transaction. Would you like to view them?"* Yes (`cb_1`) opens the task (`w_contact_edit_to_do_uiserver_response`, titled `Edit Task: {number}`) with its comments; No is `cb_2`.
+
+The same prompt reaches the API:
+
+- An Interactive load of that return (`PUT /v2/change` on `return_number`) returns **`Status: 3`** with the `w_message` in a `windowopened` event. [Answer it](#worked-example-w_message-save-changes-before-closing) with `cb_2` before you go on.
+- On `ui/full` the load returns `Success: false`, `State: "Blocked"` with the same event.
+- A user who is not an assignee gets no prompt, and nobody gets one once the task is completed. Assigning the task to another user removed the prompt for the caller; adding the caller as an auxiliary assignee brought it back; completing the task removed it.
+
+An integration that loads returns under the same account that owns open tasks on them must expect `Status: 3` on the load. The prompt was observed through the Interactive API and the web client's `ui/full` calls; the other transaction types were not tested for it.
+
 ## Standalone Notepad Windows (Item/Customer/Supplier)
 
 The standalone notepad services (`ItemNotepad`, `CustomerNotepad`, `SupplierNotepad`, `VendorNotepad`) are **closed to the Transaction API** — their mandatory "where does this note display" area selector is a drag-and-drop control ([03 § Limitations](03-Transaction-API.md#limitations)). The Interactive API opens them: **the same picker is exposed as ordinary button tools** — `cb_select`, `cb_selectall`, `cb_deselect`, `cb_deselectall`, present in the tool list from the moment the window opens.
