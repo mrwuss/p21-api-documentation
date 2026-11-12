@@ -644,7 +644,7 @@ Established end to end — written through the real API, saved, and read back at
 
 | Field | Limit | Notes |
 |---|---|---|
-| `po_hdr.external_po_no` | **40** | 30–40 persist; 41, 42, 45 and 50 fail at `/change`. Sharp and reproducible: 40 persists, 41 is refused |
+| `po_hdr.external_po_no` | **40** | 30–40 persist; 41, 42, 45 and 50 fail at `/change`. Sharp and reproducible: 40 persists, 41 is refused. A duplicate of another PO's value is a separate check: see [A Duplicate `external_po_no`](03-Transaction-API.md#purchaseorder-service-a-duplicate-external_po_no) |
 | `inventory_supplier.supplier_part_no` | **40** | `varchar(40)` |
 | `po_line_notepad.topic` | **30** | `varchar(30)` |
 

@@ -757,6 +757,7 @@
 <li><a href="#shipping-service-deleting-a-pick-ticket">Shipping Service — Deleting a Pick Ticket</a></li>
 <li><a href="#purchaseorder-service-creating-a-po">PurchaseOrder Service — Creating a PO</a></li>
 <li><a href="#purchaseorder-service-editing-a-completed-po">PurchaseOrder Service — Editing a Completed PO</a></li>
+<li><a href="#purchaseorder-service-a-duplicate-external_po_no">PurchaseOrder Service — A Duplicate external_po_no</a></li>
 <li><a href="#purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt Service — Receiving a PO</a></li>
 <li><a href="#convertpotovoucher-service-vouching-a-receipt">ConvertPOToVoucher Service — Vouching a Receipt</a></li>
 <li><a href="#inventory-returns-create-ship-and-vouch-partial-vouchers-key-on-line_number">Inventory Returns — Create, Ship, and Vouch (Partial Vouchers Key on line_number)</a></li>
@@ -7087,7 +7088,7 @@ General Exception: This pick ticket has already been invoiced.
 <tr>
 <td><code>external_po_no</code></td>
 <td><code>po_hdr.external_po_no</code></td>
-<td>Useful for tagging test POs</td>
+<td>Useful for tagging test POs. <strong>A value already on another PO is saved as NULL</strong> (<a href="#purchaseorder-service-a-duplicate-external_po_no">why</a>)</td>
 </tr>
 </tbody>
 </table></div>
@@ -7134,6 +7135,375 @@ General Exception: This pick ticket has already been invoiced.
 </tbody>
 </table></div>
 <p><em>(Verified on play 26.1.5950.0, 2026-10-29, on a completed test PO. Community lead: John Kennedy and Spencer Smith, P21WWUG forum.)</em></p>
+<h3 id="purchaseorder-service-a-duplicate-external_po_no">PurchaseOrder Service — A Duplicate <code>external_po_no</code></h3>
+<p><code>po_hdr.external_po_no</code> holds 40 characters (<a href="06-Error-Handling.html#field-length-limits-a-write-that-fails-on-size">Field Length Limits</a>), and P21 checks it for duplicates. When the value is already on another PO, the PurchaseOrder window asks:</p>
+<div class="highlight"><pre><span></span><code>w_message: This is a duplicate external PO number.  Do you wish to continue?
+</code></pre></div>
+
+<p><strong>The Transaction API cannot answer that prompt, and it reports success either way.</strong> Verified on play 26.1.6004.0 (November 2026) on throwaway POs, <code>po_hdr.external_po_no</code> read back over OData after every call:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Call</th>
+<th>Response</th>
+<th><code>external_po_no</code> after</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PurchaseOrder</code> create with a value already on another PO</td>
+<td><code>Succeeded: 1</code></td>
+<td><strong>NULL</strong>; the PO is created without it</td>
+</tr>
+<tr>
+<td><code>PurchaseOrder</code> update (keyed <code>po_no</code>) from a unique value to a duplicate</td>
+<td><code>Succeeded: 1</code></td>
+<td><strong>NULL</strong>; the old value is gone too</td>
+</tr>
+<tr>
+<td>Interactive window, <code>PUT /v2/change</code> with a duplicate</td>
+<td><code>Status: 3</code>, the <code>w_message</code> above</td>
+<td>(prompt open)</td>
+</tr>
+<tr>
+<td>… answer <strong>Yes</strong> (<code>cb_1</code>), save</td>
+<td><code>Status: 1</code></td>
+<td>the duplicate value</td>
+</tr>
+<tr>
+<td>… answer <strong>No</strong> (<code>cb_2</code>), save</td>
+<td><code>cb_2</code> returns <code>Status: 2</code>; the save <code>Status: 1</code></td>
+<td><strong><code>''</code></strong> (empty); the PO's previous value is not restored</td>
+</tr>
+<tr>
+<td>Interactive window, a unique value, save</td>
+<td>no prompt; <code>Status: 1</code></td>
+<td>the new value</td>
+</tr>
+</tbody>
+</table></div>
+<p>What a reader trips on:</p>
+<ul>
+<li><strong>A Transaction API write of a duplicate erases the field.</strong> On an update it also wipes the value that was there. Check for the value on other POs first (<code>po_hdr?$filter=external_po_no eq '...'</code>), or write through the window and read back.</li>
+<li><strong>To keep a duplicate on purpose, use the window and answer Yes.</strong> Identify the prompt by its text before you answer: the text of a <code>w_message</code> is not in <code>GET /v2/data</code>; it is in the HTTP 400 that any call blocked by the open prompt returns (<a href="04-Interactive-API.html#worked-example-w_message-save-changes-before-closing">why</a>). The programs below answer only this prompt and stop on any other.</li>
+<li><strong>Answering No blanks the field.</strong> The value the PO held before the change is not put back.</li>
+</ul>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Set a PO&#39;s external_po_no through the PurchaseOrder window, answering only the duplicate prompt.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;api_user&quot;</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;api_pass&quot;</span>
+<span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
+<span class="n">PO_NO</span> <span class="o">=</span> <span class="s2">&quot;500100&quot;</span>
+<span class="n">EXTERNAL_PO_NO</span> <span class="o">=</span> <span class="s2">&quot;ACME-REF-001&quot;</span>           <span class="c1"># 40 characters at most</span>
+<span class="n">ALLOW_DUPLICATE</span> <span class="o">=</span> <span class="kc">True</span>                    <span class="c1"># answer the duplicate prompt Yes (True) or No (False)</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="n">TAB</span><span class="p">,</span> <span class="n">DW</span> <span class="o">=</span> <span class="s2">&quot;TABPAGE_1&quot;</span><span class="p">,</span> <span class="s2">&quot;tp_1_dw_1&quot;</span>
+<span class="n">DUPLICATE_PROMPT</span> <span class="o">=</span> <span class="s2">&quot;This is a duplicate external PO number&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;v2 token endpoint — credentials go in the body, never in headers.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">PASSWORD</span><span class="p">},</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;AccessToken&gt;([^&lt;]+)&lt;/AccessToken&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No AccessToken in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Transaction and Interactive calls go to the UI server, not BASE_URL.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/ui/router/v1/?urlType=external&quot;</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;Url&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;Url&gt;([^&lt;]+)&lt;/Url&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No Url in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">change</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">,</span> <span class="n">base</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">window_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">field</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Response</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">/v2/change&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span>
+        <span class="s2">&quot;List&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;TabName&quot;</span><span class="p">:</span> <span class="n">TAB</span><span class="p">,</span> <span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="n">DW</span><span class="p">,</span> <span class="s2">&quot;FieldName&quot;</span><span class="p">:</span> <span class="n">field</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">value</span><span class="p">}],</span>
+    <span class="p">})</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">popup_id</span><span class="p">(</span><span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The response window a call opened (Status 3, windowopened event).&quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Events&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]:</span>
+        <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Name&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;windowopened&quot;</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Data&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]:</span>
+                <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Key&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;windowid&quot;</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Value&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">read_external</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/table/po_hdr&quot;</span><span class="p">,</span>
+                   <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;po_no eq </span><span class="si">{</span><span class="n">PO_NO</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="s2">&quot;po_no,external_po_no&quot;</span><span class="p">})</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span>
+
+
+<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">EXTERNAL_PO_NO</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">40</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s2">&quot;external_po_no holds 40 characters; P21 refuses a longer value&quot;</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">VERIFY_SSL</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+    <span class="n">ui_server</span> <span class="o">=</span> <span class="n">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
+    <span class="n">client</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                           <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">})</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/api/ui/interactive&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;before:&quot;</span><span class="p">,</span> <span class="n">read_external</span><span class="p">(</span><span class="n">client</span><span class="p">))</span>
+    <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">/sessions/&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ResponseWindowHandlingEnabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">})</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">window</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">/v2/window&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ServiceName&quot;</span><span class="p">:</span> <span class="s2">&quot;PurchaseOrder&quot;</span><span class="p">})</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;WindowId&quot;</span><span class="p">]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">loaded</span> <span class="o">=</span> <span class="n">change</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">base</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="s2">&quot;po_no&quot;</span><span class="p">,</span> <span class="n">PO_NO</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">loaded</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Status&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;PO did not load: </span><span class="si">{</span><span class="n">loaded</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Messages&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">change</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">base</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="s2">&quot;external_po_no&quot;</span><span class="p">,</span> <span class="n">EXTERNAL_PO_NO</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+            <span class="n">popup</span> <span class="o">=</span> <span class="n">popup_id</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Status&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">popup</span><span class="p">:</span>
+                <span class="c1"># A w_message&#39;s text is not in GET /v2/data; it is in the 400 that</span>
+                <span class="c1"># any call blocked by the open prompt returns.</span>
+                <span class="n">blocked</span> <span class="o">=</span> <span class="n">change</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">base</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="s2">&quot;external_po_no&quot;</span><span class="p">,</span> <span class="n">EXTERNAL_PO_NO</span><span class="p">)</span>
+                <span class="n">text</span> <span class="o">=</span> <span class="n">blocked</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ErrorMessage&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">blocked</span><span class="o">.</span><span class="n">status_code</span> <span class="o">&gt;=</span> <span class="mi">400</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+                <span class="k">if</span> <span class="n">DUPLICATE_PROMPT</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">text</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unexpected prompt, not answered: </span><span class="si">{</span><span class="n">text</span><span class="p">[:</span><span class="mi">300</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">button</span> <span class="o">=</span> <span class="s2">&quot;cb_1&quot;</span> <span class="k">if</span> <span class="n">ALLOW_DUPLICATE</span> <span class="k">else</span> <span class="s2">&quot;cb_2&quot;</span>   <span class="c1"># Yes / No</span>
+                <span class="n">answered</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">/v2/tools&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">popup</span><span class="p">,</span> <span class="s2">&quot;ToolName&quot;</span><span class="p">:</span> <span class="n">button</span><span class="p">})</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;duplicate prompt answered </span><span class="si">{</span><span class="n">button</span><span class="si">}</span><span class="s2">: Status </span><span class="si">{</span><span class="n">answered</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Status&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">saved</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">/v2/data&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">saved</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Status&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Save failed: </span><span class="si">{</span><span class="n">saved</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Messages&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">client</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">/v2/window&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">window</span><span class="p">})</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">client</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">/sessions/&quot;</span><span class="p">)</span>
+    <span class="c1"># Answering No saves the PO with external_po_no blank: read it back.</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;after: &quot;</span><span class="p">,</span> <span class="n">read_external</span><span class="p">(</span><span class="n">client</span><span class="p">))</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
+
+<span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_pass&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">PoNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;500100&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ExternalPoNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME-REF-001&quot;</span><span class="p">;</span><span class="w">          </span><span class="c1">// 40 characters at most</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">allowDuplicate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="p">;</span><span class="w">                           </span><span class="c1">// answer the duplicate prompt Yes (true) or No (false)</span>
+<span class="c1">// ---------------------------------------------------------------------------</span>
+
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Tab</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_1&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Dw</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;tp_1_dw_1&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">DuplicatePrompt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;This is a duplicate external PO number&quot;</span><span class="p">;</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">ExternalPoNo</span><span class="p">.</span><span class="n">Length</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">40</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span><span class="s">&quot;external_po_no holds 40 characters; P21 refuses a longer value&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="n">HttpClientHandler</span><span class="p">.</span><span class="n">DangerousAcceptAnyServerCertificateValidator</span><span class="p">,</span>
+<span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromMinutes</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">MediaTypeWithQualityHeaderValue</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">uiServer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetUiServerAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">api</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{uiServer}/api/ui/interactive&quot;</span><span class="p">;</span>
+
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;before: {await ReadExternalAsync(client)}&quot;</span><span class="p">);</span>
+<span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">SendAsync</span><span class="p">(</span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Post</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;{api}/sessions/&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">ResponseWindowHandlingEnabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="w"> </span><span class="p">})).</span><span class="n">Dispose</span><span class="p">();</span>
+<span class="k">try</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">window</span><span class="p">;</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">opened</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">SendAsync</span><span class="p">(</span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Post</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;{api}/v2/window&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">ServiceName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;PurchaseOrder&quot;</span><span class="w"> </span><span class="p">}))</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">window</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">opened</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;WindowId&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">()</span><span class="o">!</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">using</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">loaded</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">ChangeAsync</span><span class="p">(</span><span class="n">window</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;po_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">PoNo</span><span class="p">))</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">loaded</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Status&quot;</span><span class="p">).</span><span class="n">GetInt32</span><span class="p">()</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span><span class="s">$&quot;PO did not load: {loaded.RootElement.GetProperty(&quot;</span><span class="n">Messages</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">ChangeAsync</span><span class="p">(</span><span class="n">window</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;external_po_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">ExternalPoNo</span><span class="p">);</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">popup</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Status&quot;</span><span class="p">).</span><span class="n">GetInt32</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">PopupId</span><span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="n">RootElement</span><span class="p">)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="k">null</span><span class="p">;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">popup</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="c1">// A w_message&#39;s text is not in GET /v2/data; it is in the 400 that</span>
+<span class="w">            </span><span class="c1">// any call blocked by the open prompt returns.</span>
+<span class="w">            </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">blocked</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">ChangeAsync</span><span class="p">(</span><span class="n">window</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;external_po_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">ExternalPoNo</span><span class="p">);</span>
+<span class="w">            </span><span class="kt">var</span><span class="w"> </span><span class="n">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">blocked</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;ErrorMessage&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">e</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">GetString</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">text</span><span class="p">.</span><span class="n">Contains</span><span class="p">(</span><span class="n">DuplicatePrompt</span><span class="p">,</span><span class="w"> </span><span class="n">StringComparison</span><span class="p">.</span><span class="n">Ordinal</span><span class="p">))</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span><span class="s">$&quot;Unexpected prompt, not answered: {text[..Math.Min(300, text.Length)]}&quot;</span><span class="p">);</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">            </span><span class="kt">var</span><span class="w"> </span><span class="n">button</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">allowDuplicate</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;cb_1&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s">&quot;cb_2&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// Yes / No</span>
+<span class="w">            </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">answered</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">SendAsync</span><span class="p">(</span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Post</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;{api}/v2/tools&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">WindowId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">popup</span><span class="p">,</span><span class="w"> </span><span class="n">ToolName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">button</span><span class="w"> </span><span class="p">});</span>
+<span class="w">            </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;duplicate prompt answered {button}: Status {answered.RootElement.GetProperty(&quot;</span><span class="n">Status</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">saved</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">SendAsync</span><span class="p">(</span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Put</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;{api}/v2/data&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">window</span><span class="p">);</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">saved</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Status&quot;</span><span class="p">).</span><span class="n">GetInt32</span><span class="p">()</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span><span class="s">$&quot;Save failed: {saved.RootElement.GetProperty(&quot;</span><span class="n">Messages</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">finally</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">DeleteAsync</span><span class="p">(</span><span class="s">$&quot;{api}/v2/window?id={window}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+<span class="k">finally</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">DeleteAsync</span><span class="p">(</span><span class="s">$&quot;{api}/sessions/&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="c1">// Answering No saves the PO with external_po_no blank: read it back.</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;after:  {await ReadExternalAsync(client)}&quot;</span><span class="p">);</span>
+
+<span class="n">Task</span><span class="o">&lt;</span><span class="n">JsonDocument</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ChangeAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">field</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="k">value</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span>
+<span class="w">    </span><span class="n">SendAsync</span><span class="p">(</span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Put</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;{api}/v2/change&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">WindowId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
+<span class="w">        </span><span class="n">List</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">TabName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Tab</span><span class="p">,</span><span class="w"> </span><span class="n">DatawindowName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Dw</span><span class="p">,</span><span class="w"> </span><span class="n">FieldName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">field</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">});</span>
+
+<span class="c1">// Returns the body as JSON whatever the status: a blocked call&#39;s 400 carries the prompt text.</span>
+<span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JsonDocument</span><span class="o">&gt;</span><span class="w"> </span><span class="n">SendAsync</span><span class="p">(</span><span class="n">HttpMethod</span><span class="w"> </span><span class="n">method</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">url</span><span class="p">,</span><span class="w"> </span><span class="kt">object</span><span class="w"> </span><span class="n">body</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">q</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpRequestMessage</span><span class="p">(</span><span class="n">method</span><span class="p">,</span><span class="w"> </span><span class="n">url</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">Content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="n">body</span><span class="p">),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">),</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">SendAsync</span><span class="p">(</span><span class="n">q</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">text</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;{}&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">text</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// The response window a call opened (Status 3, windowopened event).</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string?</span><span class="w"> </span><span class="n">PopupId</span><span class="p">(</span><span class="n">JsonElement</span><span class="w"> </span><span class="n">result</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">result</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;Events&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">events</span><span class="p">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">events</span><span class="p">.</span><span class="n">ValueKind</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">JsonValueKind</span><span class="p">.</span><span class="n">Array</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">null</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">ev</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">events</span><span class="p">.</span><span class="n">EnumerateArray</span><span class="p">())</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">ev</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Name&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">()</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;windowopened&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">!</span><span class="n">ev</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;Data&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">data</span><span class="p">))</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">item</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">data</span><span class="p">.</span><span class="n">EnumerateArray</span><span class="p">())</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">item</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Key&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;windowid&quot;</span><span class="p">)</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="n">item</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Value&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="k">null</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ReadExternalAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">c</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="s">$&quot;{BaseUrl}/odataservice/odata/table/po_hdr?$select=po_no,external_po_no&amp;$filter=&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">        </span><span class="n">Uri</span><span class="p">.</span><span class="n">EscapeDataString</span><span class="p">(</span><span class="s">$&quot;po_no eq {PoNo}&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">d</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;value&quot;</span><span class="p">).</span><span class="n">ToString</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">c</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Username</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/api/security/token/v2&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;AccessToken&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Transaction and Interactive calls go to the UI server, not BaseUrl.</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetUiServerAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">token</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">q</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpRequestMessage</span><span class="p">(</span>
+<span class="w">        </span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Get</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;{BaseUrl}/api/ui/router/v1/?urlType=external&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">q</span><span class="p">.</span><span class="n">Headers</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">SendAsync</span><span class="p">(</span><span class="n">q</span><span class="p">);</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;Url&quot;</span><span class="p">).</span><span class="n">TrimEnd</span><span class="p">(</span><span class="sc">&#39;/&#39;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Some middleware answers these two endpoints in XML even when asked for JSON.</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">f</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">p</span><span class="p">).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="n">f</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">v</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span>
+<span class="w">        </span><span class="n">ex</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">JsonException</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="n">KeyNotFoundException</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">Text</span><span class="p">.</span><span class="n">RegularExpressions</span><span class="p">.</span><span class="n">Regex</span><span class="p">.</span><span class="n">Match</span><span class="p">(</span>
+<span class="w">        </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;&lt;{f}&gt;([^&lt;]+)&lt;/{f}&gt;&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">m</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;No {f} in response: {p[..Math.Min(200, p.Length)]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">Groups</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<p>Both programs ran on play 26.1.6004.0 against a throwaway PO, with a second throwaway PO holding the duplicate value: Python answered No (value <code>''</code>) and then Yes (the duplicate); C# set a unique value with no prompt, then the duplicate with Yes. Both POs were deleted afterwards (<code>delete_flag</code> <code>Y</code>).</p>
+<p><em>Verified by @mrwuss</em> (<a href="https://github.com/mrwuss/p21-api-documentation/issues/267">#267</a>).</p>
 <h3 id="purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt Service — Receiving a PO</h3>
 <p><strong>The Transaction API can receive a PO</strong> — verified on 26.1 (August 2026), receipt <strong>7000100</strong> against PO 500101, with nothing but a header:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.tp_1_dw_po&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
@@ -10052,6 +10422,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li><a href="#shipping-service-deleting-a-pick-ticket">Shipping Service — Deleting a Pick Ticket</a></li>
 <li><a href="#purchaseorder-service-creating-a-po">PurchaseOrder Service — Creating a PO</a></li>
 <li><a href="#purchaseorder-service-editing-a-completed-po">PurchaseOrder Service — Editing a Completed PO</a></li>
+<li><a href="#purchaseorder-service-a-duplicate-external_po_no">PurchaseOrder Service — A Duplicate external_po_no</a></li>
 <li><a href="#purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt Service — Receiving a PO</a></li>
 <li><a href="#convertpotovoucher-service-vouching-a-receipt">ConvertPOToVoucher Service — Vouching a Receipt</a></li>
 <li><a href="#inventory-returns-create-ship-and-vouch-partial-vouchers-key-on-line_number">Inventory Returns — Create, Ship, and Vouch (Partial Vouchers Key on line_number)</a></li>
