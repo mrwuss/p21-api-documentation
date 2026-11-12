@@ -680,11 +680,243 @@ Both users could open the window, load the order, and set every other field on t
 **What this means in practice:**
 
 - **A payload that works in development can fail in production** purely because the service account there has a different role. The error will look like a schema problem and send you hunting through definitions.
-- **`Required: true` in the definition tells you nothing about this** — the definition is static metadata; disabled-ness is evaluated per session (see [What `Required` actually means](#what-required-actually-means)).
+- **`Required: true` in the definition tells you nothing about this.** Disabled-ness is evaluated per session (see [What `Required` actually means](#what-required-actually-means)). The definition is not the same for every user either: its user-defined `ufc_*` fields can differ by identity ([below](#invalid-column-name-ufc_-the-user-defined-fields-differ-by-user)).
 - **Test with the account that will run the integration**, not with an admin login or your own. This is the single cheapest way to avoid a class of late surprise.
 - When a column is refused for your service account and you need it, the fix is a **P21 configuration change** — a role permission or a DynaChange rule exemption — not a payload change. `IgnoreDisabled: true` is not a substitute and [can silently write nothing](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing).
 
 > **A worked example of the split.** Granting a service account a **Buyer ID** in User Maintenance cleared the `To create a PO, you must have a valid Buyer ID.` gate on `c_create_po` — but the *same* account still could not set `disposition`, which a CSR login set without trouble. One permission was configuration; the other is a different gate entirely. Do not assume a single setting unlocks a whole workflow — see [Driving an In-Window Wizard](04-Interactive-API.md#driving-an-in-window-wizard-direct-ship-po-generation).
+
+### `Invalid column name: ufc_...`: the user-defined fields differ by user
+
+A DynaChange user-defined field (`ufc_*`) is not part of a service's schema for every caller. On one tenant at one moment, two identities can get different `ufc_*` field lists from `GET /api/v2/definition/{Service}`, and a write that names a field your identity does not get fails:
+
+```text
+Transaction 1:: General Exception: Invalid column name: ufc_<field>
+Transaction 1: SHIP_TOS.ship_tos: Error processing data element: ship_tos : Invalid column name: ufc_<field>
+```
+
+Verified on play 26.1.6004.0 (November 2026), with three tokens taken at the same time:
+
+| Identity | `Customer` `ufc_*` fields in `/definition` | The extra `SHIP_TOS.ship_tos` field in `/transaction/get` | Same-value write naming that field |
+|---|---|---|---|
+| Password user | 9 | absent | `Failed: 1`, *Invalid column name* |
+| Consumer key, token minted **with** a `username` | 9 | absent | `Failed: 1`, *Invalid column name* |
+| Consumer key, token minted **without** a `username` | 10 | present | `Succeeded: 1` |
+
+`Order` (5) and `PurchaseOrder` (7) matched for all three. On 26.1.5950.0 (2026-10-29) the three identities matched on all three services; the difference appeared the day a web-client screen version (Version Manager) was created on the Customer ship-to grid that places this field as a field-chooser column.
+
+**Which version or role decides was not established.** The version is assigned to the roles of both named users, and those are the two identities that did **not** get the field. A token minted without a `username` carries no user claim, so its identity could not be checked. Treat the field list as per identity, and do not rely on a role-to-field rule from this page.
+
+What to do:
+
+- **Read `/definition` with the identity that will write**, and build payloads from that list. A `ufc_*` field copied from another user's definition, or from a committed definition file, can be one your integration does not have. (The [`definitions/`](../definitions/README.md) files drop every `ufc_*` field for this reason.)
+- **A consumer-key token minted with and without `username` are different identities.** The schema can differ between them, not only the audit user.
+- `Invalid column name: ufc_*` on a field you can see in the window is this case, not a typo.
+
+<!-- tabs -->
+
+```python
+"""Compare the user-defined (ufc_) fields one service's definition shows to two identities."""
+import json
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"                     # identity A: a password user
+PASSWORD = "api_pass"
+CONSUMER_KEY = "00000000-0000-0000-0000-000000000000"  # identity B: a consumer key
+CONSUMER_USERNAME = ""                    # "" mints the key's token without a username
+VERIFY_SSL = False                        # True once you trust the cert chain
+SERVICE = "Customer"                      # the service to compare
+# ---------------------------------------------------------------------------
+
+
+def read_field(text: str, field: str) -> str:
+    """Read a field from a JSON or DataContract XML response."""
+    try:
+        return json.loads(text)[field]
+    except (ValueError, KeyError):
+        match = re.search(rf"<{field}>([^<]+)</{field}>", text)
+        if not match:
+            raise ValueError(f"No {field} in response: {text[:200]}") from None
+        return match.group(1)
+
+
+def token(client: httpx.Client, body: dict) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(f"{BASE_URL}/api/security/token/v2", json=body,
+                    headers={"Accept": "application/json"})
+    r.raise_for_status()
+    return read_field(r.text, "AccessToken")
+
+
+def ui_server(client: httpx.Client, bearer: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(f"{BASE_URL}/api/ui/router/v1/?urlType=external",
+                   headers={"Authorization": f"Bearer {bearer}", "Accept": "application/json"})
+    r.raise_for_status()
+    return read_field(r.text, "Url").rstrip("/")
+
+
+def ufc_fields(client: httpx.Client, ui: str, bearer: str) -> set[tuple[str, str]]:
+    """(element, field) for every ufc_ field in the service definition this identity gets."""
+    r = client.get(f"{ui}/api/v2/definition/{SERVICE}",
+                   headers={"Authorization": f"Bearer {bearer}", "Accept": "application/json"})
+    r.raise_for_status()
+    elements = r.json()["TransactionDefinition"]["DataElementDefinitions"]
+    return {(e["Name"], f["Name"]) for e in elements
+            for f in e.get("FieldDefinitions") or [] if f["Name"].startswith("ufc_")}
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    a = token(client, {"username": USERNAME, "password": PASSWORD})
+    key_body = {"ClientSecret": CONSUMER_KEY, "GrantType": "client_credentials"}
+    if CONSUMER_USERNAME:
+        key_body["username"] = CONSUMER_USERNAME
+    b = token(client, key_body)
+    ui = ui_server(client, a)
+    fields_a, fields_b = ufc_fields(client, ui, a), ufc_fields(client, ui, b)
+    print(f"{SERVICE}: {len(fields_a)} ufc_ fields for A, {len(fields_b)} for B")
+    # A field one identity lacks is "Invalid column name: ufc_..." when that
+    # identity writes it, even though the other identity writes it fine.
+    for element, field in sorted(fields_b - fields_a):
+        print(f"  only B: {element}.{field}")
+    for element, field in sorted(fields_a - fields_b):
+        print(f"  only A: {element}.{field}")
+    if fields_a == fields_b:
+        print("  same set for both")
+```
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";                  // identity A: a password user
+const string Password = "api_pass";
+const string ConsumerKey = "00000000-0000-0000-0000-000000000000"; // identity B: a consumer key
+const string ConsumerUsername = "";                  // "" mints the key's token without a username
+const string Service = "Customer";                   // the service to compare
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(
+    new MediaTypeWithQualityHeaderValue("application/json"));
+
+var a = await TokenAsync(client, new Dictionary<string, string> { ["username"] = Username, ["password"] = Password });
+var keyBody = new Dictionary<string, string> { ["ClientSecret"] = ConsumerKey, ["GrantType"] = "client_credentials" };
+if (ConsumerUsername.Length > 0)
+{
+    keyBody["username"] = ConsumerUsername;
+}
+var b = await TokenAsync(client, keyBody);
+var ui = await UiServerAsync(client, a);
+var fieldsA = await UfcFieldsAsync(client, ui, a);
+var fieldsB = await UfcFieldsAsync(client, ui, b);
+Console.WriteLine($"{Service}: {fieldsA.Count} ufc_ fields for A, {fieldsB.Count} for B");
+// A field one identity lacks is "Invalid column name: ufc_..." when that
+// identity writes it, even though the other identity writes it fine.
+foreach (var f in fieldsB.Except(fieldsA).Order())
+{
+    Console.WriteLine($"  only B: {f}");
+}
+foreach (var f in fieldsA.Except(fieldsB).Order())
+{
+    Console.WriteLine($"  only A: {f}");
+}
+if (fieldsA.SetEquals(fieldsB))
+{
+    Console.WriteLine("  same set for both");
+}
+
+// element.field for every ufc_ field in the service definition this identity gets.
+static async Task<HashSet<string>> UfcFieldsAsync(HttpClient c, string ui, string bearer)
+{
+    using var q = new HttpRequestMessage(HttpMethod.Get, $"{ui}/api/v2/definition/{Service}");
+    q.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
+    using var r = await c.SendAsync(q);
+    r.EnsureSuccessStatusCode();
+    using var d = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+    var set = new HashSet<string>();
+    foreach (var e in d.RootElement.GetProperty("TransactionDefinition").GetProperty("DataElementDefinitions").EnumerateArray())
+    {
+        if (!e.TryGetProperty("FieldDefinitions", out var fields) || fields.ValueKind != JsonValueKind.Array)
+        {
+            continue;
+        }
+        foreach (var f in fields.EnumerateArray())
+        {
+            var name = f.GetProperty("Name").GetString() ?? "";
+            if (name.StartsWith("ufc_", StringComparison.Ordinal))
+            {
+                set.Add($"{e.GetProperty("Name").GetString()}.{name}");
+            }
+        }
+    }
+    return set;
+}
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> TokenAsync(HttpClient c, Dictionary<string, string> body)
+{
+    using var r = await c.PostAsync($"{BaseUrl}/api/security/token/v2",
+        new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> UiServerAsync(HttpClient c, string token)
+{
+    using var q = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    q.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    using var r = await c.SendAsync(q);
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on play 26.1.6004.0 against `Customer` (one field only for the token without a `username`) and `Order` (same set). With `CONSUMER_USERNAME` set, the Python program reported the same nine fields for both identities.
+
+> **Credit:** Kevin Green ([Topic227758](https://forums.p21ww.org/Topic227758.aspx)) and Caleb Monteil, P21WWUG Forum104: `ufc_*` fields fail with *Invalid column name* and are missing from the API user's `/definition` when that user does not have the screen version. The symptom is verified here; the screen-version-and-role cause is not. *Verified by @mrwuss* ([#233](https://github.com/mrwuss/p21-api-documentation/issues/233)).
 
 ---
 
