@@ -3433,6 +3433,360 @@ Confirmed in the database: `po_hdr` 500102 with **`po_type = 'D'`, `approved = '
 
 *(Flow and dead ends originally verified by [Alex Westemeier](https://github.com/AWestemeier) across two cycles; re-driven and confirmed independently here.)*
 
+## Creating a Transfer from a Sales Order
+
+A sales order line sourced from another location is filled by a transfer, and the Order window creates that transfer through a wizard, the way it creates a [direct-ship PO](#driving-an-in-window-wizard-direct-ship-po-generation). Verified on play 26.1.6004.0 (November 2026) on throwaway orders, each step read back over OData.
+
+**1. Source the line from the other location at entry.** On `TP_ITEMS.items` set `source_loc_id` to the stocking location after `oe_order_item_id` and `unit_quantity`. The saved line gets `disposition` `T` and stays unallocated. A line sourced from the sales location (`disposition` `B`, backordered) opens no wizard and creates no transfer, even with the option below set.
+
+**2. Approve the order.** The header option `TABPAGE_1.order.c_create_transfer` (*Create Transfer*, `ON`/`OFF`) is disabled while the order is unapproved: `GET /v2/window` reports `Enabled: false`, and setting it returns HTTP 400 *"Column is disabled: c_create_transfer"*. After `approved` = `ON` on the same window it is enabled.
+
+**3. Set `c_create_transfer` = `ON` and save.** The save returns `Status: 3` and opens the wizard:
+
+| Item | Value |
+|---|---|
+| Window | `w_auto_gen_xfers_in_oe_wzd` |
+| Buttons | `cb_back`, `cb_next`, `cb_finish`, `cb_cancel`, `cb_help` |
+| Page 1 | `create_xfer_from_oe_lines_detail`: one row per transfer line (`item_id`, `create_transfer` `Y`, `qty_requested`, `qty_to_allocate`, `qty_available`, `carrier_id`) |
+| Page 2 (after `cb_next`) | `create_xfer_from_oe_result_listing_detail`: `source_loc_id` and the new `transfer_no` |
+
+- **The transfer is created at `cb_next`**, approved, before you finish. `cb_cancel` is then refused (*"Button cb_cancel is not enabled"*), and a session that ends there still leaves the transfer behind. The same hazard as the [direct-ship wizard](#driving-an-in-window-wizard-direct-ship-po-generation).
+- **`cb_finish` returned `Status: 1`** and closed the wizard with `savesucceeded`. A report of HTTP 400 at Finish through the API was not reproduced on this build.
+- **A second order on the same route joined the same transfer.** With an open, unshipped transfer from the same source to the same destination already in place, the next wizard added its line to that transfer instead of creating a new one.
+
+**4. Read the link.** The order line links to the transfer in [`oe_line_po`](02-OData-API.md#oe_line_po-holds-stale-links-join-on-both-keys-and-filter-delete_flag) with `connection_type` `T`, and `po_no` holds the **transfer number**. `transfer_hdr` shows `from_location_id` (the source), `to_location_id` (the sales location) and `approved` `Y`.
+
+**The link blocks a cancel.** `cancel_flag` `ON` on the order returns *"A PO or transfer exists for item ITEM-ID. You cannot change the Cancel Flag."* (the same refusal as a [PO link](#po-line-links-to-backorders-production-order-components-and-sales-orders)). Deleting the transfer (`Transfer` service, `TABPAGE_1.tp_1_dw_1` keyed `transfer_no`, `delete_flag` `ON`) set the transfer's `delete_flag` to `Y` and every `oe_line_po` row on it to `Y`, and the cancel then passed.
+
+> **A consumer-key token may not read `transfer_hdr`.** The programs below read it back with the token they wrote with; a consumer-key token whose OData allow-list leaves the table out gets HTTP 401 there ([why](00-Authentication.md#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire)).
+
+<!-- tabs -->
+
+```python
+"""Approve a sales order and create its transfer through the Order window's transfer wizard, then read the link back."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+ORDER_NO = "1001234"                      # a saved order with a line sourced from another location
+# ---------------------------------------------------------------------------
+
+TAB, DW = "TABPAGE_1", "order"
+WIZARD = "w_auto_gen_xfers_in_oe_wzd"
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+        },
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+def checked(r: httpx.Response, what: str, allow: tuple = (None, 1)) -> dict:
+    """Raise on an HTTP error or an unexpected Status; return the result."""
+    if r.status_code >= 400:
+        raise RuntimeError(f"{what}: HTTP {r.status_code} {r.text[:300]}")
+    result = r.json() if r.text else {}
+    if result.get("Status") not in allow:
+        raise RuntimeError(f"{what}: Status {result.get('Status')} {result.get('Messages')}")
+    return result
+
+
+def popup_id(result: dict) -> str | None:
+    """The response window a call opened (Status 3, windowopened event)."""
+    for event in result.get("Events") or []:
+        if event.get("Name") == "windowopened":
+            for item in event.get("Data") or []:
+                if item.get("Key") == "windowid":
+                    return item.get("Value")
+    return None
+
+
+def odata(client: httpx.Client, table: str, flt: str, select: str) -> list[dict]:
+    r = client.get(f"{BASE_URL}/odataservice/odata/table/{table}", params={"$filter": flt, "$select": select})
+    r.raise_for_status()
+    return r.json()["value"]
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    client.headers.update({"Authorization": f"Bearer {token}",
+                           "Accept": "application/json"})
+    base = f"{ui_server}/api/ui/interactive"
+    checked(client.post(f"{base}/sessions/", json={"ResponseWindowHandlingEnabled": True}), "start session")
+    try:
+        window = checked(client.post(f"{base}/v2/window", json={"ServiceName": "Order"}), "open")["WindowId"]
+        try:
+            def change(field: str, value: str) -> dict:
+                return checked(client.put(f"{base}/v2/change", json={"WindowId": window, "List": [
+                    {"TabName": TAB, "DatawindowName": DW, "FieldName": field, "Value": value}]}), f"set {field}")
+            change("order_no", ORDER_NO)
+            change("approved", "ON")             # c_create_transfer is disabled until the order is approved
+            change("c_create_transfer", "ON")
+            result = checked(client.put(f"{base}/v2/data", json=window), "save", allow=(1, 3))
+            wizard = popup_id(result) if result.get("Status") == 3 else None
+            if not wizard:
+                raise RuntimeError("The save opened no wizard: no line is sourced from another location")
+            name = client.get(f"{base}/v2/window", params={"id": wizard}).json()["Definition"]["Name"]
+            if name != WIZARD:
+                raise RuntimeError(f"Unexpected window {name}, not answered")
+            # The transfer is created at cb_next; cb_cancel is disabled after it.
+            checked(client.post(f"{base}/v2/tools", json={"WindowId": wizard, "ToolName": "cb_next"}), "cb_next")
+            page2 = next(d for d in client.get(f"{base}/v2/data", params={"id": wizard}).json()
+                         if d["Name"] == "create_xfer_from_oe_result_listing_detail")
+            print("wizard page 2:", dict(zip(page2["Columns"], page2["Data"][0])))
+            checked(client.post(f"{base}/v2/tools", json={"WindowId": wizard, "ToolName": "cb_finish"}), "cb_finish")
+        finally:
+            client.delete(f"{base}/v2/window", params={"id": window})
+    finally:
+        client.delete(f"{base}/sessions/")
+    # The order line links to the transfer in oe_line_po, connection_type 'T'.
+    for link in odata(client, "oe_line_po", f"order_number eq '{ORDER_NO}'",
+                      "line_number,po_no,connection_type,quantity_on_po,delete_flag"):
+        if link["connection_type"] != "T" or link["delete_flag"] == "Y":
+            continue  # a PO link, or a link removed earlier
+        print("oe_line_po:", link)
+        print("transfer_hdr:", odata(client, "transfer_hdr", f"transfer_no eq {link['po_no']}",
+                                     "transfer_no,from_location_id,to_location_id,approved,delete_flag"))
+```
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+const string OrderNo = "1001234";                    // a saved order with a line sourced from another location
+// ---------------------------------------------------------------------------
+
+const string Wizard = "w_auto_gen_xfers_in_oe_wzd";
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(
+    new MediaTypeWithQualityHeaderValue("application/json"));
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", token);
+var api = $"{uiServer}/api/ui/interactive";
+
+(await SendAsync(HttpMethod.Post, $"{api}/sessions/", new { ResponseWindowHandlingEnabled = true }, "start session")).Dispose();
+try
+{
+    string window;
+    using (var opened = await SendAsync(HttpMethod.Post, $"{api}/v2/window", new { ServiceName = "Order" }, "open"))
+    {
+        window = opened.RootElement.GetProperty("WindowId").GetString()!;
+    }
+    try
+    {
+        (await ChangeAsync(window, "order_no", OrderNo)).Dispose();
+        (await ChangeAsync(window, "approved", "ON")).Dispose();          // c_create_transfer is disabled until approved
+        (await ChangeAsync(window, "c_create_transfer", "ON")).Dispose();
+        using var saved = await SendAsync(HttpMethod.Put, $"{api}/v2/data", window, "save", 1, 3);
+        var wizard = saved.RootElement.GetProperty("Status").GetInt32() == 3 ? PopupId(saved.RootElement) : null;
+        if (wizard is null)
+        {
+            throw new InvalidOperationException("The save opened no wizard: no line is sourced from another location");
+        }
+        using (var def = await SendAsync(HttpMethod.Get, $"{api}/v2/window?id={wizard}", null, "wizard"))
+        {
+            var name = def.RootElement.GetProperty("Definition").GetProperty("Name").GetString();
+            if (name != Wizard)
+            {
+                throw new InvalidOperationException($"Unexpected window {name}, not answered");
+            }
+        }
+        // The transfer is created at cb_next; cb_cancel is disabled after it.
+        (await SendAsync(HttpMethod.Post, $"{api}/v2/tools", new { WindowId = wizard, ToolName = "cb_next" }, "cb_next")).Dispose();
+        using (var page2 = await SendAsync(HttpMethod.Get, $"{api}/v2/data?id={wizard}", null, "page 2"))
+        {
+            var detail = page2.RootElement.EnumerateArray().First(d => d.GetProperty("Name").GetString() == "create_xfer_from_oe_result_listing_detail");
+            Console.WriteLine($"wizard page 2: {detail.GetProperty("Columns")} {detail.GetProperty("Data")[0]}");
+        }
+        (await SendAsync(HttpMethod.Post, $"{api}/v2/tools", new { WindowId = wizard, ToolName = "cb_finish" }, "cb_finish")).Dispose();
+    }
+    finally
+    {
+        await client.DeleteAsync($"{api}/v2/window?id={window}");
+    }
+}
+finally
+{
+    await client.DeleteAsync($"{api}/sessions/");
+}
+
+// The order line links to the transfer in oe_line_po, connection_type 'T'.
+foreach (var link in await ODataAsync(client, "oe_line_po", $"order_number eq '{OrderNo}'", "line_number,po_no,connection_type,quantity_on_po,delete_flag"))
+{
+    if (link.GetProperty("connection_type").GetString() != "T" || link.GetProperty("delete_flag").GetString() == "Y")
+    {
+        continue;  // a PO link, or a link removed earlier
+    }
+    Console.WriteLine($"oe_line_po: {link}");
+    var transferNo = link.GetProperty("po_no").GetRawText();
+    Console.WriteLine($"transfer_hdr: {string.Join(", ", await ODataAsync(client, "transfer_hdr", $"transfer_no eq {transferNo}", "transfer_no,from_location_id,to_location_id,approved,delete_flag"))}");
+}
+
+Task<JsonDocument> ChangeAsync(string windowId, string field, string value) =>
+    SendAsync(HttpMethod.Put, $"{api}/v2/change", new
+    {
+        WindowId = windowId,
+        List = new[] { new { TabName = "TABPAGE_1", DatawindowName = "order", FieldName = field, Value = value } },
+    }, $"set {field}");
+
+// Raise on an HTTP error or an unexpected Status; return the result.
+async Task<JsonDocument> SendAsync(HttpMethod method, string url, object? body, string what, params int[] allowed)
+{
+    var ok = allowed.Length == 0 ? new[] { 1 } : allowed;
+    using var q = new HttpRequestMessage(method, url);
+    if (body is not null)
+    {
+        q.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+    }
+    using var r = await client.SendAsync(q);
+    var text = await r.Content.ReadAsStringAsync();
+    if (!r.IsSuccessStatusCode)
+    {
+        throw new InvalidOperationException($"{what}: HTTP {(int)r.StatusCode} {text[..Math.Min(300, text.Length)]}");
+    }
+    var doc = JsonDocument.Parse(string.IsNullOrEmpty(text) ? "{}" : text);
+    if (doc.RootElement.ValueKind == JsonValueKind.Object && doc.RootElement.TryGetProperty("Status", out var s) &&
+        s.ValueKind == JsonValueKind.Number && !ok.Contains(s.GetInt32()))
+    {
+        throw new InvalidOperationException($"{what}: Status {s} {doc.RootElement.GetProperty("Messages")}");
+    }
+    return doc;
+}
+
+// The response window a call opened (Status 3, windowopened event).
+static string? PopupId(JsonElement result)
+{
+    if (!result.TryGetProperty("Events", out var events) || events.ValueKind != JsonValueKind.Array)
+    {
+        return null;
+    }
+    foreach (var ev in events.EnumerateArray())
+    {
+        if (ev.GetProperty("Name").GetString() != "windowopened" || !ev.TryGetProperty("Data", out var data))
+        {
+            continue;
+        }
+        foreach (var item in data.EnumerateArray())
+        {
+            if (item.GetProperty("Key").GetString() == "windowid")
+            {
+                return item.GetProperty("Value").GetString();
+            }
+        }
+    }
+    return null;
+}
+
+static async Task<List<JsonElement>> ODataAsync(HttpClient c, string table, string filter, string select)
+{
+    using var r = await c.GetAsync($"{BaseUrl}/odataservice/odata/table/{table}?$select={select}&$filter=" + Uri.EscapeDataString(filter));
+    r.EnsureSuccessStatusCode();
+    using var d = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+    return d.RootElement.GetProperty("value").EnumerateArray().Select(x => x.Clone()).ToList();
+}
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient c, string token)
+{
+    using var q = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    q.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    using var r = await c.SendAsync(q);
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on play 26.1.6004.0 as the password user, each against its own unapproved order with a `T` line: each approved the order, drove the wizard through `cb_finish` and read back the `T` link and the approved transfer. The transfer and the orders were deleted and cancelled afterwards.
+
+*Verified by @mrwuss* ([#270](https://github.com/mrwuss/p21-api-documentation/issues/270)).
+
 ## PO Line Links to Backorders (Production Order Components and Sales Orders)
 
 A PO line can be linked to the backorders it was bought for: production order components and sales order lines. The links are set in the PurchaseOrder window, on the PO line's **Backorders** tab:
@@ -3470,7 +3824,7 @@ What a reader trips on:
 
 - **A linked component cannot be edited at all**, in either direction. Move the PO link off it first.
 - **To move a PO from a component to a sales order line, approve the order first.** An unapproved order is not on the Backorders tab, so there is no row to link to.
-- **An order holding a PO or transfer link cannot be cancelled.** Move the link back to where it came from, or unlink it, then cancel. A transfer link gives the same message.
+- **An order holding a PO or transfer link cannot be cancelled.** Move the link back to where it came from, or unlink it, then cancel. A [transfer link](#creating-a-transfer-from-a-sales-order) gives the same message.
 - The verified runs set the decrease before the increase. Linking more than the PO line's quantity was not tried.
 
 <!-- tabs -->
