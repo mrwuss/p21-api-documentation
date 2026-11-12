@@ -811,6 +811,10 @@
 <td><a href="02-OData-API.html#item-id-and-supplier-part-number-lookups-bind-varchar-not-nvarchar">02 § bind <code>varchar</code>, not <code>nvarchar</code></a> — the columns are <code>varchar(40)</code>; an <code>nvarchar</code> parameter converts the column; <code>CAST(? AS varchar(40))</code> restores the seek. OData <code>eq</code> is not affected</td>
 </tr>
 <tr>
+<td>Look up items <strong>ignoring case and separators</strong>; keep a copy of items current (<strong>delta sync</strong>)</td>
+<td><a href="02-OData-API.html#separator-insensitive-item-lookup-keep-folded-ids-and-sync-on-date_last_modified">02 § keep folded IDs and sync on <code>date_last_modified</code></a> — no index answers a folded <code>item_id</code>; every <code>Item</code> save stamps the indexed <code>date_last_modified</code>; filter <code>ge</code> and dedupe</td>
+</tr>
+<tr>
 <td>Date filters (<code>now()</code> is unsupported)</td>
 <td><a href="02-OData-API.html#now-function-not-supported">02 § now() Not Supported</a></td>
 </tr>
