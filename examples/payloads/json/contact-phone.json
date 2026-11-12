@@ -1,0 +1,49 @@
+{
+  "Name": "Contact",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "FORM.contact",
+          "Type": "Form",
+          "Keys": [
+            "contact_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "contact_id",
+                  "Value": "300"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "PHONE.phone",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "direct_phone",
+                  "Value": "555-555-0100"
+                },
+                {
+                  "Name": "cellular",
+                  "Value": "555-555-0199"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
