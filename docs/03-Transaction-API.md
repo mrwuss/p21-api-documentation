@@ -6143,7 +6143,7 @@ The `Salesrep` service is the write surface for a salesrep's own contact record 
       { "Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form",
         "Keys": ["contact_id"],
         "Rows": [{ "Edits": [
-          { "Name": "contact_id", "Value": "4431", "IgnoreIfEmpty": false },
+          { "Name": "contact_id", "Value": "300", "IgnoreIfEmpty": false },
           { "Name": "first_name", "Value": "John",  "IgnoreIfEmpty": true },
           { "Name": "last_name",  "Value": "Smith", "IgnoreIfEmpty": true }
         ] }] },
