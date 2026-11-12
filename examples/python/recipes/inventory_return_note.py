@@ -61,7 +61,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 OPEN_STATUSES = {971: "Unapproved", 972: "Approved", 973: "Printed"}
-CLOSED_STATUSES = {974: "Shipped", 975: "Vouched", 976: "Canceled"}
+CLOSED_STATUSES = {974: "Shipped", 975: "Vouched"}  # 976 Canceled was not tested
 RETURN_TRANSACTION_TYPE = 987  # code_p21: Inventory Return, as stored on activity_trans
 DEFAULT_COMMENTS = (
     "Supplier is evaluating the part."  # used on create when none are given
@@ -126,7 +126,7 @@ def add_note(args: argparse.Namespace) -> None:
     """Add a header or line note and read it back."""
     tab, tool = (
         ("LINE_NOTE", "line_note&&cb_addnote")
-        if args.line
+        if args.line is not None
         else ("HDR_NOTE", "hdr_note&&cb_addnote")
     )
     if not args.execute:
@@ -136,7 +136,7 @@ def add_note(args: argparse.Namespace) -> None:
         )
         print('  POST v2/window {"ServiceName": "InventoryReturn"}')
         print(f"  PUT  v2/change FORM/form: return_number={args.return_number}")
-        if args.line:
+        if args.line is not None:
             print("  PUT  v2/tab    LIST")
             print(f"  PUT  v2/row    list -> row {args.line}")
         print(f"  PUT  v2/tab    {tab}")
@@ -180,7 +180,7 @@ def add_note(args: argparse.Namespace) -> None:
             )
             if status_code(loaded) == BLOCKED:
                 answer_no(s, loaded)
-            if args.line:
+            if args.line is not None:
                 s.select_tab(window, "LIST")
                 s.select_row(window, "list", args.line)  # row N is the Nth line
             s.select_tab(window, tab)
@@ -359,6 +359,15 @@ def main() -> None:
     )
 
     args = p.parse_args()
+    if args.command == "note" and args.line is not None and args.line < 1:
+        p.error("--line starts at 1")
+    if (
+        args.command == "task"
+        and args.task_no
+        and args.comments is None
+        and not args.complete
+    ):
+        p.error("an update needs --comments, --complete, or both")
     print(f"Inventory return - {args.command}")
     print("=" * 60)
     if args.command == "note":
