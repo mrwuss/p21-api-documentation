@@ -994,6 +994,10 @@
 <td><a href="02-OData-API.html#oe_line_po-holds-stale-links-join-on-both-keys-and-filter-delete_flag">02 § <code>oe_line_po</code> holds stale links</a> — join on both key pairs and filter <code>delete_flag</code>; a deleted PO leaves its sales lines open with nothing on order</td>
 </tr>
 <tr>
+<td><strong>Link a PO line to a production order component or a sales order line</strong>; <em>"This component has linked PO or Transfer lines"</em>; <em>"A PO or transfer exists for item... You cannot change the Cancel Flag"</em></td>
+<td><a href="04-Interactive-API.html#po-line-links-to-backorders-production-order-components-and-sales-orders">04 § PO Line Links to Backorders</a> — Backorders tab <code>linked_qty</code>; approve the order before linking it; move the link before you edit the component or cancel the order</td>
+</tr>
+<tr>
 <td><strong>Convert an existing order line to direct ship</strong> — docs said it was refused</td>
 <td><a href="recipes/order-line-to-direct-ship.html">recipe: order-line-to-direct-ship</a> · <a href="04-Interactive-API.html#changing-a-saved-line-to-direct-ship">04 § Changing a saved line to direct ship</a> — the gate is <strong>allocated stock</strong>, not the saved state: set <code>TP_EXTDINFO.extd_info.allocated_qty = 0</code>, then <code>disposition = D</code>; <code>/transaction</code> also needs <code>po_cost</code></td>
 </tr>

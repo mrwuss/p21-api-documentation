@@ -3433,6 +3433,353 @@ Confirmed in the database: `po_hdr` 500102 with **`po_type = 'D'`, `approved = '
 
 *(Flow and dead ends originally verified by [Alex Westemeier](https://github.com/AWestemeier) across two cycles; re-driven and confirmed independently here.)*
 
+## PO Line Links to Backorders (Production Order Components and Sales Orders)
+
+A PO line can be linked to the backorders it was bought for: production order components and sales order lines. The links are set in the PurchaseOrder window, on the PO line's **Backorders** tab:
+
+| Item | Value |
+|---|---|
+| Window | `{"ServiceName": "PurchaseOrder"}`; load `TABPAGE_1.tp_1_dw_1.po_no` |
+| PO line | `PUT /v2/tab` `TABPAGE_17`, then `PUT /v2/row` on `tp_17_dw_17` |
+| Tab | `BACKORDERS`, datawindow `links_for_po` (one row per open backorder of the item at the location) |
+| Columns | `c_ordertype` (`PR ORD` for a production order component, `REG` for a sales order line), `order_no`, `line_no`, `component_number`, `linked_qty`, `c_backordered_quantity`, `sum_linked_qty` |
+| Editable | `linked_qty` only; select the row with `PUT /v2/row` first |
+| Matching a row | `GET /v2/data` returns every value as text, and numbers can carry a decimal part; the programs below compare the part of `order_no` before any `.` |
+
+Where the links are stored:
+
+| Linked to | Table | Live row | Unlinked row |
+|---|---|---|---|
+| Production order component | `prod_ord_line_po` (`prod_order_number`, `line_number`, `component_number`, `po_number`, `po_line_number`, `quantity`, `connection_type` `P`) | `row_status_flag` `702` | the same row at `700` (back to `702` when you link again) |
+| Sales order line | [`oe_line_po`](02-OData-API.md#oe_line_po-holds-stale-links-join-on-both-keys-and-filter-delete_flag) (`connection_type` `P`) | `delete_flag` `N` | `delete_flag` `Y`, `quantity_on_po` `0` |
+
+Verified on play 26.1.6004.0 (November 2026) on throwaway records (a build-to-stock production order whose one component had no stock, a one-line PO for that component, and a sales order line for it), each step read back over OData:
+
+| Step | Result |
+|---|---|
+| `linked_qty` 1 on the `PR ORD` row, save | `prod_ord_line_po` row, `quantity` 1, `702` |
+| Production Order window, `TABPAGE_18.components`, `qty_per_assembly` lowered **or raised** | `Status: 2`, *"This component has linked PO or Transfer lines.  You can not edit this information."*; nothing changed |
+| Sales order entered **unapproved** | not listed on the Backorders tab at all |
+| The same order **approved** | listed as a `REG` row |
+| `PR ORD` row to 0, then `REG` row to 1, save | component link at `700`, a new `oe_line_po` row; the component edit is then accepted |
+| `cancel_flag` `ON` on that sales order | `Status: 2`, *"A PO or transfer exists for item ITEM-ID. You cannot change the Cancel Flag."* |
+| Link moved back (`REG` 0, `PR ORD` 1), then the cancel | `oe_line_po` row `delete_flag` `Y`; the cancel passes |
+| `cancel_flag` `ON` on an approved order whose line is linked to a **transfer** (`connection_type` `T`) | the same *"A PO or transfer exists..."* refusal; the cancel passed once the transfer was deleted |
+
+What a reader trips on:
+
+- **A linked component cannot be edited at all**, in either direction. Move the PO link off it first.
+- **To move a PO from a component to a sales order line, approve the order first.** An unapproved order is not on the Backorders tab, so there is no row to link to.
+- **An order holding a PO or transfer link cannot be cancelled.** Move the link back to where it came from, or unlink it, then cancel. A transfer link gives the same message.
+- The verified runs set the decrease before the increase. Linking more than the PO line's quantity was not tried.
+
+<!-- tabs -->
+
+```python
+"""Set how much of a PO line is linked to each backorder (PurchaseOrder window, Backorders tab), then read the links back."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+PO_NO = "500100"
+PO_LINE = 1                               # row on the Items tab
+# (order type shown on the tab, order number, linked quantity). "PR ORD" is a
+# production order component, "REG" a sales order line. The verified runs set
+# the decrease before the increase.
+LINKS = [("PR ORD", "1000123", "0"), ("REG", "1001234", "1")]
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+        },
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+def checked(r: httpx.Response, what: str) -> dict:
+    """Raise on an HTTP error or a Status other than 1; return the result."""
+    if r.status_code >= 400:
+        raise RuntimeError(f"{what}: HTTP {r.status_code} {r.text[:300]}")
+    result = r.json() if r.text else {}
+    if result.get("Status") not in (None, 1):
+        raise RuntimeError(f"{what}: Status {result.get('Status')} {result.get('Messages')}")
+    return result
+
+
+def links(client: httpx.Client) -> dict:
+    """The PO line's links in both link tables, over OData."""
+    out = {}
+    for table, cols in (("prod_ord_line_po", "prod_order_number,component_number,quantity,row_status_flag"),
+                        ("oe_line_po", "order_number,line_number,quantity_on_po,delete_flag")):
+        po_col = "po_number" if table == "prod_ord_line_po" else "po_no"
+        line_col = "po_line_number"
+        r = client.get(f"{BASE_URL}/odataservice/odata/table/{table}",
+                       params={"$filter": f"{po_col} eq {PO_NO} and {line_col} eq {PO_LINE}", "$select": cols})
+        r.raise_for_status()
+        out[table] = r.json()["value"]
+    return out
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    client.headers.update({"Authorization": f"Bearer {token}",
+                           "Accept": "application/json"})
+    base = f"{ui_server}/api/ui/interactive"
+    print("before:", links(client))
+    checked(client.post(f"{base}/sessions/", json={"ResponseWindowHandlingEnabled": True}), "start session")
+    try:
+        window = checked(client.post(f"{base}/v2/window", json={"ServiceName": "PurchaseOrder"}), "open")["WindowId"]
+        try:
+            def change(tab: str, dw: str, field: str, value: str) -> dict:
+                return checked(client.put(f"{base}/v2/change", json={"WindowId": window, "List": [
+                    {"TabName": tab, "DatawindowName": dw, "FieldName": field, "Value": value}]}),
+                    f"set {field}")
+            change("TABPAGE_1", "tp_1_dw_1", "po_no", PO_NO)
+            checked(client.put(f"{base}/v2/tab", json={"WindowId": window, "PageName": "TABPAGE_17"}), "Items tab")
+            checked(client.put(f"{base}/v2/row", json={"WindowId": window, "DatawindowName": "tp_17_dw_17",
+                                                       "Row": PO_LINE}), "select PO line")
+            checked(client.put(f"{base}/v2/tab", json={"WindowId": window, "PageName": "BACKORDERS"}), "Backorders tab")
+            for order_type, order_no, qty in LINKS:
+                r = client.get(f"{base}/v2/data", params={"id": window})
+                r.raise_for_status()
+                grid = next((d for d in r.json() if d["Name"] == "links_for_po"), None)
+                if grid is None:
+                    raise RuntimeError("The Backorders grid is not on the page")
+                cols = grid["Columns"]
+                # An unapproved sales order is not listed here at all.
+                row = next((i for i, r in enumerate(grid["Data"], 1)
+                            if r[cols.index("c_ordertype")] == order_type and r[cols.index("order_no")].split(".")[0] == order_no),
+                           None)
+                if row is None:
+                    raise RuntimeError(f"{order_type} {order_no} is not a backorder on this PO line")
+                checked(client.put(f"{base}/v2/row", json={"WindowId": window, "DatawindowName": "links_for_po",
+                                                           "Row": row}), "select backorder")
+                change("BACKORDERS", "links_for_po", "linked_qty", qty)
+            checked(client.put(f"{base}/v2/data", json=window), "save")
+        finally:
+            client.delete(f"{base}/v2/window", params={"id": window})
+    finally:
+        client.delete(f"{base}/sessions/")
+    print("after: ", links(client))
+```
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+const string PoNo = "500100";
+const int PoLine = 1;                                // row on the Items tab
+// order type shown on the tab : order number : linked quantity, comma-separated.
+// "PR ORD" is a production order component, "REG" a sales order line.
+// The verified runs set the decrease before the increase.
+const string Links = "PR ORD:1000123:0,REG:1001234:1";
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(
+    new MediaTypeWithQualityHeaderValue("application/json"));
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", token);
+var api = $"{uiServer}/api/ui/interactive";
+
+Console.WriteLine($"before: {await LinksAsync(client)}");
+(await SendAsync(HttpMethod.Post, $"{api}/sessions/", new { ResponseWindowHandlingEnabled = true }, "start session")).Dispose();
+try
+{
+    string window;
+    using (var opened = await SendAsync(HttpMethod.Post, $"{api}/v2/window", new { ServiceName = "PurchaseOrder" }, "open"))
+    {
+        window = opened.RootElement.GetProperty("WindowId").GetString()!;
+    }
+    try
+    {
+        (await ChangeAsync(window, "TABPAGE_1", "tp_1_dw_1", "po_no", PoNo)).Dispose();
+        (await SendAsync(HttpMethod.Put, $"{api}/v2/tab", new { WindowId = window, PageName = "TABPAGE_17" }, "Items tab")).Dispose();
+        (await SendAsync(HttpMethod.Put, $"{api}/v2/row", new { WindowId = window, DatawindowName = "tp_17_dw_17", Row = PoLine }, "select PO line")).Dispose();
+        (await SendAsync(HttpMethod.Put, $"{api}/v2/tab", new { WindowId = window, PageName = "BACKORDERS" }, "Backorders tab")).Dispose();
+        foreach (var spec in Links.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var p = spec.Split(':');
+            var (orderType, orderNo, qty) = (p[0], p[1], p[2]);
+            using var data = await SendAsync(HttpMethod.Get, $"{api}/v2/data?id={window}", null, "read grid");
+            var grid = data.RootElement.EnumerateArray().First(d => d.GetProperty("Name").GetString() == "links_for_po");
+            var cols = grid.GetProperty("Columns").EnumerateArray().Select(c => c.GetString()).ToList();
+            int typeCol = cols.IndexOf("c_ordertype"), orderCol = cols.IndexOf("order_no");
+            // An unapproved sales order is not listed here at all.
+            var row = grid.GetProperty("Data").EnumerateArray()
+                .Select((r, i) => (r, i: i + 1))
+                .FirstOrDefault(x => x.r[typeCol].GetString() == orderType && x.r[orderCol].GetString()!.Split('.')[0] == orderNo).i;
+            if (row == 0)
+            {
+                throw new InvalidOperationException($"{orderType} {orderNo} is not a backorder on this PO line");
+            }
+            (await SendAsync(HttpMethod.Put, $"{api}/v2/row", new { WindowId = window, DatawindowName = "links_for_po", Row = row }, "select backorder")).Dispose();
+            (await ChangeAsync(window, "BACKORDERS", "links_for_po", "linked_qty", qty)).Dispose();
+        }
+        (await SendAsync(HttpMethod.Put, $"{api}/v2/data", window, "save")).Dispose();
+    }
+    finally
+    {
+        await client.DeleteAsync($"{api}/v2/window?id={window}");
+    }
+}
+finally
+{
+    await client.DeleteAsync($"{api}/sessions/");
+}
+Console.WriteLine($"after:  {await LinksAsync(client)}");
+
+Task<JsonDocument> ChangeAsync(string windowId, string tab, string dw, string field, string value) =>
+    SendAsync(HttpMethod.Put, $"{api}/v2/change", new
+    {
+        WindowId = windowId,
+        List = new[] { new { TabName = tab, DatawindowName = dw, FieldName = field, Value = value } },
+    }, $"set {field}");
+
+// Raise on an HTTP error or a Status other than 1; return the result.
+async Task<JsonDocument> SendAsync(HttpMethod method, string url, object? body, string what)
+{
+    using var q = new HttpRequestMessage(method, url);
+    if (body is not null)
+    {
+        q.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+    }
+    using var r = await client.SendAsync(q);
+    var text = await r.Content.ReadAsStringAsync();
+    if (!r.IsSuccessStatusCode)
+    {
+        throw new InvalidOperationException($"{what}: HTTP {(int)r.StatusCode} {text[..Math.Min(300, text.Length)]}");
+    }
+    var doc = JsonDocument.Parse(string.IsNullOrEmpty(text) ? "{}" : text);
+    if (doc.RootElement.ValueKind == JsonValueKind.Object && doc.RootElement.TryGetProperty("Status", out var s) &&
+        s.ValueKind == JsonValueKind.Number && s.GetInt32() != 1)
+    {
+        throw new InvalidOperationException($"{what}: Status {s} {doc.RootElement.GetProperty("Messages")}");
+    }
+    return doc;
+}
+
+// The PO line's links in both link tables, over OData.
+static async Task<string> LinksAsync(HttpClient c)
+{
+    var parts = new List<string>();
+    foreach (var (table, poCol, cols) in new[]
+    {
+        ("prod_ord_line_po", "po_number", "prod_order_number,component_number,quantity,row_status_flag"),
+        ("oe_line_po", "po_no", "order_number,line_number,quantity_on_po,delete_flag"),
+    })
+    {
+        using var r = await c.GetAsync($"{BaseUrl}/odataservice/odata/table/{table}?$select={cols}&$filter=" +
+            Uri.EscapeDataString($"{poCol} eq {PoNo} and po_line_number eq {PoLine}"));
+        r.EnsureSuccessStatusCode();
+        using var d = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+        parts.Add($"{table}={d.RootElement.GetProperty("value")}");
+    }
+    return string.Join(" ", parts);
+}
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient c, string token)
+{
+    using var q = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    q.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    using var r = await c.SendAsync(q);
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on play 26.1.6004.0 against a second set of throwaway records: Python linked the PO line to the component, then moved it to the approved sales order line; C#, with `Links` set to the reverse (`REG` to 0, `PR ORD` to 1), moved it back. Afterwards the order was cancelled, the PO line unlinked, the PO deleted and the production order cancelled.
+
+*Verified by @mrwuss* ([#269](https://github.com/mrwuss/p21-api-documentation/issues/269)).
+
 ## Sales Order Notepad Writes (Header vs Line)
 
 The **Order window has the same two notepad surfaces** as PurchaseOrder, drivable with the same Notepad Entry popup mechanics ([above](#the-notepad-entry-popup)) — verified end-to-end on 26.1 (August 2026), both notes confirmed in the database. This matters doubly because the Transaction API's note surface on `Order` is **entirely closed** ([03 § Limitations](03-Transaction-API.md#limitations)): this is the working path.
