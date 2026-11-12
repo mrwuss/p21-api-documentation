@@ -736,7 +736,10 @@
 </ul>
 </li>
 <li><a href="#creating-a-transfer-from-a-sales-order">Creating a Transfer from a Sales Order</a></li>
-<li><a href="#po-line-links-to-backorders-production-order-components-and-sales-orders">PO Line Links to Backorders (Production Order Components and Sales Orders)</a></li>
+<li><a href="#po-line-links-to-backorders-production-order-components-and-sales-orders">PO Line Links to Backorders (Production Order Components and Sales Orders)</a><ul>
+<li><a href="#the-same-link-through-the-transaction-api">The same link through the Transaction API</a></li>
+</ul>
+</li>
 <li><a href="#sales-order-notepad-writes-header-vs-line">Sales Order Notepad Writes (Header vs Line)</a></li>
 <li><a href="#production-order-notes-header">Production Order Notes (Header)</a></li>
 <li><a href="#standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows (Item/Customer/Supplier)</a></li>
@@ -4129,7 +4132,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <h3 id="related-dead-ends">Related dead ends</h3>
 <ul>
 <li><strong>There is no PO-generation service.</strong> Not among the 299 transaction services, and window-name guesses (<code>POGen</code>, <code>PurchaseOrderGeneration</code>, …) all 400. The wizard is the path.</li>
-<li><strong><code>PurchaseOrder</code> TAPI cannot build a <code>D</code>-type PO</strong> — <code>po_hdr_po_type</code> is system-disabled, and the Backorders link tab is invisible to TAPI.</li>
+<li><strong><code>PurchaseOrder</code> TAPI cannot build a <code>D</code>-type PO</strong> — <code>po_hdr_po_type</code> is system-disabled. (The Backorders tab itself is reachable on 26.1.6004.0: a <code>/transaction</code> POST sets <code>linked_qty</code> on an existing PO line; see <a href="#the-same-link-through-the-transaction-api">the same link through the Transaction API</a>.)</li>
 <li><strong>Direct-ship POs are not received</strong> via <a href="03-Transaction-API.html#purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt</a> — the window refuses because the linked sales-order lines are <code>'T'</code> status. Their receipt is created by the sales-side confirmation instead (<code>DirectShipConfirmation</code>, keyed on <code>po_no</code>), which in one save writes the receipt, completes the PO line, invoices the sales-order line and creates the customer AR invoice — <strong>and overwrites <code>po_line.supplier_ship_date</code> on every line it touches</strong> (<a href="#directshipconfirmation-writes-its-ship-date-down-onto-every-line">below</a>).</li>
 </ul>
 <h4 id="directshipconfirmation-writes-its-ship-date-down-onto-every-line"><code>DirectShipConfirmation</code> writes its ship date down onto every line</h4>
@@ -5152,6 +5155,61 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <li><strong>An order holding a PO or transfer link cannot be cancelled.</strong> Move the link back to where it came from, or unlink it, then cancel. A <a href="#creating-a-transfer-from-a-sales-order">transfer link</a> gives the same message.</li>
 <li>The verified runs set the decrease before the increase. Linking more than the PO line's quantity was not tried.</li>
 </ul>
+<h3 id="the-same-link-through-the-transaction-api">The same link through the Transaction API</h3>
+<p>On 26.1.6004.0 one <code>PurchaseOrder</code> POST sets <code>linked_qty</code> too, without a session. <code>Status: "New"</code> with an existing <code>po_no</code> selects that PO (<a href="03-Transaction-API.html#upsert-semantics-keyed-rows-insert-when-absent">upsert semantics</a>); replace the payload's placeholders with your own PO, line and order. Verified on play (November 2026) on a throwaway PO line and an approved sales order line for the same item, <code>oe_line_po</code> read back after each POST:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Element</th>
+<th>Keys</th>
+<th>Edits</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TABPAGE_1.tp_1_dw_1</code></td>
+<td><code>["po_no"]</code></td>
+<td><code>po_no</code></td>
+</tr>
+<tr>
+<td><code>TABPAGE_17.tp_17_dw_17</code></td>
+<td><code>["line_no"]</code></td>
+<td><code>line_no</code> only</td>
+</tr>
+<tr>
+<td><code>BACKORDERS.links_for_po</code></td>
+<td><code>["location_id", "order_no"]</code> (its <code>KeyFields</code>)</td>
+<td><code>location_id</code>, <code>order_no</code>, <code>linked_qty</code></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Sent</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>linked_qty</code> <code>1</code></td>
+<td><code>Succeeded: 1</code>; an <code>oe_line_po</code> row, <code>quantity_on_po</code> 1, <code>connection_type</code> <code>P</code></td>
+</tr>
+<tr>
+<td><code>linked_qty</code> <code>0</code></td>
+<td><code>Succeeded: 1</code>; the row goes to <code>delete_flag</code> <code>Y</code>, <code>quantity_on_po</code> 0</td>
+</tr>
+<tr>
+<td><code>item_id</code> on the <code>TABPAGE_17</code> row as well</td>
+<td><code>Failed: 1</code>, <code>Column is disabled: item_id</code>: select the PO line by <code>line_no</code> alone</td>
+</tr>
+<tr>
+<td>An <code>order_no</code> that is not a backorder on that line</td>
+<td><code>Failed: 1</code>, <code>Column is disabled: location_id</code>; the message names a key column, not the missing backorder</td>
+</tr>
+</tbody>
+</table></div>
+<p>Only a sales-order link was run this way; the production-order component row (<code>PR ORD</code>) and moving a link between two rows in one POST were exercised through the window only. The rules in the table above (approve first, a linked order cannot be cancelled) come from the same records. Payload: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/json/po-backorder-link.json"><code>po-backorder-link.json</code></a>.</p>
 <div class="code-tabs">
   <div class="tab-buttons">
     <button class="tab-btn active" data-lang="python">Python</button>
@@ -7900,7 +7958,10 @@ Row 5 selected → Detail shows row 4 (1 behind)
 </ul>
 </li>
 <li><a href="#creating-a-transfer-from-a-sales-order">Creating a Transfer from a Sales Order</a></li>
-<li><a href="#po-line-links-to-backorders-production-order-components-and-sales-orders">PO Line Links to Backorders (Production Order Components and Sales Orders)</a></li>
+<li><a href="#po-line-links-to-backorders-production-order-components-and-sales-orders">PO Line Links to Backorders (Production Order Components and Sales Orders)</a><ul>
+<li><a href="#the-same-link-through-the-transaction-api">The same link through the Transaction API</a></li>
+</ul>
+</li>
 <li><a href="#sales-order-notepad-writes-header-vs-line">Sales Order Notepad Writes (Header vs Line)</a></li>
 <li><a href="#production-order-notes-header">Production Order Notes (Header)</a></li>
 <li><a href="#standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows (Item/Customer/Supplier)</a></li>

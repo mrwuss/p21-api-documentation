@@ -1,0 +1,74 @@
+{
+  "Name": "PurchaseOrder",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.tp_1_dw_1",
+          "Type": "Form",
+          "Keys": [
+            "po_no"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "po_no",
+                  "Value": "500100"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TABPAGE_17.tp_17_dw_17",
+          "Type": "List",
+          "Keys": [
+            "line_no"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "line_no",
+                  "Value": "1"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "BACKORDERS.links_for_po",
+          "Type": "List",
+          "Keys": [
+            "location_id",
+            "order_no"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "location_id",
+                  "Value": "10"
+                },
+                {
+                  "Name": "order_no",
+                  "Value": "1001234"
+                },
+                {
+                  "Name": "linked_qty",
+                  "Value": "1"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
