@@ -4,6 +4,7 @@
   "Address",
   "Assembly",
   "BinLocation",
+  "Contact",
   "ConvertInventoryReturnToVoucher",
   "ConvertPOToVoucher",
   "Customer",

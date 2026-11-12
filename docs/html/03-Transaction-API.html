@@ -768,6 +768,7 @@
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
 <li><a href="#contact-service-linking-a-new-contact-to-an-existing-address">Contact Service — Linking a New Contact to an Existing Address</a></li>
 <li><a href="#strategicpricinglibrary-service-adding-a-price-book-at-a-position">StrategicPricingLibrary Service — Adding a Price Book at a Position</a></li>
+<li><a href="#contact-service-phone-numbers">Contact Service — Phone Numbers</a></li>
 <li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
 <li><a href="#inventorycostedit-service-changing-an-items-average-cost">InventoryCostEdit Service — Changing an Item's Average Cost</a></li>
 <li><a href="#item-merge-and-customer-merge-m_itemmerge-m_customermerge">Item Merge and Customer Merge (m_itemmerge, m_customermerge)</a></li>
@@ -8013,6 +8014,325 @@ You cannot delete it. DataElement: customersalesrep, Column: row_status_flag, Va
 <li>A new library needs <code>type_cd</code> (a label such as <code>First Of</code>; <code>Column is disabled: company_id</code> if you send <code>company_id</code>) and <code>description</code>, and can take its first book in the same transaction.</li>
 </ul>
 <p><em>(Verified on play 26.1.5950.0, 2026-10-29, on a throwaway library. Community lead: P21WWUG forum.)</em></p>
+<h3 id="contact-service-phone-numbers">Contact Service — Phone Numbers</h3>
+<p>A contact's phone numbers are not on the contact's main form. The <code>Contact</code> service splits them out:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Element</th>
+<th>Keys</th>
+<th>Phone fields</th>
+<th>Bound to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FORM.contact</code></td>
+<td><code>["contact_id"]</code></td>
+<td>none</td>
+<td><code>contacts</code> (name, <code>address_id</code>, email, <code>delete_flag</code>)</td>
+</tr>
+<tr>
+<td><code>PHONE.phone</code></td>
+<td><code>[]</code></td>
+<td><code>direct_phone</code>, <code>phone_ext</code>, <code>direct_fax</code>, <code>fax_ext</code>, <code>cellular</code>, <code>cellular_ext</code>, <code>beeper</code>, <code>direct_watts_number</code></td>
+<td><code>contacts</code></td>
+</tr>
+<tr>
+<td><code>PHONE.phone</code></td>
+<td><code>[]</code></td>
+<td><code>central_phone_number</code>, <code>central_fax_number</code>, <code>central_watts_number</code></td>
+<td><strong><code>address</code></strong>, the company's row, shared by all its contacts</td>
+</tr>
+<tr>
+<td><code>PERSONAL_INFO.personal_info</code></td>
+<td><code>[]</code></td>
+<td><code>home_phone</code>, <code>home_fax</code></td>
+<td><code>contacts</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Verified on play 26.1.6004.0 (November 2026) on a contact created for the test, with <code>contacts</code> read back over OData after every POST:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What you send</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>direct_phone</code> on <strong><code>FORM.contact</code></strong></td>
+<td><code>Failed: 1</code>, <code>Column is disabled: direct_phone</code></td>
+</tr>
+<tr>
+<td><code>FORM.contact</code> (<code>contact_id</code>) + <code>PHONE.phone</code> (<code>direct_phone</code>)</td>
+<td><code>Succeeded: 1</code>; <code>contacts.direct_phone</code> updated</td>
+</tr>
+<tr>
+<td><code>PHONE.phone</code> with <code>cellular</code></td>
+<td><code>contacts.cellular</code> updated; <code>direct_phone</code> unchanged</td>
+</tr>
+<tr>
+<td>A new contact: <code>FORM.contact</code> (<code>first_name</code>, <code>last_name</code>, <code>address_id</code>, no <code>contact_id</code>) + <code>PHONE.phone</code> in the same POST</td>
+<td>created with the phone; the new <code>contact_id</code> comes back on <code>FORM.contact</code></td>
+</tr>
+<tr>
+<td><code>FORM.contact</code> <code>delete_flag</code> <code>ON</code></td>
+<td><code>contacts.delete_flag</code> <code>Y</code></td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong><code>Column is disabled: direct_phone</code> means the wrong element</strong>, not a field you cannot write. Move the field to <code>PHONE.phone</code>.</li>
+<li><strong>Leave <code>central_phone_number</code> out</strong> unless you mean to change the company's main number: the definition binds it to <code>address.central_phone_number</code>. It was not written in this test. To change a supplier's or customer's central number on purpose, see <a href="recipes/update-supplier-contact.html">the update-supplier-contact recipe</a>.</li>
+<li>The value is stored as sent (<code>555-555-0101</code> read back as <code>555-555-0101</code>).</li>
+</ul>
+<p>Payload: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/json/contact-phone.json"><code>contact-phone.json</code></a>.</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Set a contact&#39;s direct phone and cell number (Contact service, PHONE.phone), then read them back.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;api_user&quot;</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;api_pass&quot;</span>
+<span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
+<span class="n">CONTACT_ID</span> <span class="o">=</span> <span class="s2">&quot;300&quot;</span>                        <span class="c1"># contacts.id</span>
+<span class="n">PHONES</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;direct_phone&quot;</span><span class="p">:</span> <span class="s2">&quot;555-555-0100&quot;</span><span class="p">,</span> <span class="s2">&quot;cellular&quot;</span><span class="p">:</span> <span class="s2">&quot;555-555-0199&quot;</span><span class="p">}</span>  <span class="c1"># contacts columns only</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;v2 token endpoint — credentials go in the body, never in headers.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">PASSWORD</span><span class="p">},</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;AccessToken&gt;([^&lt;]+)&lt;/AccessToken&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No AccessToken in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Transaction and Interactive calls go to the UI server, not BASE_URL.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/ui/router/v1/?urlType=external&quot;</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;Url&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;Url&gt;([^&lt;]+)&lt;/Url&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No Url in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">contact</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The contact&#39;s phone columns over OData.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/table/contacts&quot;</span><span class="p">,</span>
+                   <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;id eq &#39;</span><span class="si">{</span><span class="n">CONTACT_ID</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">,</span>
+                           <span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="s2">&quot;id,direct_phone,phone_ext,cellular,cellular_ext&quot;</span><span class="p">})</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span>
+
+
+<span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;Contact&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;UseCodeValues&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="s2">&quot;Transactions&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;Status&quot;</span><span class="p">:</span> <span class="s2">&quot;New&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;DataElements&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;FORM.contact&quot;</span><span class="p">,</span> <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span> <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;contact_id&quot;</span><span class="p">],</span>
+             <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;contact_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">CONTACT_ID</span><span class="p">}],</span>
+                       <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[]}]},</span>
+            <span class="c1"># Phone fields live on PHONE.phone. Sent on FORM.contact they fail</span>
+            <span class="c1"># &quot;Column is disabled: direct_phone&quot;. Leave central_phone_number out:</span>
+            <span class="c1"># it is the company&#39;s address.central_phone_number, not the contact&#39;s.</span>
+            <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;PHONE.phone&quot;</span><span class="p">,</span> <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span> <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[],</span>
+             <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">v</span><span class="p">}</span> <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">PHONES</span><span class="o">.</span><span class="n">items</span><span class="p">()],</span>
+                       <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[]}]},</span>
+        <span class="p">],</span>
+    <span class="p">}],</span>
+<span class="p">}</span>
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">VERIFY_SSL</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+    <span class="n">ui_server</span> <span class="o">=</span> <span class="n">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
+    <span class="n">client</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                           <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">})</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;before:&quot;</span><span class="p">,</span> <span class="n">contact</span><span class="p">(</span><span class="n">client</span><span class="p">))</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/api/v2/transaction&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="n">summary</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;Summary&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;Failed&quot;</span><span class="p">]</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;Succeeded&quot;</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Write failed: </span><span class="si">{</span><span class="n">summary</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Messages&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;summary:&quot;</span><span class="p">,</span> <span class="n">summary</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;after: &quot;</span><span class="p">,</span> <span class="n">contact</span><span class="p">(</span><span class="n">client</span><span class="p">))</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
+
+<span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_pass&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ContactId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;300&quot;</span><span class="p">;</span><span class="w">                      </span><span class="c1">// contacts.id</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">DirectPhone</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;555-555-0100&quot;</span><span class="p">;</span><span class="w">           </span><span class="c1">// contacts.direct_phone</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Cellular</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;555-555-0199&quot;</span><span class="p">;</span><span class="w">              </span><span class="c1">// contacts.cellular</span>
+<span class="c1">// ---------------------------------------------------------------------------</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="n">HttpClientHandler</span><span class="p">.</span><span class="n">DangerousAcceptAnyServerCertificateValidator</span><span class="p">,</span>
+<span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromMinutes</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">MediaTypeWithQualityHeaderValue</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">uiServer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetUiServerAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Contact&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">UseCodeValues</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span><span class="p">,</span>
+<span class="w">    </span><span class="n">Transactions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">new</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">Status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="n">DataElements</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="kt">object</span><span class="p">[]</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">new</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;FORM.contact&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;contact_id&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                    </span><span class="n">Rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Edits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;contact_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ContactId</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="n">RelativeDateEdits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">object</span><span class="o">&gt;</span><span class="p">()</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                </span><span class="p">},</span>
+<span class="w">                </span><span class="c1">// Phone fields live on PHONE.phone. Sent on FORM.contact they fail</span>
+<span class="w">                </span><span class="c1">// &quot;Column is disabled: direct_phone&quot;. Leave central_phone_number out:</span>
+<span class="w">                </span><span class="c1">// it is the company&#39;s address.central_phone_number, not the contact&#39;s.</span>
+<span class="w">                </span><span class="k">new</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;PHONE.phone&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">(),</span>
+<span class="w">                    </span><span class="n">Rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="k">new</span>
+<span class="w">                        </span><span class="p">{</span>
+<span class="w">                            </span><span class="n">Edits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">                            </span><span class="p">{</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;direct_phone&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">DirectPhone</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;cellular&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Cellular</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                            </span><span class="p">},</span>
+<span class="w">                            </span><span class="n">RelativeDateEdits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">object</span><span class="o">&gt;</span><span class="p">(),</span>
+<span class="w">                        </span><span class="p">},</span>
+<span class="w">                    </span><span class="p">},</span>
+<span class="w">                </span><span class="p">},</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="p">};</span>
+
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;before: {await ContactAsync(client)}&quot;</span><span class="p">);</span>
+<span class="k">using</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span><span class="s">$&quot;{uiServer}/api/v2/transaction&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="n">payload</span><span class="p">),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">)))</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">d</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Summary&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Failed&quot;</span><span class="p">).</span><span class="n">GetInt32</span><span class="p">()</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Succeeded&quot;</span><span class="p">).</span><span class="n">GetInt32</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span><span class="s">$&quot;Write failed: {s} {d.RootElement.GetProperty(&quot;</span><span class="n">Messages</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;summary: {s}&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;after:  {await ContactAsync(client)}&quot;</span><span class="p">);</span>
+
+<span class="c1">// The contact&#39;s phone columns over OData.</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ContactAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">c</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="s">$&quot;{BaseUrl}/odataservice/odata/table/contacts?$select=id,direct_phone,phone_ext,cellular,cellular_ext&amp;$filter=&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">        </span><span class="n">Uri</span><span class="p">.</span><span class="n">EscapeDataString</span><span class="p">(</span><span class="s">$&quot;id eq &#39;{ContactId}&#39;&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">d</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;value&quot;</span><span class="p">).</span><span class="n">ToString</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">c</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Username</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/api/security/token/v2&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;AccessToken&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Transaction and Interactive calls go to the UI server, not BaseUrl.</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetUiServerAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">token</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">q</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpRequestMessage</span><span class="p">(</span>
+<span class="w">        </span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Get</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;{BaseUrl}/api/ui/router/v1/?urlType=external&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">q</span><span class="p">.</span><span class="n">Headers</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">SendAsync</span><span class="p">(</span><span class="n">q</span><span class="p">);</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;Url&quot;</span><span class="p">).</span><span class="n">TrimEnd</span><span class="p">(</span><span class="sc">&#39;/&#39;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Some middleware answers these two endpoints in XML even when asked for JSON.</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">f</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">p</span><span class="p">).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="n">f</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">v</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span>
+<span class="w">        </span><span class="n">ex</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">JsonException</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="n">KeyNotFoundException</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">Text</span><span class="p">.</span><span class="n">RegularExpressions</span><span class="p">.</span><span class="n">Regex</span><span class="p">.</span><span class="n">Match</span><span class="p">(</span>
+<span class="w">        </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;&lt;{f}&gt;([^&lt;]+)&lt;/{f}&gt;&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">m</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;No {f} in response: {p[..Math.Min(200, p.Length)]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">Groups</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<p>Both programs ran on play 26.1.6004.0 against the test contact, each changing <code>direct_phone</code> and <code>cellular</code> and reading them back; the contact was soft-deleted afterwards.</p>
+<p><em>Verified by @mrwuss</em> (<a href="https://github.com/mrwuss/p21-api-documentation/issues/265">#265</a>).</p>
 <h3 id="itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</h3>
 <p>The <code>ItemDefaults</code> service is the <strong>Item Defaults Maintenance</strong> window (Inventory &gt; Inventory Management &gt; System), business object <code>inventory_defaults</code>, keyed on <code>company_id</code> + <code>location_id</code>. <code>Status: "New"</code> creates the per-company/location defaults record that new <code>inv_loc</code> rows inherit — GL accounts, replenishment location/method, discount groups, tax group, units, stockable/buy/make flags. Verified in Play and production (2026-08-14).</p>
 <p><strong>Why you care:</strong> a location without an <code>inventory_defaults</code> row breaks downstream flows — Inventory REST location-appends demand explicit GL (<code>Required value missing for Revenue Account</code>, see <a href="11-Inventory-REST-API.html#location-append-update-gotchas-verified-at-scale">11 § Location-Append &amp; Update Gotchas</a>), and new <code>inv_loc</code> rows land with <code>replenishment_location = NULL</code>. Creating a brand-new item at such a location fails the same way — see <a href="11-Inventory-REST-API.html#gl-accounts-when-the-location-has-no-defaults">11 § GL accounts when the location has no defaults</a>. Create the defaults row first and these problems disappear. The row's discount groups also matter: a location appended to an existing item takes its discount groups from these defaults, not from the item's other locations (<a href="11-Inventory-REST-API.html#location-append-update-gotchas-verified-at-scale">11 § Location-Append &amp; Update Gotchas</a>, item 7).</p>
@@ -9743,6 +10063,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
 <li><a href="#contact-service-linking-a-new-contact-to-an-existing-address">Contact Service — Linking a New Contact to an Existing Address</a></li>
 <li><a href="#strategicpricinglibrary-service-adding-a-price-book-at-a-position">StrategicPricingLibrary Service — Adding a Price Book at a Position</a></li>
+<li><a href="#contact-service-phone-numbers">Contact Service — Phone Numbers</a></li>
 <li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
 <li><a href="#inventorycostedit-service-changing-an-items-average-cost">InventoryCostEdit Service — Changing an Item's Average Cost</a></li>
 <li><a href="#item-merge-and-customer-merge-m_itemmerge-m_customermerge">Item Merge and Customer Merge (m_itemmerge, m_customermerge)</a></li>

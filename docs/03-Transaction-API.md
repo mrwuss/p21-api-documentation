@@ -5894,6 +5894,277 @@ A price library's books are the `LIST_DETAIL.list_detail` grid, and `sequence_nu
 
 *(Verified on play 26.1.5950.0, 2026-10-29, on a throwaway library. Community lead: P21WWUG forum.)*
 
+### Contact Service — Phone Numbers
+
+A contact's phone numbers are not on the contact's main form. The `Contact` service splits them out:
+
+| Element | Keys | Phone fields | Bound to |
+|---|---|---|---|
+| `FORM.contact` | `["contact_id"]` | none | `contacts` (name, `address_id`, email, `delete_flag`) |
+| `PHONE.phone` | `[]` | `direct_phone`, `phone_ext`, `direct_fax`, `fax_ext`, `cellular`, `cellular_ext`, `beeper`, `direct_watts_number` | `contacts` |
+| `PHONE.phone` | `[]` | `central_phone_number`, `central_fax_number`, `central_watts_number` | **`address`**, the company's row, shared by all its contacts |
+| `PERSONAL_INFO.personal_info` | `[]` | `home_phone`, `home_fax` | `contacts` |
+
+Verified on play 26.1.6004.0 (November 2026) on a contact created for the test, with `contacts` read back over OData after every POST:
+
+| What you send | Result |
+|---|---|
+| `direct_phone` on **`FORM.contact`** | `Failed: 1`, `Column is disabled: direct_phone` |
+| `FORM.contact` (`contact_id`) + `PHONE.phone` (`direct_phone`) | `Succeeded: 1`; `contacts.direct_phone` updated |
+| `PHONE.phone` with `cellular` | `contacts.cellular` updated; `direct_phone` unchanged |
+| A new contact: `FORM.contact` (`first_name`, `last_name`, `address_id`, no `contact_id`) + `PHONE.phone` in the same POST | created with the phone; the new `contact_id` comes back on `FORM.contact` |
+| `FORM.contact` `delete_flag` `ON` | `contacts.delete_flag` `Y` |
+
+- **`Column is disabled: direct_phone` means the wrong element**, not a field you cannot write. Move the field to `PHONE.phone`.
+- **Leave `central_phone_number` out** unless you mean to change the company's main number: the definition binds it to `address.central_phone_number`. It was not written in this test. To change a supplier's or customer's central number on purpose, see [the update-supplier-contact recipe](recipes/update-supplier-contact.md).
+- The value is stored as sent (`555-555-0101` read back as `555-555-0101`).
+
+Payload: [`contact-phone.json`](../examples/payloads/json/contact-phone.json).
+
+<!-- tabs -->
+
+```python
+"""Set a contact's direct phone and cell number (Contact service, PHONE.phone), then read them back."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+CONTACT_ID = "300"                        # contacts.id
+PHONES = {"direct_phone": "555-555-0100", "cellular": "555-555-0199"}  # contacts columns only
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+        },
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+def contact(client: httpx.Client) -> list[dict]:
+    """The contact's phone columns over OData."""
+    r = client.get(f"{BASE_URL}/odataservice/odata/table/contacts",
+                   params={"$filter": f"id eq '{CONTACT_ID}'",
+                           "$select": "id,direct_phone,phone_ext,cellular,cellular_ext"})
+    r.raise_for_status()
+    return r.json()["value"]
+
+
+payload = {
+    "Name": "Contact",
+    "UseCodeValues": False,
+    "Transactions": [{
+        "Status": "New",
+        "DataElements": [
+            {"Name": "FORM.contact", "Type": "Form", "Keys": ["contact_id"],
+             "Rows": [{"Edits": [{"Name": "contact_id", "Value": CONTACT_ID}],
+                       "RelativeDateEdits": []}]},
+            # Phone fields live on PHONE.phone. Sent on FORM.contact they fail
+            # "Column is disabled: direct_phone". Leave central_phone_number out:
+            # it is the company's address.central_phone_number, not the contact's.
+            {"Name": "PHONE.phone", "Type": "Form", "Keys": [],
+             "Rows": [{"Edits": [{"Name": n, "Value": v} for n, v in PHONES.items()],
+                       "RelativeDateEdits": []}]},
+        ],
+    }],
+}
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    client.headers.update({"Authorization": f"Bearer {token}",
+                           "Accept": "application/json"})
+    print("before:", contact(client))
+    r = client.post(f"{ui_server}/api/v2/transaction", json=payload)
+    r.raise_for_status()
+    result = r.json()
+    summary = result["Summary"]
+    if summary["Failed"] or not summary["Succeeded"]:
+        raise RuntimeError(f"Write failed: {summary} {result.get('Messages')}")
+    print("summary:", summary)
+    print("after: ", contact(client))
+```
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+const string ContactId = "300";                      // contacts.id
+const string DirectPhone = "555-555-0100";           // contacts.direct_phone
+const string Cellular = "555-555-0199";              // contacts.cellular
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(
+    new MediaTypeWithQualityHeaderValue("application/json"));
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", token);
+
+var payload = new
+{
+    Name = "Contact",
+    UseCodeValues = false,
+    Transactions = new[]
+    {
+        new
+        {
+            Status = "New",
+            DataElements = new object[]
+            {
+                new
+                {
+                    Name = "FORM.contact", Type = "Form", Keys = new[] { "contact_id" },
+                    Rows = new[] { new { Edits = new[] { new { Name = "contact_id", Value = ContactId } }, RelativeDateEdits = Array.Empty<object>() } },
+                },
+                // Phone fields live on PHONE.phone. Sent on FORM.contact they fail
+                // "Column is disabled: direct_phone". Leave central_phone_number out:
+                // it is the company's address.central_phone_number, not the contact's.
+                new
+                {
+                    Name = "PHONE.phone", Type = "Form", Keys = Array.Empty<string>(),
+                    Rows = new[]
+                    {
+                        new
+                        {
+                            Edits = new[]
+                            {
+                                new { Name = "direct_phone", Value = DirectPhone },
+                                new { Name = "cellular", Value = Cellular },
+                            },
+                            RelativeDateEdits = Array.Empty<object>(),
+                        },
+                    },
+                },
+            },
+        },
+    },
+};
+
+Console.WriteLine($"before: {await ContactAsync(client)}");
+using (var r = await client.PostAsync($"{uiServer}/api/v2/transaction",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")))
+{
+    r.EnsureSuccessStatusCode();
+    using var d = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+    var s = d.RootElement.GetProperty("Summary");
+    if (s.GetProperty("Failed").GetInt32() > 0 || s.GetProperty("Succeeded").GetInt32() == 0)
+    {
+        throw new InvalidOperationException($"Write failed: {s} {d.RootElement.GetProperty("Messages")}");
+    }
+    Console.WriteLine($"summary: {s}");
+}
+Console.WriteLine($"after:  {await ContactAsync(client)}");
+
+// The contact's phone columns over OData.
+static async Task<string> ContactAsync(HttpClient c)
+{
+    using var r = await c.GetAsync($"{BaseUrl}/odataservice/odata/table/contacts?$select=id,direct_phone,phone_ext,cellular,cellular_ext&$filter=" +
+        Uri.EscapeDataString($"id eq '{ContactId}'"));
+    r.EnsureSuccessStatusCode();
+    using var d = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+    return d.RootElement.GetProperty("value").ToString();
+}
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient c, string token)
+{
+    using var q = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    q.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    using var r = await c.SendAsync(q);
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on play 26.1.6004.0 against the test contact, each changing `direct_phone` and `cellular` and reading them back; the contact was soft-deleted afterwards.
+
+*Verified by @mrwuss* ([#265](https://github.com/mrwuss/p21-api-documentation/issues/265)).
+
 ### ItemDefaults Service — Per-Location Item Defaults
 
 The `ItemDefaults` service is the **Item Defaults Maintenance** window (Inventory > Inventory Management > System), business object `inventory_defaults`, keyed on `company_id` + `location_id`. `Status: "New"` creates the per-company/location defaults record that new `inv_loc` rows inherit — GL accounts, replenishment location/method, discount groups, tax group, units, stockable/buy/make flags. Verified in Play and production (2026-08-14).
