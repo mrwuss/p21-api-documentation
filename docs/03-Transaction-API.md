@@ -4241,6 +4241,287 @@ Both programs ran on play 26.1.6004.0, each creating its own throwaway item with
 
 > **Credit:** Felipe Maurer, P21WWUG Forum104 ([Topic225120](https://forums.p21ww.org/Topic225120.aspx)), confirmed there by Jim Atwood; the `unit_size` explanation by David Sokoloski. Re-verified here on 26.1.6004.0 by @mrwuss, with the header discount groups and the `TABPAGE_18` key added ([#230](https://github.com/mrwuss/p21-api-documentation/issues/230)).
 
+### Item Service — Alternate Codes (`TABPAGE_3`)
+
+An item's alternate codes live in **`alternate_code`**: any number of codes per item, item-level, with no supplier column. Its columns are `alternate_code`, `inv_mast_uid`, `alternate_code_desc`, `default_uom`, `exclude_from_b2b_flag`, `delete_flag`, `source_type_cd` and the audit columns, and its primary key is `(inv_mast_uid, alternate_code)`. On the test tenant every row carried `source_type_cd` `2051` (*P21 Application*), many items held dozens of active codes, and thousands of active codes were shared by more than one item.
+
+A supplier's own part number is a different thing: `inventory_supplier.supplier_part_no`, **one per item, supplier and division** (the table's unique key is `inv_mast_uid`, `supplier_id`, `division_id`). Do not look for supplier part numbers in `alternate_code`, or for an item's other codes in `inventory_supplier`.
+
+**Add or remove a code with one `Item` POST.** `TABPAGE_1.tp_1_dw_1` names the item; `TABPAGE_3.tp_3_dw_3` (a `List`; send `Keys: ["alternate_code"]`, which is also its declared `KeyFields`) carries `alternate_code` and `delete_flag` (`ON`/`OFF`). Payload: [`item-alternate-code.json`](../examples/payloads/json/item-alternate-code.json).
+
+Verified on play 26.1.6004.0 (November 2026) on throwaway items, with `alternate_code` read back over OData after every POST:
+
+| What you send | Result |
+|---|---|
+| A new code | `Succeeded: 1`; a row with `delete_flag` `N`, `source_type_cd` `2051` |
+| The same code again | `Succeeded: 1`; **no duplicate row** |
+| A second code | a second row |
+| `delete_flag` `ON` | the row stays, with `delete_flag` `Y` (soft delete) |
+| The deleted code again, without `delete_flag` | `Succeeded: 1`, and the row **stays deleted** (`Y`) |
+| The deleted code with `delete_flag` `OFF` | the row is active again (`N`) |
+| A code another item already has | `Succeeded: 1`; both items now carry it. Nothing checks uniqueness across items |
+| A code equal to an existing item ID | `Failed: 1`, *"This alternate code has already been set up as an item ID."* |
+
+What a reader trips on:
+
+- **Always send `delete_flag`.** A re-add of a soft-deleted code reports success and changes nothing; only `delete_flag` `OFF` revives it. Read the row back.
+- **Check other items yourself** if a code must point at one item. P21 accepted the same code on two items.
+- A repeat add is safe: it does not add a second row.
+
+<!-- tabs -->
+
+```python
+"""Add or remove an item's alternate code through the Item service, then read the codes back."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+ITEM_ID = "WIDGET-001"
+ALTERNATE_CODE = "WIDGET-ONE"
+REMOVE = False                            # True soft-deletes the code instead
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+        },
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+def alternate_codes(client: httpx.Client) -> list[dict]:
+    """The item's alternate codes, deleted ones included, over OData."""
+    item = client.get(f"{BASE_URL}/odataservice/odata/table/inv_mast",
+                      params={"$filter": f"item_id eq '{ITEM_ID}'", "$select": "inv_mast_uid"})
+    item.raise_for_status()
+    uid = item.json()["value"][0]["inv_mast_uid"]
+    r = client.get(f"{BASE_URL}/odataservice/odata/table/alternate_code",
+                   params={"$filter": f"inv_mast_uid eq {uid}",
+                           "$select": "alternate_code,delete_flag"})
+    r.raise_for_status()
+    return r.json()["value"]
+
+
+payload = {
+    "Name": "Item",
+    "UseCodeValues": False,
+    "Transactions": [{
+        "Status": "New",
+        "DataElements": [
+            {"Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": ["item_id"],
+             "Rows": [{"Edits": [{"Name": "item_id", "Value": ITEM_ID}],
+                       "RelativeDateEdits": []}]},
+            {"Name": "TABPAGE_3.tp_3_dw_3", "Type": "List", "Keys": ["alternate_code"],
+             "Rows": [{"Edits": [
+                 {"Name": "alternate_code", "Value": ALTERNATE_CODE},
+                 # Always send delete_flag: without OFF, re-adding a code that was
+                 # soft-deleted reports success and leaves it deleted.
+                 {"Name": "delete_flag", "Value": "ON" if REMOVE else "OFF"},
+             ], "RelativeDateEdits": []}]},
+        ],
+    }],
+}
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    client.headers.update({"Authorization": f"Bearer {token}",
+                           "Accept": "application/json"})
+    print("before:", alternate_codes(client))
+    r = client.post(f"{ui_server}/api/v2/transaction", json=payload)
+    r.raise_for_status()
+    result = r.json()
+    summary = result["Summary"]
+    if summary["Failed"] or not summary["Succeeded"]:
+        raise RuntimeError(f"Write failed: {summary} {result.get('Messages')}")
+    print("summary:", summary)
+    print("after: ", alternate_codes(client))
+```
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+const string ItemId = "WIDGET-001";
+const string AlternateCode = "WIDGET-ONE";
+var remove = false;                                  // true soft-deletes the code instead
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(
+    new MediaTypeWithQualityHeaderValue("application/json"));
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", token);
+
+var payload = new
+{
+    Name = "Item",
+    UseCodeValues = false,
+    Transactions = new[]
+    {
+        new
+        {
+            Status = "New",
+            DataElements = new object[]
+            {
+                new
+                {
+                    Name = "TABPAGE_1.tp_1_dw_1", Type = "Form", Keys = new[] { "item_id" },
+                    Rows = new[] { new { Edits = new[] { new { Name = "item_id", Value = ItemId } }, RelativeDateEdits = Array.Empty<object>() } },
+                },
+                new
+                {
+                    Name = "TABPAGE_3.tp_3_dw_3", Type = "List", Keys = new[] { "alternate_code" },
+                    Rows = new[]
+                    {
+                        new
+                        {
+                            Edits = new[]
+                            {
+                                new { Name = "alternate_code", Value = AlternateCode },
+                                // Always send delete_flag: without OFF, re-adding a code that was
+                                // soft-deleted reports success and leaves it deleted.
+                                new { Name = "delete_flag", Value = remove ? "ON" : "OFF" },
+                            },
+                            RelativeDateEdits = Array.Empty<object>(),
+                        },
+                    },
+                },
+            },
+        },
+    },
+};
+
+Console.WriteLine($"before: {await AlternateCodesAsync(client)}");
+using (var r = await client.PostAsync($"{uiServer}/api/v2/transaction",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")))
+{
+    r.EnsureSuccessStatusCode();
+    using var d = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+    var s = d.RootElement.GetProperty("Summary");
+    if (s.GetProperty("Failed").GetInt32() > 0 || s.GetProperty("Succeeded").GetInt32() == 0)
+    {
+        throw new InvalidOperationException($"Write failed: {s} {d.RootElement.GetProperty("Messages")}");
+    }
+    Console.WriteLine($"summary: {s}");
+}
+Console.WriteLine($"after:  {await AlternateCodesAsync(client)}");
+
+// The item's alternate codes, deleted ones included, over OData.
+static async Task<string> AlternateCodesAsync(HttpClient c)
+{
+    using var i = await c.GetAsync($"{BaseUrl}/odataservice/odata/table/inv_mast?$select=inv_mast_uid&$filter=" +
+        Uri.EscapeDataString($"item_id eq '{ItemId}'"));
+    i.EnsureSuccessStatusCode();
+    using var id = JsonDocument.Parse(await i.Content.ReadAsStringAsync());
+    var uid = id.RootElement.GetProperty("value")[0].GetProperty("inv_mast_uid").GetRawText();
+    using var r = await c.GetAsync($"{BaseUrl}/odataservice/odata/table/alternate_code?$select=alternate_code,delete_flag&$filter=" +
+        Uri.EscapeDataString($"inv_mast_uid eq {uid}"));
+    r.EnsureSuccessStatusCode();
+    using var d = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+    return d.RootElement.GetProperty("value").ToString();
+}
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient c, string token)
+{
+    using var q = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    q.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    using var r = await c.SendAsync(q);
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on play 26.1.6004.0 against one throwaway item: Python added a code, removed it and added it back; C# added a second code and removed it. Every read-back matched the table above, and the item and its codes were soft-deleted afterwards.
+
+*Verified by @mrwuss* ([#263](https://github.com/mrwuss/p21-api-documentation/issues/263)).
+
 ### Location Service — Creating a Warehouse
 
 `Location` / `TABPAGE_1.tp_1_dw_1` (business object `location`, datawindow `d_location`) is **Warehouse/Location Maintenance**. Keys are `id` (→ `location.location_id`) + `company_id`; `id` also fans out to a shared-keyspace `address` row (same [`mail_`-prefix convention](02-OData-API.md#common-tables) as everywhere else `address` is joined).

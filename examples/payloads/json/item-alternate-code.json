@@ -1,0 +1,51 @@
+{
+  "Name": "Item",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.tp_1_dw_1",
+          "Type": "Form",
+          "Keys": [
+            "item_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "item_id",
+                  "Value": "WIDGET-001"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TABPAGE_3.tp_3_dw_3",
+          "Type": "List",
+          "Keys": [
+            "alternate_code"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "alternate_code",
+                  "Value": "WIDGET-ONE"
+                },
+                {
+                  "Name": "delete_flag",
+                  "Value": "OFF"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

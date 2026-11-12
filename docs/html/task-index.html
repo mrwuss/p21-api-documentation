@@ -1222,6 +1222,11 @@
 <td><a href="03-Transaction-API.html#creating-a-new-item-in-one-item-post">03 § Creating a New Item in One <code>Item</code> POST</a> — or <a href="11-Inventory-REST-API.html#minimum-create-payload">11 § Minimum Create Payload</a></td>
 </tr>
 <tr>
+<td>Add or remove an item's <strong>alternate code</strong>; where alternate codes and supplier part numbers live</td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#item-service-alternate-codes-tabpage_3">03 § Item Service — Alternate Codes</a> — always send <code>delete_flag</code>; a re-add of a deleted code is a silent no-op; no uniqueness across items</td>
+</tr>
+<tr>
 <td>Inventory REST create 500s — what does the error actually mean, is anything left behind</td>
 <td>—</td>
 <td><a href="11-Inventory-REST-API.html#7-an-incomplete-create-payload-500s-but-the-message-names-whats-actually-missing">11 § An incomplete create payload 500s</a> — message names the missing block; nothing persists on failure</td>
