@@ -821,7 +821,7 @@ GET {base}/odataservice/odata/table/po_hdr
 
 #### `oe_line_po` holds stale links: join on both keys and filter `delete_flag`
 
-`po_line` has no sales-order column. The link from a PO line to the sales-order line it was bought for lives in **`oe_line_po`**: `order_number`, `line_number`, `po_no`, `po_line_number`, `quantity_on_po`, `connection_type`, `delete_flag`. (On a direct-ship PO, `po_hdr.sales_order_number` also names the order.)
+`po_line` has no sales-order column. (A PO line's link to a **production order component** is a different table, `prod_ord_line_po`; see [04 § PO Line Links to Backorders](04-Interactive-API.md#po-line-links-to-backorders-production-order-components-and-sales-orders).) The link from a PO line to the sales-order line it was bought for lives in **`oe_line_po`**: `order_number`, `line_number`, `po_no`, `po_line_number`, `quantity_on_po`, `connection_type`, `delete_flag`. (On a direct-ship PO, `po_hdr.sales_order_number` also names the order.)
 
 **The table keeps stale rows.** Some rows carry a `po_no` that matches a current PO but point at unrelated sales orders years older than it. Match on `po_no` alone and those old orders attach themselves to today's PO. To get only real links:
 
@@ -838,6 +838,8 @@ GET {base}/odataservice/odata/table/oe_line_po
 Write each literal to match the column's type in `$metadata` — a quoted numeric key 404s ([details](06-Error-Handling.md#404-incompatible-operand-types-a-quoted-numeric-key)). Then keep the rows whose `order_number` + `line_number` pair exists in `oe_line` and whose `delete_flag` is not `Y`.
 
 **A deleted PO leaves its sales-order lines open with nothing on order.** Deleting the PO sets `delete_flag = 'Y'` on its `oe_line_po` rows, but the sales-order lines it was bought for stay open. A query that filters `delete_flag` correctly shows those lines with no PO, which is the true state: the demand is uncovered and needs a new PO. See [03 § Purchase Order Types](03-Transaction-API.md#purchase-order-types-and-the-disabled-po_hdr_po_type-column) for the flags on the deleted PO itself.
+
+**`oe_line_po` also holds transfer links.** A sales order line sourced from another location links to its transfer with `connection_type` `T`, and `po_no` then holds the **transfer number** (`transfer_hdr.transfer_no`), not a PO. Filter on `connection_type` before you join to `po_hdr` (verified on play 26.1.6004.0, November 2026).
 
 `oe_line_po` also returns every historical link for a PO line, not the receipt layer that is on the shelf now. Tracing current stock to the order it was bought for needs lot or receipt matching on top of this join.
 
