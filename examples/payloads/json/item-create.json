@@ -1,0 +1,132 @@
+{
+  "Name": "Item",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.tp_1_dw_1",
+          "Type": "Form",
+          "Keys": [
+            "item_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "item_id",
+                  "Value": "WIDGET-001"
+                },
+                {
+                  "Name": "item_desc",
+                  "Value": "Example widget"
+                },
+                {
+                  "Name": "sales_discount_group_id",
+                  "Value": "SDG01"
+                },
+                {
+                  "Name": "purchase_discount_group_id",
+                  "Value": "PDG01"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TABPAGE_2.tp_2_dw_2",
+          "Type": "List",
+          "Keys": [
+            "unit_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "unit_id",
+                  "Value": "EA"
+                },
+                {
+                  "Name": "default_sales_unit",
+                  "Value": "ON"
+                },
+                {
+                  "Name": "sales_pricing_unit",
+                  "Value": "ON"
+                },
+                {
+                  "Name": "default_purchasing_unit",
+                  "Value": "ON"
+                },
+                {
+                  "Name": "purchase_pricing_unit",
+                  "Value": "ON"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TABPAGE_6.tp_6_dw_6",
+          "Type": "List",
+          "Keys": [
+            "supplier_id",
+            "division_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "supplier_id",
+                  "Value": "99001"
+                },
+                {
+                  "Name": "division_id",
+                  "Value": "1"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TABPAGE_17.invloclist",
+          "Type": "List",
+          "Keys": [
+            "location_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "location_id",
+                  "Value": "10"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TABPAGE_18.inv_loc_detail",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "product_group_id",
+                  "Value": "PG01"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

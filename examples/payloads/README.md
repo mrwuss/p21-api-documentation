@@ -53,6 +53,7 @@ Placeholders (`ACME`, `WIDGET-001`, customer `100198`, …) are generic — subs
 | Lock a bin (`pick_locked_flag` / `put_locked_flag`) | [json](json/bin-lock.json) | — | `POST /api/v2/transaction` |
 | Delete a bin (soft delete; `OFF` restores) | [json](json/bin-delete.json) | — | `POST /api/v2/transaction` |
 | Create a vendor (and its supplier) | [json](json/vendor-create.json) | — | `POST /api/v2/transaction` |
+| Create an item in one `Item` POST (units, supplier, location, product group; 26.1.6004.0) | [json](json/item-create.json) | — | `POST /api/v2/transaction` |
 | Attach a ship-to to an existing contract | [json](json/contract-attach-ship-to.json) | — | `POST /api/v2/transaction` |
 | Update a contract line by `line_no` (+ commission cost) | [json](json/contract-update-line-by-line-no.json) | — | `POST /api/v2/transaction` |
 | Create an assembly on a plain item | [json](json/assembly-create.json) | — | `POST /api/v2/transaction` |
