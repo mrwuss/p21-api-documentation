@@ -1,0 +1,33 @@
+{
+  "Name": "InventoryReturn",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "FORM.form",
+          "Type": "Form",
+          "Keys": [
+            "return_number"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "return_number",
+                  "Value": "7000200"
+                },
+                {
+                  "Name": "row_status_flag",
+                  "Value": "Approved"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

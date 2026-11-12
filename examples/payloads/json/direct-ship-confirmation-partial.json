@@ -1,0 +1,63 @@
+{
+  "Name": "DirectShipConfirmation",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.tp_1_dw_po",
+          "Type": "Form",
+          "Keys": [
+            "po_no"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "po_no",
+                  "Value": "500100"
+                },
+                {
+                  "Name": "receive_all",
+                  "Value": "OFF"
+                },
+                {
+                  "Name": "print_invoice",
+                  "Value": "OFF"
+                },
+                {
+                  "Name": "fax_invoice",
+                  "Value": "OFF"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TABPAGE_17.tp_17_dw_17",
+          "Type": "List",
+          "Keys": [
+            "item_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "item_id",
+                  "Value": "WIDGET-001"
+                },
+                {
+                  "Name": "unit_quantity",
+                  "Value": "1"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

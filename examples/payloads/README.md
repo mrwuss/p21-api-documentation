@@ -39,6 +39,12 @@ Placeholders (`ACME`, `WIDGET-001`, customer `100198`, …) are generic — subs
 | Print a sales-order pick ticket (`print_tix`) | [json](json/order-print-pick-ticket.json) | — | `POST /api/v2/transaction` |
 | Append $0 lines to an existing order (disposal step 3) | [json](json/order-append-zero-price-lines.json) | — | `POST /api/v2/transaction` |
 | Confirm a direct ship in full (`DirectShipConfirmation`, 26.1.5950.0) | [json](json/direct-ship-confirmation.json) | — | `POST /api/v2/transaction` |
+| Confirm part of a direct ship (`TABPAGE_17` keyed `item_id`, 26.1.6004.0) | [json](json/direct-ship-confirmation-partial.json) | — | `POST /api/v2/transaction` |
+| Create an inventory return (line + bin pair per line) | [json](json/inventory-return-create.json) | — | `POST /api/v2/transaction` |
+| Approve an inventory return | [json](json/inventory-return-approve.json) | — | `POST /api/v2/transaction` |
+| Print an inventory return pick ticket (required before shipping) | [json](json/inventory-return-pick-ticket-pdf.json) | — | `POST /api/v2/process/pdfreport` |
+| Ship an inventory return | [json](json/inventory-return-ship.json) | — | `POST /api/v2/transaction` |
+| Vouch chosen lines of an inventory return (`LIST.list` keyed `line_number`) | [json](json/convert-inventory-return-to-voucher.json) | — | `POST /api/v2/transaction` |
 | Contract line with Value commission and other cost + ship-to row (rebate step 5) | [json](json/contract-line-rebate-costs.json) | — | `POST /api/v2/transaction` |
 | Retrieve a record (get request) | [json](json/transaction-get-contract.json) | [xml](xml/transaction-get-contract.xml) | `POST /api/v2/transaction/get` |
 | Create a CRM task | [json](json/sales-task-create.json) | — | `POST /api/sales/tasks/` |
@@ -63,6 +69,8 @@ Placeholders (`ACME`, `WIDGET-001`, customer `100198`, …) are generic — subs
 Indentation is cosmetic — **nesting and types** are what matter: `Keys`, `Transactions`, `DataElements`, `Rows`, and `Edits` are always arrays (even with one entry); `UseCodeValues`/`IgnoreDisabled` are booleans, not quoted strings; `Value` is always a string; `IgnoreDisabled` is only honored at the payload top level. Full rules: [Payload Anatomy](../../docs/03-Transaction-API.md#payload-anatomy-types-nesting-and-common-mistakes).
 
 **`reprint-purchase-order-pdf.json` carries `reprint_flag: "<po_hdr.printed>"`, a placeholder you must replace on every call.** The flag must equal that PO's `po_hdr.printed`: `Y` for a PO that has been printed, `N` for one that never was. A mismatch returns an empty HTTP 500 on every attempt, so never hardcode either value. Read `printed` over OData before each call (`po_hdr?$filter=po_no eq 500100&$select=po_no,printed`) and substitute it, the same way you substitute the PO number. Detail: [`reprint_flag` must match the PO's `po_hdr.printed`](../../docs/03-Transaction-API.md#reprint_flag-must-match-the-pos-po_hdrprinted).
+
+**`convert-inventory-return-to-voucher.json` draws two validator warnings on purpose.** `line_number` is not a field of `LIST.list` in the published definition, but it is the key that picks the line; without it every row edits the last return line. See [Inventory Returns](../../docs/03-Transaction-API.md#a-partial-voucher-must-key-listlist-on-line_number).
 
 **`sales-task-create.json` is a different shape on purpose.** It targets the [`sales/tasks` REST family](../../docs/15-Other-REST-Families.md#salestasks), not the Transaction API — a flat domain object, no `Name`/`Transactions` wrapper. The validator recognizes this shape and checks only that it's structurally sane; it has no committed schema to check field names against the way `definitions/` does for Transaction API services, so read the family's own `GET /new` response to confirm a field name is real.
 

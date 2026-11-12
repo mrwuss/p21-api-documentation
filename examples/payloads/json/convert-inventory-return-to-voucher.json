@@ -1,0 +1,67 @@
+{
+  "Name": "ConvertInventoryReturnToVoucher",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "FORM.form",
+          "Type": "Form",
+          "Keys": [
+            "voucher_no"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "return_number",
+                  "Value": "7000200"
+                },
+                {
+                  "Name": "invoice_no",
+                  "Value": "VENDOR-CM-001"
+                },
+                {
+                  "Name": "invoice_date",
+                  "Value": "11/11/2026"
+                },
+                {
+                  "Name": "invoice_amount_display",
+                  "Value": "2.28"
+                },
+                {
+                  "Name": "c_vouch_all",
+                  "Value": "OFF"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "LIST.list",
+          "Type": "List",
+          "Keys": [
+            "line_number"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "line_number",
+                  "Value": "2"
+                },
+                {
+                  "Name": "qty_vouched_display",
+                  "Value": "1"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

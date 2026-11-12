@@ -1,0 +1,129 @@
+{
+  "Name": "InventoryReturn",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "FORM.form",
+          "Type": "Form",
+          "Keys": [
+            "return_number"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "location_id",
+                  "Value": "10"
+                },
+                {
+                  "Name": "vendor_id",
+                  "Value": "99001"
+                },
+                {
+                  "Name": "supplier_id",
+                  "Value": "99001"
+                },
+                {
+                  "Name": "return_date",
+                  "Value": "11/11/2026"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "LIST.list",
+          "Type": "List",
+          "Keys": [
+            "item_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "item_id",
+                  "Value": "WIDGET-001"
+                },
+                {
+                  "Name": "unit_quantity",
+                  "Value": "1"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TABPAGE_BIN.bin",
+          "Type": "List",
+          "Keys": [
+            "bin_cd"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "bin_cd",
+                  "Value": "A01-01-01"
+                },
+                {
+                  "Name": "unit_quantity",
+                  "Value": "1"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "LIST.list",
+          "Type": "List",
+          "Keys": [
+            "item_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "item_id",
+                  "Value": "WIDGET-002"
+                },
+                {
+                  "Name": "unit_quantity",
+                  "Value": "1"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TABPAGE_BIN.bin",
+          "Type": "List",
+          "Keys": [
+            "bin_cd"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "bin_cd",
+                  "Value": "A01-01-02"
+                },
+                {
+                  "Name": "unit_quantity",
+                  "Value": "1"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
