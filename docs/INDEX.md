@@ -44,6 +44,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Traverse relationships (no joins — chain by `_uid`) | [02 § No Joins](02-OData-API.md#no-joins-chain-queries-by-uid) |
 | Page through large result sets (no nextLink) | [02 § Pagination Helper](02-OData-API.md#pagination-helper) · [02 § Page Size Guidance](02-OData-API.md#page-size-guidance) |
 | A **direct SQL** lookup by `item_id` or `supplier_part_no` is slow (scans) | [02 § bind `varchar`, not `nvarchar`](02-OData-API.md#item-id-and-supplier-part-number-lookups-bind-varchar-not-nvarchar) — the columns are `varchar(40)`; an `nvarchar` parameter converts the column; `CAST(? AS varchar(40))` restores the seek. OData `eq` is not affected |
+| Look up items **ignoring case and separators**; keep a copy of items current (**delta sync**) | [02 § keep folded IDs and sync on `date_last_modified`](02-OData-API.md#separator-insensitive-item-lookup-keep-folded-ids-and-sync-on-date_last_modified) — no index answers a folded `item_id`; every `Item` save stamps the indexed `date_last_modified`; filter `ge` and dedupe |
 | Date filters (`now()` is unsupported) | [02 § now() Not Supported](02-OData-API.md#now-function-not-supported) |
 | Filter on a **date and time** — 404 on a value that looks right | [02 § $filter](02-OData-API.md#filter-filter-results) — unquoted, `T`, and a UTC offset (`Z` or `-05:00`); encode `+` as `%2B` |
 | New table/column missing from OData | [02 § OData Schema Refresh](02-OData-API.md#odata-schema-refresh) |

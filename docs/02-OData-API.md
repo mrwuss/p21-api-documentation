@@ -2045,6 +2045,219 @@ Or bind the parameter's type. In `pyodbc`, before each `execute`: `cursor.setinp
 
 **OData `eq` filters do not show this cost.** Measured the same way over OData (40 lookups per form, median of each, two rounds): `item_id eq '...'` took 285–299 ms and `supplier_part_no eq '...'` 271–282 ms, the same as an integer-key lookup on the same table (283–296 ms and 280–284 ms). A non-sargable `endswith(item_id, '...')` took 348–367 ms. `toupper(...)` in a filter returns 404, so it is not a way to fold case over OData either.
 
+### Separator-insensitive item lookup: keep folded IDs and sync on `date_last_modified`
+
+A lookup that ignores case and separators (`ab-12 x` finding `AB12X`) has no index to use: `inv_mast` has no computed column, and no index covers a folded form of `item_id`, so every such query scans the item table. Measured read-only on play 26.1.6004.0 (November 2026), about 330,000 items, folding with `REPLACE(REPLACE(REPLACE(UPPER(item_id), '-', ''), ' ', ''), '.', '')`:
+
+| Query | Time |
+|---|---|
+| Folded `item_id` `IN (...)`, 1 value | 0.21 s |
+| Folded `item_id` `IN (...)`, 20 values | 3.6 s |
+| Folded `item_id` `=`, 20 separate queries | 4.4 s |
+| `date_last_modified >= <one day ago>` (indexed), 16 rows | 0.002 s |
+
+OData offers no way round it: `toupper(...)` in a `$filter` returns 404, and string functions such as `endswith` scan too ([above](#item-id-and-supplier-part-number-lookups-bind-varchar-not-nvarchar)).
+
+**Hold the folded IDs yourself and keep them current from `inv_mast.date_last_modified`.** The column has its own index (`idx_inv_mast_date_last_modified` on the test tenant), and every `Item` save stamps it. Verified on throwaway items through the `Item` service, `date_last_modified` read back over OData after each POST, two seconds apart:
+
+| `Item` save | `date_last_modified` |
+|---|---|
+| Create | equals `date_created` |
+| Header edit (`item_desc`) | moved |
+| Alternate code added, then soft-deleted (`TABPAGE_3`) | moved, both times |
+| Location edit (`TABPAGE_17.invloclist`) | moved |
+| Soft delete (`delete_flag` `ON`) | moved; `delete_flag` `Y` |
+| A save with no change (the key alone, or the same `item_desc`) | moved |
+
+So a sync reads every item stamped since its last run, folds each ID and applies it: an active item adds or keeps its folded key, a soft-deleted one comes out. Notes:
+
+- **Filter `ge` the stored stamp, not `gt`, and dedupe on `inv_mast_uid`.** Several rows can carry the same stamp, and a `gt` from the last row seen can skip a row saved in the same instant. The date-time literal needs a `T` and a UTC offset, unquoted ([details](#filter-filter-results)).
+- **Several item IDs can fold to one key.** Keep a list per key, and remove only the item that was deleted.
+- **A save that changes nothing still moves the stamp**, so expect some rows with nothing new.
+- Writes through other routes (the Inventory REST API, item merges, pricing and costing windows) were not tested; check the stamp moves for any route your integration depends on.
+
+<!-- tabs -->
+
+```python
+"""Read the items changed since a stamp over OData and fold their IDs for a separator-insensitive lookup."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+SINCE = "2026-11-11T00:00:00-06:00"       # last stamp you stored; T and a UTC offset, unquoted
+PAGE = 5000
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def fold(item_id: str) -> str:
+    """Upper-case and drop everything but letters and digits: 'ab-12 x' -> 'AB12X'."""
+    return re.sub(r"[^A-Z0-9]", "", item_id.upper())
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    client.headers.update({"Authorization": f"Bearer {token}", "Accept": "application/json"})
+    changed, skip = [], 0
+    while True:
+        # date_last_modified is indexed, and every Item save stamps it (create, edit,
+        # soft delete). Order on it plus the key so paging is stable.
+        r = client.get(f"{BASE_URL}/odataservice/odata/table/inv_mast", params={
+            # ge, not gt: rows can share a stamp, so re-read the last one and dedupe.
+            "$filter": f"date_last_modified ge {SINCE}",
+            "$select": "inv_mast_uid,item_id,delete_flag,date_last_modified",
+            "$orderby": "date_last_modified,inv_mast_uid",
+            "$top": str(PAGE), "$skip": str(skip),
+        })
+        r.raise_for_status()
+        rows = r.json()["value"]
+        changed += rows
+        if len(rows) < PAGE:
+            break
+        skip += PAGE
+    latest = {row["inv_mast_uid"]: row for row in changed}   # dedupe on the key
+    # Apply these to the folded map you keep: several item IDs can fold to one key.
+    upserts = [(fold(r["item_id"]), r["item_id"]) for r in latest.values() if r["delete_flag"] != "Y"]
+    removals = [(fold(r["item_id"]), r["item_id"]) for r in latest.values() if r["delete_flag"] == "Y"]
+    print(f"{len(latest)} items changed since {SINCE}: {len(upserts)} to add or keep, {len(removals)} to remove")
+    for key, item_id in sorted(upserts)[:20]:
+        print(f"  {key} -> {item_id}")
+    if changed:
+        print("store this as the next SINCE:", changed[-1]["date_last_modified"])
+```
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+const string Since = "2026-11-11T00:00:00-06:00";    // last stamp you stored; T and a UTC offset, unquoted
+const int Page = 5000;
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(
+    new MediaTypeWithQualityHeaderValue("application/json"));
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", token);
+
+var latest = new Dictionary<long, JsonElement>();   // dedupe on the key
+var lastStamp = "";
+for (var skip = 0; ; skip += Page)
+{
+    // date_last_modified is indexed, and every Item save stamps it (create, edit,
+    // soft delete). ge, not gt: rows can share a stamp, so re-read the last one.
+    var url = $"{BaseUrl}/odataservice/odata/table/inv_mast" +
+              "?$select=inv_mast_uid,item_id,delete_flag,date_last_modified" +
+              "&$orderby=date_last_modified,inv_mast_uid" +
+              $"&$top={Page}&$skip={skip}&$filter=" + Uri.EscapeDataString($"date_last_modified ge {Since}");
+    using var r = await client.GetAsync(url);
+    r.EnsureSuccessStatusCode();
+    using var d = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+    var rows = d.RootElement.GetProperty("value").EnumerateArray().Select(x => x.Clone()).ToList();
+    foreach (var row in rows)
+    {
+        latest[row.GetProperty("inv_mast_uid").GetInt64()] = row;
+        lastStamp = row.GetProperty("date_last_modified").GetString() ?? lastStamp;
+    }
+    if (rows.Count < Page)
+    {
+        break;
+    }
+}
+
+// Apply these to the folded map you keep: several item IDs can fold to one key.
+var upserts = latest.Values.Where(r => r.GetProperty("delete_flag").GetString() != "Y")
+    .Select(r => (Key: Fold(r.GetProperty("item_id").GetString() ?? ""), Id: r.GetProperty("item_id").GetString())).OrderBy(x => x.Key).ToList();
+var removals = latest.Values.Count(r => r.GetProperty("delete_flag").GetString() == "Y");
+Console.WriteLine($"{latest.Count} items changed since {Since}: {upserts.Count} to add or keep, {removals} to remove");
+foreach (var (key, id) in upserts.Take(20))
+{
+    Console.WriteLine($"  {key} -> {id}");
+}
+if (lastStamp.Length > 0)
+{
+    Console.WriteLine($"store this as the next Since: {lastStamp}");
+}
+
+// Upper-case and drop everything but letters and digits: "ab-12 x" -> "AB12X".
+static string Fold(string itemId) => Regex.Replace(itemId.ToUpperInvariant(), "[^A-Z0-9]", "");
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on play 26.1.6004.0: from a one-day stamp they each read 26 changed items (15 to add or keep, 11 to remove), and from a stamp a few minutes before the test they each read exactly the two throwaway items, both as removals after their soft delete.
+
+*Verified by @mrwuss* ([#278](https://github.com/mrwuss/p21-api-documentation/issues/278)).
+
 ### Avoiding N+1 Query Patterns
 
 When working with related entities (e.g., pages → books → libraries), avoid fetching related data in a loop:

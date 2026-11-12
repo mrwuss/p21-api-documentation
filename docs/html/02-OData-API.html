@@ -752,6 +752,7 @@
 <li><a href="#performance-tips">Performance Tips</a><ul>
 <li><a href="#measured-performance">Measured Performance</a></li>
 <li><a href="#item-id-and-supplier-part-number-lookups-bind-varchar-not-nvarchar">Item ID and supplier part number lookups: bind varchar, not nvarchar</a></li>
+<li><a href="#separator-insensitive-item-lookup-keep-folded-ids-and-sync-on-date_last_modified">Separator-insensitive item lookup: keep folded IDs and sync on date_last_modified</a></li>
 <li><a href="#avoiding-n1-query-patterns">Avoiding N+1 Query Patterns</a></li>
 <li><a href="#the-in-operator-is-silently-ignored-do-not-use-it">The in operator is silently ignored — do not use it</a></li>
 </ul>
@@ -3254,6 +3255,259 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 
 <p>Or bind the parameter's type. In <code>pyodbc</code>, before each <code>execute</code>: <code>cursor.setinputsizes([(pyodbc.SQL_VARCHAR, 40, 0)])</code> (in a separate run, 0.14 s for 200 item IDs against 0.17 s with the <code>CAST</code>, and 0.32 s against 0.34 s for 200 part numbers). In other drivers, declare the parameter as <code>varchar(40)</code> rather than relying on the default.</p>
 <p><strong>OData <code>eq</code> filters do not show this cost.</strong> Measured the same way over OData (40 lookups per form, median of each, two rounds): <code>item_id eq '...'</code> took 285–299 ms and <code>supplier_part_no eq '...'</code> 271–282 ms, the same as an integer-key lookup on the same table (283–296 ms and 280–284 ms). A non-sargable <code>endswith(item_id, '...')</code> took 348–367 ms. <code>toupper(...)</code> in a filter returns 404, so it is not a way to fold case over OData either.</p>
+<h3 id="separator-insensitive-item-lookup-keep-folded-ids-and-sync-on-date_last_modified">Separator-insensitive item lookup: keep folded IDs and sync on <code>date_last_modified</code></h3>
+<p>A lookup that ignores case and separators (<code>ab-12 x</code> finding <code>AB12X</code>) has no index to use: <code>inv_mast</code> has no computed column, and no index covers a folded form of <code>item_id</code>, so every such query scans the item table. Measured read-only on play 26.1.6004.0 (November 2026), about 330,000 items, folding with <code>REPLACE(REPLACE(REPLACE(UPPER(item_id), '-', ''), ' ', ''), '.', '')</code>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Query</th>
+<th>Time</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Folded <code>item_id</code> <code>IN (...)</code>, 1 value</td>
+<td>0.21 s</td>
+</tr>
+<tr>
+<td>Folded <code>item_id</code> <code>IN (...)</code>, 20 values</td>
+<td>3.6 s</td>
+</tr>
+<tr>
+<td>Folded <code>item_id</code> <code>=</code>, 20 separate queries</td>
+<td>4.4 s</td>
+</tr>
+<tr>
+<td><code>date_last_modified &gt;= &lt;one day ago&gt;</code> (indexed), 16 rows</td>
+<td>0.002 s</td>
+</tr>
+</tbody>
+</table></div>
+<p>OData offers no way round it: <code>toupper(...)</code> in a <code>$filter</code> returns 404, and string functions such as <code>endswith</code> scan too (<a href="#item-id-and-supplier-part-number-lookups-bind-varchar-not-nvarchar">above</a>).</p>
+<p><strong>Hold the folded IDs yourself and keep them current from <code>inv_mast.date_last_modified</code>.</strong> The column has its own index (<code>idx_inv_mast_date_last_modified</code> on the test tenant), and every <code>Item</code> save stamps it. Verified on throwaway items through the <code>Item</code> service, <code>date_last_modified</code> read back over OData after each POST, two seconds apart:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th><code>Item</code> save</th>
+<th><code>date_last_modified</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Create</td>
+<td>equals <code>date_created</code></td>
+</tr>
+<tr>
+<td>Header edit (<code>item_desc</code>)</td>
+<td>moved</td>
+</tr>
+<tr>
+<td>Alternate code added, then soft-deleted (<code>TABPAGE_3</code>)</td>
+<td>moved, both times</td>
+</tr>
+<tr>
+<td>Location edit (<code>TABPAGE_17.invloclist</code>)</td>
+<td>moved</td>
+</tr>
+<tr>
+<td>Soft delete (<code>delete_flag</code> <code>ON</code>)</td>
+<td>moved; <code>delete_flag</code> <code>Y</code></td>
+</tr>
+<tr>
+<td>A save with no change (the key alone, or the same <code>item_desc</code>)</td>
+<td>moved</td>
+</tr>
+</tbody>
+</table></div>
+<p>So a sync reads every item stamped since its last run, folds each ID and applies it: an active item adds or keeps its folded key, a soft-deleted one comes out. Notes:</p>
+<ul>
+<li><strong>Filter <code>ge</code> the stored stamp, not <code>gt</code>, and dedupe on <code>inv_mast_uid</code>.</strong> Several rows can carry the same stamp, and a <code>gt</code> from the last row seen can skip a row saved in the same instant. The date-time literal needs a <code>T</code> and a UTC offset, unquoted (<a href="#filter-filter-results">details</a>).</li>
+<li><strong>Several item IDs can fold to one key.</strong> Keep a list per key, and remove only the item that was deleted.</li>
+<li><strong>A save that changes nothing still moves the stamp</strong>, so expect some rows with nothing new.</li>
+<li>Writes through other routes (the Inventory REST API, item merges, pricing and costing windows) were not tested; check the stamp moves for any route your integration depends on.</li>
+</ul>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Read the items changed since a stamp over OData and fold their IDs for a separator-insensitive lookup.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;api_user&quot;</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;api_pass&quot;</span>
+<span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
+<span class="n">SINCE</span> <span class="o">=</span> <span class="s2">&quot;2026-11-11T00:00:00-06:00&quot;</span>       <span class="c1"># last stamp you stored; T and a UTC offset, unquoted</span>
+<span class="n">PAGE</span> <span class="o">=</span> <span class="mi">5000</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;v2 token endpoint — credentials go in the body, never in headers.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">PASSWORD</span><span class="p">},</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;AccessToken&gt;([^&lt;]+)&lt;/AccessToken&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No AccessToken in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">fold</span><span class="p">(</span><span class="n">item_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Upper-case and drop everything but letters and digits: &#39;ab-12 x&#39; -&gt; &#39;AB12X&#39;.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;[^A-Z0-9]&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">item_id</span><span class="o">.</span><span class="n">upper</span><span class="p">())</span>
+
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">VERIFY_SSL</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+    <span class="n">client</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">})</span>
+    <span class="n">changed</span><span class="p">,</span> <span class="n">skip</span> <span class="o">=</span> <span class="p">[],</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="c1"># date_last_modified is indexed, and every Item save stamps it (create, edit,</span>
+        <span class="c1"># soft delete). Order on it plus the key so paging is stable.</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/table/inv_mast&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span>
+            <span class="c1"># ge, not gt: rows can share a stamp, so re-read the last one and dedupe.</span>
+            <span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;date_last_modified ge </span><span class="si">{</span><span class="n">SINCE</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="s2">&quot;inv_mast_uid,item_id,delete_flag,date_last_modified&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;$orderby&quot;</span><span class="p">:</span> <span class="s2">&quot;date_last_modified,inv_mast_uid&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;$top&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">PAGE</span><span class="p">),</span> <span class="s2">&quot;$skip&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">skip</span><span class="p">),</span>
+        <span class="p">})</span>
+        <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span>
+        <span class="n">changed</span> <span class="o">+=</span> <span class="n">rows</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">PAGE</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="n">skip</span> <span class="o">+=</span> <span class="n">PAGE</span>
+    <span class="n">latest</span> <span class="o">=</span> <span class="p">{</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;inv_mast_uid&quot;</span><span class="p">]:</span> <span class="n">row</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">changed</span><span class="p">}</span>   <span class="c1"># dedupe on the key</span>
+    <span class="c1"># Apply these to the folded map you keep: several item IDs can fold to one key.</span>
+    <span class="n">upserts</span> <span class="o">=</span> <span class="p">[(</span><span class="n">fold</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">]),</span> <span class="n">r</span><span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">latest</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">r</span><span class="p">[</span><span class="s2">&quot;delete_flag&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;Y&quot;</span><span class="p">]</span>
+    <span class="n">removals</span> <span class="o">=</span> <span class="p">[(</span><span class="n">fold</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">]),</span> <span class="n">r</span><span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">latest</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">r</span><span class="p">[</span><span class="s2">&quot;delete_flag&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Y&quot;</span><span class="p">]</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">latest</span><span class="p">)</span><span class="si">}</span><span class="s2"> items changed since </span><span class="si">{</span><span class="n">SINCE</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">upserts</span><span class="p">)</span><span class="si">}</span><span class="s2"> to add or keep, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">removals</span><span class="p">)</span><span class="si">}</span><span class="s2"> to remove&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">item_id</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">upserts</span><span class="p">)[:</span><span class="mi">20</span><span class="p">]:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">item_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">changed</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;store this as the next SINCE:&quot;</span><span class="p">,</span> <span class="n">changed</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;date_last_modified&quot;</span><span class="p">])</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.RegularExpressions</span><span class="p">;</span>
+
+<span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_pass&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Since</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;2026-11-11T00:00:00-06:00&quot;</span><span class="p">;</span><span class="w">    </span><span class="c1">// last stamp you stored; T and a UTC offset, unquoted</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">Page</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5000</span><span class="p">;</span>
+<span class="c1">// ---------------------------------------------------------------------------</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="n">HttpClientHandler</span><span class="p">.</span><span class="n">DangerousAcceptAnyServerCertificateValidator</span><span class="p">,</span>
+<span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromMinutes</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">MediaTypeWithQualityHeaderValue</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">latest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">long</span><span class="p">,</span><span class="w"> </span><span class="n">JsonElement</span><span class="o">&gt;</span><span class="p">();</span><span class="w">   </span><span class="c1">// dedupe on the key</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">lastStamp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">;</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">skip</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="p">;</span><span class="w"> </span><span class="n">skip</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">Page</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// date_last_modified is indexed, and every Item save stamps it (create, edit,</span>
+<span class="w">    </span><span class="c1">// soft delete). ge, not gt: rows can share a stamp, so re-read the last one.</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/table/inv_mast&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">              </span><span class="s">&quot;?$select=inv_mast_uid,item_id,delete_flag,date_last_modified&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">              </span><span class="s">&quot;&amp;$orderby=date_last_modified,inv_mast_uid&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">              </span><span class="s">$&quot;&amp;$top={Page}&amp;$skip={skip}&amp;$filter=&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">Uri</span><span class="p">.</span><span class="n">EscapeDataString</span><span class="p">(</span><span class="s">$&quot;date_last_modified ge {Since}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="n">url</span><span class="p">);</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">d</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;value&quot;</span><span class="p">).</span><span class="n">EnumerateArray</span><span class="p">().</span><span class="n">Select</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">x</span><span class="p">.</span><span class="n">Clone</span><span class="p">()).</span><span class="n">ToList</span><span class="p">();</span>
+<span class="w">    </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">rows</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">latest</span><span class="p">[</span><span class="n">row</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;inv_mast_uid&quot;</span><span class="p">).</span><span class="n">GetInt64</span><span class="p">()]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">row</span><span class="p">;</span>
+<span class="w">        </span><span class="n">lastStamp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">row</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;date_last_modified&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="n">lastStamp</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rows</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">Page</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">break</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// Apply these to the folded map you keep: several item IDs can fold to one key.</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">upserts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">latest</span><span class="p">.</span><span class="n">Values</span><span class="p">.</span><span class="n">Where</span><span class="p">(</span><span class="n">r</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;delete_flag&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">()</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;Y&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="n">Select</span><span class="p">(</span><span class="n">r</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">(</span><span class="n">Key</span><span class="p">:</span><span class="w"> </span><span class="n">Fold</span><span class="p">(</span><span class="n">r</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;item_id&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">),</span><span class="w"> </span><span class="n">Id</span><span class="p">:</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;item_id&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">())).</span><span class="n">OrderBy</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">x</span><span class="p">.</span><span class="n">Key</span><span class="p">).</span><span class="n">ToList</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">removals</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">latest</span><span class="p">.</span><span class="n">Values</span><span class="p">.</span><span class="n">Count</span><span class="p">(</span><span class="n">r</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;delete_flag&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;Y&quot;</span><span class="p">);</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;{latest.Count} items changed since {Since}: {upserts.Count} to add or keep, {removals} to remove&quot;</span><span class="p">);</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="n">id</span><span class="p">)</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">upserts</span><span class="p">.</span><span class="n">Take</span><span class="p">(</span><span class="mi">20</span><span class="p">))</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  {key} -&gt; {id}&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">lastStamp</span><span class="p">.</span><span class="n">Length</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;store this as the next Since: {lastStamp}&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Upper-case and drop everything but letters and digits: &quot;ab-12 x&quot; -&gt; &quot;AB12X&quot;.</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">Fold</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">itemId</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">Regex</span><span class="p">.</span><span class="n">Replace</span><span class="p">(</span><span class="n">itemId</span><span class="p">.</span><span class="n">ToUpperInvariant</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;[^A-Z0-9]&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">);</span>
+
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">c</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Username</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/api/security/token/v2&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;AccessToken&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Some middleware answers these two endpoints in XML even when asked for JSON.</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">f</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">p</span><span class="p">).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="n">f</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">v</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span>
+<span class="w">        </span><span class="n">ex</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">JsonException</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="n">KeyNotFoundException</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">Text</span><span class="p">.</span><span class="n">RegularExpressions</span><span class="p">.</span><span class="n">Regex</span><span class="p">.</span><span class="n">Match</span><span class="p">(</span>
+<span class="w">        </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;&lt;{f}&gt;([^&lt;]+)&lt;/{f}&gt;&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">m</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;No {f} in response: {p[..Math.Min(200, p.Length)]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">Groups</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<p>Both programs ran on play 26.1.6004.0: from a one-day stamp they each read 26 changed items (15 to add or keep, 11 to remove), and from a stamp a few minutes before the test they each read exactly the two throwaway items, both as removals after their soft delete.</p>
+<p><em>Verified by @mrwuss</em> (<a href="https://github.com/mrwuss/p21-api-documentation/issues/278">#278</a>).</p>
 <h3 id="avoiding-n1-query-patterns">Avoiding N+1 Query Patterns</h3>
 <p>When working with related entities (e.g., pages → books → libraries), avoid fetching related data in a loop:</p>
 <blockquote>
@@ -3620,6 +3874,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <li><a href="#performance-tips">Performance Tips</a><ul>
 <li><a href="#measured-performance">Measured Performance</a></li>
 <li><a href="#item-id-and-supplier-part-number-lookups-bind-varchar-not-nvarchar">Item ID and supplier part number lookups: bind varchar, not nvarchar</a></li>
+<li><a href="#separator-insensitive-item-lookup-keep-folded-ids-and-sync-on-date_last_modified">Separator-insensitive item lookup: keep folded IDs and sync on date_last_modified</a></li>
 <li><a href="#avoiding-n1-query-patterns">Avoiding N+1 Query Patterns</a></li>
 <li><a href="#the-in-operator-is-silently-ignored-do-not-use-it">The in operator is silently ignored — do not use it</a></li>
 </ul>
