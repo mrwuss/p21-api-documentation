@@ -3904,7 +3904,7 @@ Whether the [Inventory REST API's `ProductGroupId` update](11-Inventory-REST-API
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — patterns and gotchas verified in production (July–August 2026).
 
-- **Creating a brand-new item through the raw `Item` service alone does not work — use the [Inventory REST API](11-Inventory-REST-API.md#minimum-create-payload) instead.** The Units of Measure tab (`TABPAGE_2.tp_2_dw_2`) is disabled until the item record already exists (on 26.1.5950.0, `General Exception: Column is disabled: unit_id`; with `IgnoreDisabled: true` the tab is skipped without a message and the save then fails on the missing units), but the item header's own save validation refuses to persist without a default sales/purchase unit already set on it (`A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified.`) — a circular dependency that no field ordering, `IgnoreDisabled`, or retry resolves, because the Transaction API has no wizard session to sequence the item window's cascading defaults the way the UI does. `POST /api/inventory/parts` (a separate, higher-level REST endpoint family, not the Transaction API) takes one flat payload — item, locations, suppliers, and units together — and P21 resolves the sequencing server-side in a single call. Verified live, 26.1 (September 2026): every raw-Transaction-API create attempt failed and rolled back atomically (nothing partial persisted); the REST endpoint created the same record cleanly on the first well-formed attempt. The Interactive `Item` window can also create an item, because it sequences the tabs the way the UI does — see [Creating an Item in the Item Window](04-Interactive-API.md#creating-an-item-in-the-item-window).
+- **A brand-new item can be created with one raw `Item` POST on 26.1.6004.0**, when the payload carries the units, a supplier, the location, the product group and the discount groups together. See [Creating a New Item in One `Item` POST](#creating-a-new-item-in-one-item-post). The [Inventory REST create](11-Inventory-REST-API.md#minimum-create-payload) is the other route, and the [Interactive `Item` window](04-Interactive-API.md#creating-an-item-in-the-item-window) a third.
 - **A soft-deleted item is terminal for the raw `Item` service — not just for a second `delete_flag=ON`.** Setting `delete_flag=ON` (`ValidValues: ["ON", "OFF"]`, column `inv_mast.delete_flag`) on an item succeeds the first time; OData then shows `delete_flag = 'Y'` and the row is still returned (soft delete, not hidden — same pattern as the [Customer salesrep grid](#customer-service-removing-a-salesrep-grid-row)). **Any** subsequent `Item`-service write against that item is then `Blocked` — not only a repeated `delete_flag=ON`, but an unrelated field like `item_desc` fails identically:
   ```
   Null filter expression passed to of_Retrieve for Discount Group.
@@ -3912,10 +3912,334 @@ Whether the [Inventory REST API's `ProductGroupId` update](11-Inventory-REST-API
    'Purchase Group' is a required column.
   Transaction 1: TABPAGE_1.tp_1_dw_1, row 1: Blocked DataElement: tp_1_dw_1, Column: item_id, Value: <item_id>
   ```
-  The message's exact missing-column list varies by request (sometimes `'Purchase Group'`, sometimes `Location ID`), which is itself the tell: deleting the item invalidates the location/discount-group context the form revalidates on *every* subsequent save, and — like the create gotcha above — the Transaction API has no wizard session to re-sequence it. There is no undelete or repair path through this service; treat `delete_flag=ON` as one-shot. Callers that need idempotent delete should read `inv_mast.delete_flag` over OData first and skip the `Item` POST entirely when it is already `Y`. Verified live, 26.1 (September 2026), against throwaway items created through `POST /api/inventory/parts`. *(Filed as [#160](https://github.com/mrwuss/p21-api-documentation/issues/160).)*
-- **A REST-created item can silently end up with no default unit of measure at all**, not just the [40-character description cap](11-Inventory-REST-API.md#character-set-and-whitespace-verified) and other quirks below — observed once in seven otherwise-identical [minimum-payload](11-Inventory-REST-API.md#minimum-create-payload) creates (26.1, September 2026): `DefaultSellingUnit`/`DefaultPurchasingUnit` came back `null` and `UnitsOfMeasure` came back empty, where the other six got `EA` auto-assigned. An item in this state hits the exact same `A Default Sales Unit... Must Each Be Specified` block as the raw-create circular dependency above, on *any* later `Item`-service write, even though the item already exists. Check `DefaultSellingUnit` on the create response (or a follow-up `GET`) before assuming the item is usable; if it's `null`, set `UnitsOfMeasure` explicitly via a REST `PUT`.
+  The message's exact missing-column list varies by request (sometimes `'Purchase Group'`, sometimes `Location ID`), which is itself the tell: deleting the item invalidates the location/discount-group context the form revalidates on *every* subsequent save, and the Transaction API has no wizard session to re-sequence it. There is no undelete or repair path through this service; treat `delete_flag=ON` as one-shot. Callers that need idempotent delete should read `inv_mast.delete_flag` over OData first and skip the `Item` POST entirely when it is already `Y`. Verified live, 26.1 (September 2026), against throwaway items created through `POST /api/inventory/parts`. *(Filed as [#160](https://github.com/mrwuss/p21-api-documentation/issues/160).)*
+- **A REST-created item can silently end up with no default unit of measure at all**, not just the [40-character description cap](11-Inventory-REST-API.md#character-set-and-whitespace-verified) and other quirks below — observed once in seven otherwise-identical [minimum-payload](11-Inventory-REST-API.md#minimum-create-payload) creates (26.1, September 2026): `DefaultSellingUnit`/`DefaultPurchasingUnit` came back `null` and `UnitsOfMeasure` came back empty, where the other six got `EA` auto-assigned. An item in this state hits the `A Default Sales Unit... Must Each Be Specified` block that a [create without a `TABPAGE_2` row](#creating-a-new-item-in-one-item-post) returns, on *any* later `Item`-service write, even though the item already exists. Check `DefaultSellingUnit` on the create response (or a follow-up `GET`) before assuming the item is usable; if it's `null`, set `UnitsOfMeasure` explicitly via a REST `PUT`.
 - **A `product_group_id` edit on a location silently rewrites its GL, revenue, and COS accounts** to the target group's defaults, including branch-specific accounts, and `TABPAGE_24.inv_loc_accounts` is disabled, so you cannot send the originals back in the same payload. Snapshot before, restore after — see [Changing a Location's Product Group Re-Syncs Its GL Accounts](#changing-a-locations-product-group-re-syncs-its-gl-accounts).
 - **The item header's `default_product_group` cannot be written through any API.** `TABPAGE_1.tp_1_dw_1` rejects both `default_product_group` and `product_group_id`; the service's only `product_group_id` belongs to the location (`TABPAGE_18.inv_loc_detail`). The Inventory REST API ignores the header product group on create and PUT as well ([11 § Known Limitations](11-Inventory-REST-API.md#known-limitations)). The location product group is the one sales, GL and pricing read, and it is writable — see [Changing a Location's Product Group](#changing-a-locations-product-group-re-syncs-its-gl-accounts). Verified on production and play 26.1, May and August 2026 ([#177](https://github.com/mrwuss/p21-api-documentation/issues/177)).
+
+#### Creating a New Item in One `Item` POST
+
+Verified on play 26.1.6004.0 (November 2026): one `POST /api/v2/transaction` to the `Item` service created a new item with its unit, location and supplier rows, read back over OData (`inv_mast`, `item_uom`, `inv_loc`, `inventory_supplier`). Every throwaway item was soft-deleted afterwards.
+
+| Element | Keys | Edits |
+|---|---|---|
+| `TABPAGE_1.tp_1_dw_1` | `["item_id"]` | `item_id` (uppercase), `item_desc`, `sales_discount_group_id`, `purchase_discount_group_id` |
+| `TABPAGE_2.tp_2_dw_2` | `["unit_id"]` | `unit_id` (`EA`), `default_sales_unit`, `sales_pricing_unit`, `default_purchasing_unit`, `purchase_pricing_unit`, all `ON`; **no `unit_size`** |
+| `TABPAGE_6.tp_6_dw_6` | `["supplier_id", "division_id"]` | `supplier_id`, `division_id` |
+| `TABPAGE_17.invloclist` | `["location_id"]` | `location_id` |
+| `TABPAGE_18.inv_loc_detail` | `[]` | `product_group_id` |
+
+The read-back: `inv_mast.base_unit`, `default_selling_unit`, `default_purchasing_unit`, `sales_pricing_unit` and `purchase_pricing_unit` all `EA`; one `item_uom` row (`EA`, size 1); an `inv_loc` row at the location with the product group and the supplier as `primary_supplier_id`; one `inventory_supplier` row. `SUPPLIER_X_LOCATION.supplier_x_location` (`location_id`, `supplier_id`, `division_id`, `primary_supplier` `ON`) can stand in for `TABPAGE_6`, or ride with it; the create passed with either one alone and with both.
+
+What each missing or extra piece returned (each one `Failed: 1`, nothing written):
+
+| Change from the shape above | Message |
+|---|---|
+| No `TABPAGE_2` row | *A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified.* |
+| `unit_size` on the `TABPAGE_2` row | `Column is disabled: unit_size` (the base unit's size is fixed at 1) |
+| No `TABPAGE_18` | *Product Group ID is a required column.* |
+| `location_id` on `TABPAGE_18` (as its key) | `Column is disabled: location_id` |
+| Discount groups on `TABPAGE_18` instead of the header | *'Sales Group' is a required column.* |
+| Neither `TABPAGE_6` nor `SUPPLIER_X_LOCATION` | *'Supplier ID' is a required column.* |
+
+**On 26.1.5950.0 (2026-10-29) the forum's shape failed** at `TABPAGE_2` with `Column is disabled: unit_id`, and the docs used to say a raw create cannot work. On 6004.0 the forum's shape got past `TABPAGE_2` and stopped at the `TABPAGE_18` and discount-group errors above, which the shape in the table fixes. The web-client screen version that locks the Interactive window's units grid ([04 § The locked Units of Measure grid](04-Interactive-API.md#the-locked-units-of-measure-grid-a-web-screen-version)) was still in place on 6004.0, so whether the build or something else changed is not established. Check your own build before you depend on this path.
+
+The first attempt of the day failed with *"A valid customer ID must first be entered."* on `item_id`, an Order Entry message; the same payload sent again got past it. That fits the [session pool contamination](07-Session-Pool-Troubleshooting.md) pattern; if you see it, retry once before you change the payload.
+
+Payload: [`item-create.json`](../examples/payloads/json/item-create.json).
+
+<!-- tabs -->
+
+```python
+"""Create a new item with one Item-service POST (units, location, supplier), then read it back."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+ITEM_ID = "WIDGET-001"                    # new item ID, UPPERCASE (see the gotcha above)
+ITEM_DESC = "Example widget"
+UNIT = "EA"                               # the base unit; no unit_size for it
+LOCATION_ID = "10"
+SUPPLIER_ID = "99001"
+DIVISION_ID = "1"                         # the supplier's division
+PRODUCT_GROUP_ID = "PG01"
+SALES_DISCOUNT_GROUP = "SDG01"
+PURCHASE_DISCOUNT_GROUP = "PDG01"
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+        },
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+def element(name: str, typ: str, keys: list[str], edits: list[tuple[str, str]]) -> dict:
+    return {"Name": name, "Type": typ, "Keys": keys, "Rows": [{
+        "Edits": [{"Name": n, "Value": v} for n, v in edits],
+        "RelativeDateEdits": [],
+    }]}
+
+
+def odata(client: httpx.Client, table: str, flt: str, select: str) -> list[dict]:
+    r = client.get(f"{BASE_URL}/odataservice/odata/table/{table}",
+                   params={"$filter": flt, "$select": select})
+    r.raise_for_status()
+    return r.json()["value"]
+
+
+payload = {
+    "Name": "Item",
+    "UseCodeValues": False,
+    "Transactions": [{
+        "Status": "New",
+        "DataElements": [
+            element("TABPAGE_1.tp_1_dw_1", "Form", ["item_id"],
+                    [("item_id", ITEM_ID), ("item_desc", ITEM_DESC),
+                     # Required on the header: "'Sales Group' is a required column."
+                     ("sales_discount_group_id", SALES_DISCOUNT_GROUP),
+                     ("purchase_discount_group_id", PURCHASE_DISCOUNT_GROUP)]),
+            # All four unit flags ON; sending unit_size fails "Column is disabled".
+            element("TABPAGE_2.tp_2_dw_2", "List", ["unit_id"],
+                    [("unit_id", UNIT), ("default_sales_unit", "ON"),
+                     ("sales_pricing_unit", "ON"), ("default_purchasing_unit", "ON"),
+                     ("purchase_pricing_unit", "ON")]),
+            element("TABPAGE_6.tp_6_dw_6", "List", ["supplier_id", "division_id"],
+                    [("supplier_id", SUPPLIER_ID), ("division_id", DIVISION_ID)]),
+            element("TABPAGE_17.invloclist", "List", ["location_id"],
+                    [("location_id", LOCATION_ID)]),
+            # No location_id here: it is disabled ("Column is disabled: location_id").
+            element("TABPAGE_18.inv_loc_detail", "Form", [],
+                    [("product_group_id", PRODUCT_GROUP_ID)]),
+        ],
+    }],
+}
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    client.headers.update({"Authorization": f"Bearer {token}",
+                           "Accept": "application/json"})
+    r = client.post(f"{ui_server}/api/v2/transaction", json=payload)
+    r.raise_for_status()
+    result = r.json()
+    summary = result["Summary"]
+    if summary["Failed"] or not summary["Succeeded"]:
+        raise RuntimeError(f"Create failed: {summary} {result.get('Messages')}")
+    print("summary:", summary)
+    # Read every table the create should have written.
+    item = odata(client, "inv_mast", f"item_id eq '{ITEM_ID}'",
+                 "inv_mast_uid,item_id,base_unit,default_selling_unit,"
+                 "default_purchasing_unit,sales_pricing_unit,purchase_pricing_unit")[0]
+    uid = item["inv_mast_uid"]
+    print("inv_mast:", item)
+    print("item_uom:", odata(client, "item_uom", f"inv_mast_uid eq {uid}",
+                             "unit_of_measure,unit_size"))
+    print("inv_loc: ", odata(client, "inv_loc", f"inv_mast_uid eq {uid}",
+                             "location_id,product_group_id,primary_supplier_id"))
+    print("inventory_supplier:", odata(client, "inventory_supplier",
+                                       f"inv_mast_uid eq {uid}", "supplier_id,division_id"))
+```
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+const string ItemId = "WIDGET-001";                  // new item ID, UPPERCASE (see the gotcha above)
+const string ItemDesc = "Example widget";
+const string Unit = "EA";                            // the base unit; no unit_size for it
+const string LocationId = "10";
+const string SupplierId = "99001";
+const string DivisionId = "1";                       // the supplier's division
+const string ProductGroupId = "PG01";
+const string SalesDiscountGroup = "SDG01";
+const string PurchaseDiscountGroup = "PDG01";
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(
+    new MediaTypeWithQualityHeaderValue("application/json"));
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", token);
+
+static object Element(string name, string type, string[] keys, params (string Name, string Value)[] edits) => new
+{
+    Name = name,
+    Type = type,
+    Keys = keys,
+    Rows = new[]
+    {
+        new
+        {
+            Edits = edits.Select(e => new { e.Name, e.Value }).ToArray(),
+            RelativeDateEdits = Array.Empty<object>(),
+        },
+    },
+};
+
+var payload = new
+{
+    Name = "Item",
+    UseCodeValues = false,
+    Transactions = new[]
+    {
+        new
+        {
+            Status = "New",
+            DataElements = new[]
+            {
+                Element("TABPAGE_1.tp_1_dw_1", "Form", new[] { "item_id" },
+                    ("item_id", ItemId), ("item_desc", ItemDesc),
+                    // Required on the header: "'Sales Group' is a required column."
+                    ("sales_discount_group_id", SalesDiscountGroup),
+                    ("purchase_discount_group_id", PurchaseDiscountGroup)),
+                // All four unit flags ON; sending unit_size fails "Column is disabled".
+                Element("TABPAGE_2.tp_2_dw_2", "List", new[] { "unit_id" },
+                    ("unit_id", Unit), ("default_sales_unit", "ON"), ("sales_pricing_unit", "ON"),
+                    ("default_purchasing_unit", "ON"), ("purchase_pricing_unit", "ON")),
+                Element("TABPAGE_6.tp_6_dw_6", "List", new[] { "supplier_id", "division_id" },
+                    ("supplier_id", SupplierId), ("division_id", DivisionId)),
+                Element("TABPAGE_17.invloclist", "List", new[] { "location_id" },
+                    ("location_id", LocationId)),
+                // No location_id here: it is disabled ("Column is disabled: location_id").
+                Element("TABPAGE_18.inv_loc_detail", "Form", Array.Empty<string>(),
+                    ("product_group_id", ProductGroupId)),
+            },
+        },
+    },
+};
+
+using (var r = await client.PostAsync($"{uiServer}/api/v2/transaction",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")))
+{
+    r.EnsureSuccessStatusCode();
+    using var d = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+    var s = d.RootElement.GetProperty("Summary");
+    if (s.GetProperty("Failed").GetInt32() > 0 || s.GetProperty("Succeeded").GetInt32() == 0)
+    {
+        throw new InvalidOperationException($"Create failed: {s} {d.RootElement.GetProperty("Messages")}");
+    }
+    Console.WriteLine($"summary: {s}");
+}
+
+// Read every table the create should have written.
+var item = (await ODataAsync(client, "inv_mast", $"item_id eq '{ItemId}'",
+    "inv_mast_uid,item_id,base_unit,default_selling_unit,default_purchasing_unit,sales_pricing_unit,purchase_pricing_unit"))[0];
+var uid = item.GetProperty("inv_mast_uid").GetRawText();
+Console.WriteLine($"inv_mast: {item}");
+Console.WriteLine($"item_uom: {string.Join(", ", await ODataAsync(client, "item_uom", $"inv_mast_uid eq {uid}", "unit_of_measure,unit_size"))}");
+Console.WriteLine($"inv_loc:  {string.Join(", ", await ODataAsync(client, "inv_loc", $"inv_mast_uid eq {uid}", "location_id,product_group_id,primary_supplier_id"))}");
+Console.WriteLine($"inventory_supplier: {string.Join(", ", await ODataAsync(client, "inventory_supplier", $"inv_mast_uid eq {uid}", "supplier_id,division_id"))}");
+
+static async Task<List<JsonElement>> ODataAsync(HttpClient c, string table, string filter, string select)
+{
+    using var r = await c.GetAsync(
+        $"{BaseUrl}/odataservice/odata/table/{table}?$select={select}&$filter=" + Uri.EscapeDataString(filter));
+    r.EnsureSuccessStatusCode();
+    using var d = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+    return d.RootElement.GetProperty("value").EnumerateArray().Select(x => x.Clone()).ToList();
+}
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient c, string token)
+{
+    using var q = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    q.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    using var r = await c.SendAsync(q);
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on play 26.1.6004.0, each creating its own throwaway item with the read-back shown above; both items were soft-deleted afterwards.
+
+> **Credit:** Felipe Maurer, P21WWUG Forum104 ([Topic225120](https://forums.p21ww.org/Topic225120.aspx)), confirmed there by Jim Atwood; the `unit_size` explanation by David Sokoloski. Re-verified here on 26.1.6004.0 by @mrwuss, with the header discount groups and the `TABPAGE_18` key added ([#230](https://github.com/mrwuss/p21-api-documentation/issues/230)).
 
 ### Location Service — Creating a Warehouse
 

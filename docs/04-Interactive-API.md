@@ -3544,7 +3544,7 @@ Field-level notes from the item, supplier and customer notepads:
 
 ## Creating an Item in the Item Window
 
-The Transaction API [cannot create an item](03-Transaction-API.md#item-service-gotchas) (the Units of Measure tab is disabled until the item exists, and the item cannot save without a unit). The Interactive `Item` window can, because it sequences the tabs the way the UI does. The usual route is still the [Inventory REST create](11-Inventory-REST-API.md#minimum-create-payload); use this one when you need the window's own defaults and prompts.
+On 26.1.6004.0 the Transaction API [creates an item in one `Item` POST](03-Transaction-API.md#creating-a-new-item-in-one-item-post); on 26.1.5950.0 the forum payload it is built from failed on the Units of Measure tab. The Interactive `Item` window can create one too, because it sequences the tabs the way the UI does. The usual route is still the [Inventory REST create](11-Inventory-REST-API.md#minimum-create-payload); use this one when you need the window's own defaults and prompts.
 
 1. Typing a new `item_id` on `TABPAGE_1.tp_1_dw_1` returns **`Status: 2` with `tabpageenabled` events** — that is "new item" mode, not an error. Set `item_desc` and the discount groups.
 2. `TABPAGE_2.tp_2_dw_2`, row 1 (it already exists; `add_row` is refused): `unit_id`, then **all four** of `default_sales_unit`, `sales_pricing_unit`, `default_purchasing_unit`, `purchase_pricing_unit` = `ON`. Leave one out and the save is refused.
