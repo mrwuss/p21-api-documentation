@@ -123,6 +123,13 @@ class InteractiveSession:
             f"open {service_name}",
         )["WindowId"]
 
+    def open_window_by_title(self, title: str) -> str:
+        """Open a window by its menu label (for windows with no service name)."""
+        return self._check(
+            self.http.post(f"{self.base}/v2/window", json={"Title": title}),
+            f"open {title!r}",
+        )["WindowId"]
+
     def change(
         self, window_id: str, tab: str, datawindow: str, field: str, value: str
     ) -> dict:

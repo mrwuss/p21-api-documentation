@@ -47,6 +47,11 @@ internal sealed class WindowSession : IAsyncDisposable
         (string)(await SendAsync(HttpMethod.Post, "v2/window",
             new JObject { ["ServiceName"] = serviceName }, $"open {serviceName}"))["WindowId"]!;
 
+    /// <summary>Open a window by its menu label (for windows with no service name).</summary>
+    public async Task<string> OpenWindowByTitleAsync(string title) =>
+        (string)(await SendAsync(HttpMethod.Post, "v2/window",
+            new JObject { ["Title"] = title }, $"open '{title}'"))["WindowId"]!;
+
     /// <summary>Change one field (DatawindowName is required on 25.2+).</summary>
     public Task<JObject> ChangeAsync(string windowId, string tab, string datawindow,
         string field, string value) =>

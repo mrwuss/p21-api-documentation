@@ -1466,6 +1466,11 @@
 <td><a href="13-UDT-Service-API.html#insert">13 § Insert</a> · <a href="13-UDT-Service-API.html#update">13 § Update</a> · <a href="13-UDT-Service-API.html#delete">13 § Delete</a> — <strong>update/delete select a row by primary key with <code>{"rowuid": N}</code>; a <code>name</code>/<code>value</code> condition is a 400 or a silent no-op</strong></td>
 </tr>
 <tr>
+<td>UDT rows through the table's <strong>maintenance window</strong> (Interactive API, no service name)</td>
+<td>—</td>
+<td><a href="04-Interactive-API.html#udt-maintenance-windows-edit-a-udt-row-through-its-window">04 § UDT Maintenance Windows</a> — open by <code>Title</code>; load the Row ID; <code>delete_row</code> = <code>Y</code> deletes; the window must be created in User Defined Table Maintenance first</td>
+</tr>
+<tr>
 <td>UDT delete "succeeds" but nothing is deleted</td>
 <td>—</td>
 <td><a href="06-Error-Handling.html#0-rows-deleted-successfully-a-delete-that-deletes-nothing-20261">06 § <code>[0] rows deleted</code></a> · <a href="14-Breaking-Changes.html#7-udt-service-updatedelete-ignore-a-namevalue-condition-on-a-udt-created-on-20261">14 § entry 7</a></td>

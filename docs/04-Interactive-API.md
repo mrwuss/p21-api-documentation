@@ -3388,6 +3388,355 @@ A new customer created through the Transaction `Customer` service came with one 
 
 **Runnable example:** [`customer_price_library.py`](../examples/python/recipes/customer_price_library.py) and `examples/csharp/Recipes/CustomerPriceLibrary.cs` (Recipes menu 31) add a library (`price_library_id`, then an optional `sequence_number`) or remove one, then read every row's sequence back over OData. Python and C# examples run on play 26.1.5950.0, 2026-10-10, add and remove, with the read-back results in the table above.
 
+## UDT Maintenance Windows (Edit a UDT Row Through Its Window)
+
+A user-defined table can have a **generated maintenance window**, and the Interactive API drives it like any other window. It is a second write path beside the [UDT Service](13-UDT-Service-API.md): insert, update by Row ID, and delete, with the window's own checks and audit columns. For a plain update or delete, the UDT Service's [`{"rowuid": N}` condition](13-UDT-Service-API.md#update) is one stateless call and is the simpler choice; the window is the route when you want the same behaviour as a user editing the row.
+
+### The window exists only after you create it
+
+User Defined Table Maintenance (`{"Title": "User Defined Table Maintenance"}`, tab `TP_TABLEDETAILS`, datawindow `tp_tabledetails`) creates it. Load the table by `table_name`, set `create_maintenance_window` to `Y` (this enables the next two fields), set `module` to a module label such as `System Administration`, set `window_name`, and save. The save returns `Status: 1` with *"The maintenance window has been successfully created. To see the maintenance window, users currently logged in should quit the application and log in again."* A new Interactive session opened the window straight away.
+
+The save adds a `frame_menu` row: `class_name` `m_udt_{name}`, `stringparm` `w_udt_data_maint`, `stringparm_addtl` the table (`udt_{name}`), `text_label` the window name, `frame_name` the module's frame (`m_sysadmin_frame`), `service_name` NULL. Without that row the table has no window to open.
+
+### Open it by `Title`
+
+The window has no service name, so it opens by its menu label, the `window_name` you gave it:
+
+```http
+POST /api/ui/interactive/v2/window
+{"Title": "Example Table Maintenance"}
+```
+
+| Body | Result |
+|---|---|
+| `{"Title": "<window name>"}` | 200, window `w_udt_data_maint` |
+| `{"Name": "w_udt_data_maint"}` | 400 `Cannot open window w_udt_data_maint because is not available or user <API_USER> does not have permission.` |
+| `{"Title": ...}` for a table with no maintenance window | 400, the same message with a blank window name |
+
+The [Open Window caveat](#2-open-window) says to prefer `ServiceName`. This window has none, so `Title` is the only route.
+
+### Window structure
+
+| Item | Value |
+|---|---|
+| Window | `w_udt_data_maint` |
+| Tab | `TP_USERDEFINEDTABLE` |
+| Datawindow | `tp_userdefinedtable` (one form) |
+| Row key | `udt_{name}_uid`, labelled **Row ID** |
+| Columns | every UDT column, plus `delete_row` (`Y`/`N`) and the audit columns `date_created`, `created_by`, `date_last_modified`, `last_maintained_by` |
+
+### What each operation does
+
+Every call is a `PUT /v2/change` on `TP_USERDEFINEDTABLE` / `tp_userdefinedtable`, then `PUT /v2/data` (the bare window-ID string) to save:
+
+| Operation | Calls | Result |
+|---|---|---|
+| Insert | fresh window, set the columns, no Row ID, save | `Status: 1`, events `savesucceeded`, `dwcontentchanged`; the row gets the next `udt_{name}_uid` |
+| Update | set `udt_{name}_uid`, set the column, save | the Row ID load is `Status: 1` and fills the form; the save is `Status: 1`, `savesucceeded`; `last_maintained_by` is the API user |
+| Unknown Row ID | set `udt_{name}_uid` to a missing value | `Status: 2`, *"Enter a valid ID or leave ID blank."*, and a blank form |
+| Delete | load the Row ID, set `delete_row` to `Y`, save | `Status: 1` with *"Update was successful."*; no confirmation dialog; the row is gone on read-back |
+
+Each save took tens of milliseconds once the window was open. The contributor also reports that an insert enforces non-nullable columns (*"Required value missing for ..."*); the test table here had no non-nullable column, so that was not re-tested.
+
+<!-- tabs -->
+
+#### Python
+
+```python
+"""Update or delete one UDT row through its maintenance window (Interactive API), then read it back."""
+import re
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+WINDOW_TITLE = "Example Table Maintenance"  # the UDT window's menu label
+TABLE = "udt_example"                     # the UDT, for the OData read-back
+ROW_ID = "5"                              # the row's udt_{name}_uid ("Row ID")
+COLUMN = "status"                         # column to change
+VALUE = "done"                            # new value
+DELETE_ROW = False                        # True deletes the row instead
+# ---------------------------------------------------------------------------
+
+TAB, DW = "TP_USERDEFINEDTABLE", "tp_userdefinedtable"
+PK = f"{TABLE}_uid"
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+        },
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+def checked(r: httpx.Response, what: str) -> dict:
+    """Raise on an HTTP error or on Status 2 (Failure); return the result."""
+    if r.status_code >= 400:
+        raise RuntimeError(f"{what}: HTTP {r.status_code} {r.text[:300]}")
+    result = r.json() if r.text else {}
+    if result.get("Status") == 2:
+        raise RuntimeError(f"{what}: {result.get('Messages')}")
+    return result
+
+
+def change(client, base, window_id, field, value) -> dict:
+    return checked(client.put(f"{base}/v2/change", json={
+        "WindowId": window_id,
+        "List": [{"TabName": TAB, "DatawindowName": DW,
+                  "FieldName": field, "Value": value}],
+    }), f"set {field}")
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    client.headers.update({"Authorization": f"Bearer {token}",
+                           "Accept": "application/json"})
+    base = f"{ui_server}/api/ui/interactive"
+    checked(client.post(f"{base}/sessions/",
+                        json={"ResponseWindowHandlingEnabled": True}), "start session")
+    try:
+        # The window has no service name: open it by its menu label.
+        window_id = checked(client.post(f"{base}/v2/window",
+                                        json={"Title": WINDOW_TITLE}),
+                            "open window")["WindowId"]
+        try:
+            # Loading the Row ID fills the form; an unknown ID is Status 2,
+            # "Enter a valid ID or leave ID blank."
+            change(client, base, window_id, PK, ROW_ID)
+            if DELETE_ROW:
+                change(client, base, window_id, "delete_row", "Y")
+            else:
+                change(client, base, window_id, COLUMN, VALUE)
+            saved = checked(client.put(f"{base}/v2/data", json=window_id), "save")
+            print("save:", saved.get("Status"), saved.get("Messages"))
+        finally:
+            client.delete(f"{base}/v2/window", params={"id": window_id})
+    finally:
+        client.delete(f"{base}/sessions/")
+
+    # A save that reports Status 1 can still write nothing: read the row back.
+    r = client.get(f"{BASE_URL}/odataservice/odata/table/{TABLE}",
+                   params={"$filter": f"{PK} eq {ROW_ID}"})
+    r.raise_for_status()
+    rows = r.json()["value"]
+    if DELETE_ROW:
+        print("deleted" if not rows else f"still there: {rows[0]}")
+    else:
+        print({k: (v.strip() if isinstance(v, str) else v) for k, v in rows[0].items()} if rows else "row not found")
+```
+
+#### C#
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+const string WindowTitle = "Example Table Maintenance"; // the UDT window's menu label
+const string Table = "udt_example";                  // the UDT, for the OData read-back
+const string RowId = "5";                            // the row's udt_{name}_uid ("Row ID")
+const string Column = "status";                      // column to change
+const string NewValue = "done";                      // new value
+const bool DeleteRow = false;                        // true deletes the row instead
+// ---------------------------------------------------------------------------
+
+const string Tab = "TP_USERDEFINEDTABLE";
+const string Dw = "tp_userdefinedtable";
+var pk = $"{Table}_uid";
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(
+    new MediaTypeWithQualityHeaderValue("application/json"));
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", token);
+var api = $"{uiServer}/api/ui/interactive";
+
+(await SendAsync(HttpMethod.Post, $"{api}/sessions/",
+    new { ResponseWindowHandlingEnabled = true }, "start session")).Dispose();
+try
+{
+    // The window has no service name: open it by its menu label.
+    string windowId;
+    using (var opened = await SendAsync(HttpMethod.Post, $"{api}/v2/window",
+        new { Title = WindowTitle }, "open window"))
+    {
+        windowId = opened.RootElement.GetProperty("WindowId").GetString()!;
+    }
+    try
+    {
+        // Loading the Row ID fills the form; an unknown ID is Status 2,
+        // "Enter a valid ID or leave ID blank."
+        (await ChangeAsync(windowId, pk, RowId)).Dispose();
+        if (DeleteRow)
+        {
+            (await ChangeAsync(windowId, "delete_row", "Y")).Dispose();
+        }
+        else
+        {
+            (await ChangeAsync(windowId, Column, NewValue)).Dispose();
+        }
+        using var saved = await SendAsync(HttpMethod.Put, $"{api}/v2/data", windowId, "save");
+        Console.WriteLine($"save: {saved.RootElement.GetProperty("Status")} " +
+                          $"{saved.RootElement.GetProperty("Messages")}");
+    }
+    finally
+    {
+        await client.DeleteAsync($"{api}/v2/window?id={windowId}");
+    }
+}
+finally
+{
+    await client.DeleteAsync($"{api}/sessions/");
+}
+
+// A save that reports Status 1 can still write nothing: read the row back.
+using (var r = await client.GetAsync(
+    $"{BaseUrl}/odataservice/odata/table/{Table}?$filter=" +
+    Uri.EscapeDataString($"{pk} eq {RowId}")))
+{
+    r.EnsureSuccessStatusCode();
+    using var d = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+    var rows = d.RootElement.GetProperty("value");
+    if (DeleteRow)
+    {
+        Console.WriteLine(rows.GetArrayLength() == 0 ? "deleted" : $"still there: {rows[0]}");
+    }
+    else
+    {
+        Console.WriteLine(rows.GetArrayLength() == 0 ? "row not found" : rows[0].ToString());
+    }
+}
+
+Task<JsonDocument> ChangeAsync(string windowId, string field, string value) =>
+    SendAsync(HttpMethod.Put, $"{api}/v2/change", new
+    {
+        WindowId = windowId,
+        List = new[] { new { TabName = Tab, DatawindowName = Dw, FieldName = field, Value = value } },
+    }, $"set {field}");
+
+// Raise on an HTTP error or on Status 2 (Failure); return the result.
+async Task<JsonDocument> SendAsync(HttpMethod method, string url, object body, string what)
+{
+    using var q = new HttpRequestMessage(method, url)
+    {
+        Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json"),
+    };
+    using var r = await client.SendAsync(q);
+    var text = await r.Content.ReadAsStringAsync();
+    if (!r.IsSuccessStatusCode)
+    {
+        throw new InvalidOperationException(
+            $"{what}: HTTP {(int)r.StatusCode} {text[..Math.Min(300, text.Length)]}");
+    }
+    var doc = JsonDocument.Parse(string.IsNullOrEmpty(text) ? "{}" : text);
+    if (doc.RootElement.ValueKind == JsonValueKind.Object &&
+        doc.RootElement.TryGetProperty("Status", out var s) &&
+        s.ValueKind == JsonValueKind.Number && s.GetInt32() == 2)
+    {
+        throw new InvalidOperationException($"{what}: {doc.RootElement.GetProperty("Messages")}");
+    }
+    return doc;
+}
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient c, string token)
+{
+    using var q = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    q.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    using var r = await c.SendAsync(q);
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+*Verified on play 26.1.6004.0, November 2026, on a UDT created there: insert, update, unknown Row ID and delete through the window, each read back over OData; both programs above run against it. Only rows added for the test were changed, and they were deleted afterwards.*
+
+**Runnable example:** [`udt_window_edit.py`](../examples/python/recipes/udt_window_edit.py) and `examples/csharp/Recipes/UdtWindowEdit.cs` (Recipes menu 38), modes `insert`, `update` and `delete`, each reading the table back over OData. Both run on play 26.1.6004.0, November 2026: insert, update, an unknown Row ID (stops with *"Enter a valid ID or leave ID blank."*) and delete.
+
+> **Credit:** [Yeshaya Kohn](https://github.com/yeshayak): the maintenance-window route, its tab and datawindow names, the Row ID load and `delete_row` ([#225](https://github.com/mrwuss/p21-api-documentation/issues/225), verified on a 26.1.5973 tenant). Re-verified here by @mrwuss.
+
 ## Sales Order Entry with Assembly Lines
 
 Use the Interactive API to create a sales order when a line is an **assembly** that should explode into components and/or spawn a **production order**. On 26.1.5950.0 the Transaction API also explodes an assembly line, but it gives you no choice: it always saves the assembly the way *Yes* does (see [Order Service Gotchas](03-Transaction-API.md#order-service-gotchas)). The Interactive API is the path when you need to see the *"add as assembly?"* prompt and pick the answer — including *No*, a plain stock line. Verified end-to-end: interactive order entry created a sales order whose assembly line (`oe_line.assembly = 'P'`) auto-linked to a new production order.
