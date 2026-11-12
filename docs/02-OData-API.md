@@ -261,7 +261,7 @@ Return every field (the same columns as leaving `$select` out):
 /odata/table/supplier?$select=*
 ```
 
-> ⚠️ **An unknown `$select` column returns 404, not 400.** Naming a column that doesn't exist fails the whole request with an empty-bodied **404** — indistinguishable at a glance from "table not exposed" or "no permission". If a table you know exists suddenly 404s, drop the `$select` and retry before chasing Data Service permissions; a misremembered column name (e.g. `supplier_id` on `po_hdr`, which actually has `vendor_id`) is the more common cause. Verified on 2026.1.
+> ⚠️ **An unknown `$select` column returns 404, not 400.** Naming a column that doesn't exist fails the whole request with an empty-bodied **404** — indistinguishable at a glance from "table not exposed" or "no permission". If a table you know exists suddenly 404s, drop the `$select` and retry before chasing Data Service permissions; a misremembered column name (e.g. `line_number` on `invoice_line`, which actually has `line_no`) is the more common cause. Verified on 2026.1; the `invoice_line` example re-run on play 26.1.6004.0.
 
 ### $filter - Filter Results
 
@@ -795,6 +795,29 @@ GET {base}/odataservice/odata/table/po_line
 Join to `po_hdr.po_type` to tell which rows are affected — the line carries no flag of its own, which is the whole trap.
 
 The write itself is documented on the service that performs it: [Interactive API § Direct-ship confirmation](04-Interactive-API.md#directshipconfirmation-writes-its-ship-date-down-onto-every-line).
+
+#### `po_hdr` names two companies: `supplier_id` is ordered from, `vendor_id` is paid
+
+A PO header carries two company IDs, and they are not two names for one thing:
+
+| Column | Window field (`PurchaseOrder`, `TABPAGE_1.tp_1_dw_1`) | Label | What it is |
+|---|---|---|---|
+| `po_hdr.supplier_id` | `vendor_supplier_id` | *Supplier ID* | The company the order is placed with |
+| `po_hdr.vendor_id` | `vendor_id` | *Vendor ID* | The pay-to vendor |
+
+On most POs they hold the same ID, so code that uses one in place of the other passes a casual test. On the rest it reaches the wrong company. Measured on play 26.1.6004.0 (November 2026), reading back over OData:
+
+- **About one active PO in six had `supplier_id` ≠ `vendor_id`.** Compare the two client-side; a `$filter` cannot compare two columns ([why](#the-right-hand-side-is-always-a-literal-you-cannot-compare-two-columns)).
+- **The PO's contact belongs to the supplier.** On differing POs ordered since 2025 that carry a `contact_id`, the contact's `contacts.address_id` matched `supplier_id` on over 90% and `vendor_id` on none. Take the contact, phone or ordering address from `supplier_id`.
+- **The voucher pays the vendor.** On completed differing POs, `apinv_hdr.vendor_id` matched `po_hdr.vendor_id` on every voucher but one and `supplier_id` on none. Take the pay-to company from `vendor_id`.
+
+```http
+GET {base}/odataservice/odata/table/po_hdr
+    ?$select=po_no,supplier_id,vendor_id,contact_id
+    &$filter=delete_flag eq 'N'
+```
+
+`po_line` carries neither column (the nearest is `pricing_book_supplier_id`), so join to `po_hdr` for either. The [window field map](16-Window-Field-Maps.md) lists `vendor_supplier_id` → `po_hdr.supplier_id`.
 
 #### `oe_line_po` holds stale links: join on both keys and filter `delete_flag`
 
