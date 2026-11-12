@@ -2971,7 +2971,7 @@ The line's `disposition` field is the trigger for a direct-ship line. Its valid 
 ### Related dead ends
 
 - **There is no PO-generation service.** Not among the 299 transaction services, and window-name guesses (`POGen`, `PurchaseOrderGeneration`, …) all 400. The wizard is the path.
-- **`PurchaseOrder` TAPI cannot build a `D`-type PO** — `po_hdr_po_type` is system-disabled, and the Backorders link tab is invisible to TAPI.
+- **`PurchaseOrder` TAPI cannot build a `D`-type PO** — `po_hdr_po_type` is system-disabled. (The Backorders tab itself is reachable on 26.1.6004.0: a `/transaction` POST sets `linked_qty` on an existing PO line; see [the same link through the Transaction API](#the-same-link-through-the-transaction-api).)
 - **Direct-ship POs are not received** via [PurchaseOrderReceipt](03-Transaction-API.md#purchaseorderreceipt-service-receiving-a-po) — the window refuses because the linked sales-order lines are `'T'` status. Their receipt is created by the sales-side confirmation instead (`DirectShipConfirmation`, keyed on `po_no`), which in one save writes the receipt, completes the PO line, invoices the sales-order line and creates the customer AR invoice — **and overwrites `po_line.supplier_ship_date` on every line it touches** ([below](#directshipconfirmation-writes-its-ship-date-down-onto-every-line)).
 
 #### `DirectShipConfirmation` writes its ship date down onto every line
@@ -3826,6 +3826,25 @@ What a reader trips on:
 - **To move a PO from a component to a sales order line, approve the order first.** An unapproved order is not on the Backorders tab, so there is no row to link to.
 - **An order holding a PO or transfer link cannot be cancelled.** Move the link back to where it came from, or unlink it, then cancel. A [transfer link](#creating-a-transfer-from-a-sales-order) gives the same message.
 - The verified runs set the decrease before the increase. Linking more than the PO line's quantity was not tried.
+
+### The same link through the Transaction API
+
+On 26.1.6004.0 one `PurchaseOrder` POST sets `linked_qty` too, without a session. `Status: "New"` with an existing `po_no` selects that PO ([upsert semantics](03-Transaction-API.md#upsert-semantics-keyed-rows-insert-when-absent)); replace the payload's placeholders with your own PO, line and order. Verified on play (November 2026) on a throwaway PO line and an approved sales order line for the same item, `oe_line_po` read back after each POST:
+
+| Element | Keys | Edits |
+|---|---|---|
+| `TABPAGE_1.tp_1_dw_1` | `["po_no"]` | `po_no` |
+| `TABPAGE_17.tp_17_dw_17` | `["line_no"]` | `line_no` only |
+| `BACKORDERS.links_for_po` | `["location_id", "order_no"]` (its `KeyFields`) | `location_id`, `order_no`, `linked_qty` |
+
+| Sent | Result |
+|---|---|
+| `linked_qty` `1` | `Succeeded: 1`; an `oe_line_po` row, `quantity_on_po` 1, `connection_type` `P` |
+| `linked_qty` `0` | `Succeeded: 1`; the row goes to `delete_flag` `Y`, `quantity_on_po` 0 |
+| `item_id` on the `TABPAGE_17` row as well | `Failed: 1`, `Column is disabled: item_id`: select the PO line by `line_no` alone |
+| An `order_no` that is not a backorder on that line | `Failed: 1`, `Column is disabled: location_id`; the message names a key column, not the missing backorder |
+
+Only a sales-order link was run this way; the production-order component row (`PR ORD`) and moving a link between two rows in one POST were exercised through the window only. The rules in the table above (approve first, a linked order cannot be cancelled) come from the same records. Payload: [`po-backorder-link.json`](../examples/payloads/json/po-backorder-link.json).
 
 <!-- tabs -->
 

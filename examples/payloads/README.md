@@ -37,6 +37,7 @@ Placeholders (`ACME`, `WIDGET-001`, customer `100198`, …) are generic — subs
 | Create a stock PO (runbook step A1) | [json](json/purchase-order-create.json) | — | `POST /api/v2/transaction` |
 | Receive a PO in full (runbook step A2) | [json](json/purchase-order-receipt.json) | — | `POST /api/v2/transaction` |
 | Vouch a PO receipt (runbook steps A3/B4) | [json](json/convert-po-to-voucher.json) | — | `POST /api/v2/transaction` |
+| Link a PO line to a sales order backorder (`BACKORDERS.links_for_po.linked_qty`; `0` unlinks) | [json](json/po-backorder-link.json) | — | `POST /api/v2/transaction` |
 | Print a sales-order pick ticket (`print_tix`) | [json](json/order-print-pick-ticket.json) | — | `POST /api/v2/transaction` |
 | Append $0 lines to an existing order (disposal step 3) | [json](json/order-append-zero-price-lines.json) | — | `POST /api/v2/transaction` |
 | Confirm a direct ship in full (`DirectShipConfirmation`, 26.1.5950.0) | [json](json/direct-ship-confirmation.json) | — | `POST /api/v2/transaction` |
