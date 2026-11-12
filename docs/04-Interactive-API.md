@@ -4250,12 +4250,12 @@ Verified sequence on `InventoryReturn` (session created with `"ResponseWindowHan
 3. **Line note instead:** select `LIST`, pick the row with `PUT /v2/row` `{"DatawindowName": "list", "Row": 2}`, then select `LINE_NOTE` and run `line_note&&cb_addnote`. The `list` grid has no line number column; row N is the Nth line.
 4. In the popup (`w_notepad_response_lite`), set `topic` (30 characters) and `note` on `_dw_hdr` with `TabName: null` and the **popup's** window ID. The area for the window you are in is already selected (`Inventory Return Entry`); `cb_select_all` adds the other three (`Inventory Return Shipping`, `Convert Return to Credit Voucher`, `Print Returns and Packing Lists`). Run `cb_ok`.
 5. Save with `PUT /v2/data` (bare window-GUID body). The response carries `keygenerated` for the notepad row and `savesucceeded` with `__return_number`.
-6. Read back over OData:
+6. Read back over OData: the header for its `inventory_return_hdr_uid`, then the notepad table.
 
-   ```http
-   GET /odataservice/odata/table/inventory_return_hdr?$filter=return_number eq 7000200
-   GET /odataservice/odata/table/inventory_return_hdr_notepad?$filter=inventory_return_hdr_uid eq {uid}
-   ```
+```http
+GET /odataservice/odata/table/inventory_return_hdr?$filter=return_number eq 7000200
+GET /odataservice/odata/table/inventory_return_hdr_notepad?$filter=inventory_return_hdr_uid eq {uid}
+```
 
 Runnable: [`inventory_return_note.py note`](../examples/python/recipes/inventory_return_note.py). It reads the status first and refuses a shipped return.
 
@@ -4273,7 +4273,7 @@ Runnable: [`inventory_return_note.py note`](../examples/python/recipes/inventory
 
 On a shipped or vouched return everything up to the save still works: the tab selects, the add tool opens the popup, `cb_ok` stages the row in the grid with a new `note_id`. Editing an existing note (`hdr_note&&cb_editnote`) on a shipped return behaves the same way. Only the save fails, and it gives no reason.
 
-> **Do not save a shipped return with the `Quick.Save` tool.** `POST /v2/tools` `{"ToolName": "Quick.Save"}` on the same window, with the note staged, returns `Status: 1` and a `savesucceeded` event carrying the return number, and **writes nothing**. The web client's own call, `POST {ui}/ui/full/v2/window/tools` with `Quick.Save`, returns `Success: true`, `State: "Normal"` and `savesucceeded`, and also writes nothing. On an open return the same tool does save. `PUT /v2/data` is the call that tells the truth here. (Run on a shipped return; not run on a vouched one.)
+> **Do not save a shipped or vouched return with the `Quick.Save` tool.** `POST /v2/tools` `{"ToolName": "Quick.Save"}` on the same window, with the note staged, returns `Status: 1` and a `savesucceeded` event carrying the return number, and **writes nothing**. The web client's own call, `POST {ui}/ui/full/v2/window/tools` with `Quick.Save`, returns `Success: true`, `State: "Normal"` and `savesucceeded`, and also writes nothing. On an open return the same tool does save. `PUT /v2/data` is the call that tells the truth here. (Both calls run on a shipped and on a vouched return.)
 
 Nothing in the Interactive API marks the locked state before the save: `GET /v2/tools` lists the same tools, `Quick.Save` and the four note tools included, for an open, a shipped and a vouched return. The signal exists only on the [`ui/full` surface](#the-uifull-surface-the-web-clients-own-rest-api), where loading a shipped or vouched return emits a `toolenabled` event with `tool_id` `Quick.Save` and `tool_enabled` `false`; its Add Note and Edit Note buttons stay `Enabled: true`. **Read `row_status_flag` over OData before you start**, and treat `974` and `975` as closed to this window.
 

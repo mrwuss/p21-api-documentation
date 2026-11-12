@@ -5706,11 +5706,12 @@ GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1001237'</cod
 <li><strong>Line note instead:</strong> select <code>LIST</code>, pick the row with <code>PUT /v2/row</code> <code>{"DatawindowName": "list", "Row": 2}</code>, then select <code>LINE_NOTE</code> and run <code>line_note&amp;&amp;cb_addnote</code>. The <code>list</code> grid has no line number column; row N is the Nth line.</li>
 <li>In the popup (<code>w_notepad_response_lite</code>), set <code>topic</code> (30 characters) and <code>note</code> on <code>_dw_hdr</code> with <code>TabName: null</code> and the <strong>popup's</strong> window ID. The area for the window you are in is already selected (<code>Inventory Return Entry</code>); <code>cb_select_all</code> adds the other three (<code>Inventory Return Shipping</code>, <code>Convert Return to Credit Voucher</code>, <code>Print Returns and Packing Lists</code>). Run <code>cb_ok</code>.</li>
 <li>Save with <code>PUT /v2/data</code> (bare window-GUID body). The response carries <code>keygenerated</code> for the notepad row and <code>savesucceeded</code> with <code>__return_number</code>.</li>
-<li>Read back over OData:</li>
+<li>Read back over OData: the header for its <code>inventory_return_hdr_uid</code>, then the notepad table.</li>
 </ol>
-<p><code>http
-   GET /odataservice/odata/table/inventory_return_hdr?$filter=return_number eq 7000200
-   GET /odataservice/odata/table/inventory_return_hdr_notepad?$filter=inventory_return_hdr_uid eq {uid}</code></p>
+<div class="highlight"><pre><span></span><code><span class="err">GET /odataservice/odata/table/inventory_return_hdr?$filter=return_number eq 7000200</span>
+<span class="err">GET /odataservice/odata/table/inventory_return_hdr_notepad?$filter=inventory_return_hdr_uid eq {uid}</span>
+</code></pre></div>
+
 <p>Runnable: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/inventory_return_note.py"><code>inventory_return_note.py note</code></a>. It reads the status first and refuses a shipped return.</p>
 <h3 id="what-each-status-allows">What each status allows</h3>
 <p><code>inventory_return_hdr.row_status_flag</code> decides everything. One return was created for the test and walked through the cycle, with a header and a line note attempted at each step; <code>973</code> and <code>975</code> were run on other returns.</p>
@@ -5752,7 +5753,7 @@ GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1001237'</cod
 </table></div>
 <p>On a shipped or vouched return everything up to the save still works: the tab selects, the add tool opens the popup, <code>cb_ok</code> stages the row in the grid with a new <code>note_id</code>. Editing an existing note (<code>hdr_note&amp;&amp;cb_editnote</code>) on a shipped return behaves the same way. Only the save fails, and it gives no reason.</p>
 <blockquote>
-<p><strong>Do not save a shipped return with the <code>Quick.Save</code> tool.</strong> <code>POST /v2/tools</code> <code>{"ToolName": "Quick.Save"}</code> on the same window, with the note staged, returns <code>Status: 1</code> and a <code>savesucceeded</code> event carrying the return number, and <strong>writes nothing</strong>. The web client's own call, <code>POST {ui}/ui/full/v2/window/tools</code> with <code>Quick.Save</code>, returns <code>Success: true</code>, <code>State: "Normal"</code> and <code>savesucceeded</code>, and also writes nothing. On an open return the same tool does save. <code>PUT /v2/data</code> is the call that tells the truth here. (Run on a shipped return; not run on a vouched one.)</p>
+<p><strong>Do not save a shipped or vouched return with the <code>Quick.Save</code> tool.</strong> <code>POST /v2/tools</code> <code>{"ToolName": "Quick.Save"}</code> on the same window, with the note staged, returns <code>Status: 1</code> and a <code>savesucceeded</code> event carrying the return number, and <strong>writes nothing</strong>. The web client's own call, <code>POST {ui}/ui/full/v2/window/tools</code> with <code>Quick.Save</code>, returns <code>Success: true</code>, <code>State: "Normal"</code> and <code>savesucceeded</code>, and also writes nothing. On an open return the same tool does save. <code>PUT /v2/data</code> is the call that tells the truth here. (Both calls run on a shipped and on a vouched return.)</p>
 </blockquote>
 <p>Nothing in the Interactive API marks the locked state before the save: <code>GET /v2/tools</code> lists the same tools, <code>Quick.Save</code> and the four note tools included, for an open, a shipped and a vouched return. The signal exists only on the <a href="#the-uifull-surface-the-web-clients-own-rest-api"><code>ui/full</code> surface</a>, where loading a shipped or vouched return emits a <code>toolenabled</code> event with <code>tool_id</code> <code>Quick.Save</code> and <code>tool_enabled</code> <code>false</code>; its Add Note and Edit Note buttons stay <code>Enabled: true</code>. <strong>Read <code>row_status_flag</code> over OData before you start</strong>, and treat <code>974</code> and <code>975</code> as closed to this window.</p>
 <p>The other routes, same tenant, same day:</p>

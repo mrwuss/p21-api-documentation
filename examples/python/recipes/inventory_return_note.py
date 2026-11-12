@@ -63,6 +63,9 @@ warnings.filterwarnings("ignore")
 OPEN_STATUSES = {971: "Unapproved", 972: "Approved", 973: "Printed"}
 CLOSED_STATUSES = {974: "Shipped", 975: "Vouched", 976: "Canceled"}
 RETURN_TRANSACTION_TYPE = 987  # code_p21: Inventory Return, as stored on activity_trans
+DEFAULT_COMMENTS = (
+    "Supplier is evaluating the part."  # used on create when none are given
+)
 
 
 def odata(http: httpx.Client, base_url: str, table: str, flt: str) -> list[dict]:
@@ -210,7 +213,9 @@ def add_note(args: argparse.Namespace) -> None:
 def task_payload(args: argparse.Namespace, supplier_id: str) -> dict:
     """Transaction API payload that creates or updates the task."""
     if args.task_no:
-        edits = [("activity_trans_no", args.task_no), ("comments", args.comments)]
+        edits = [("activity_trans_no", args.task_no)]
+        if args.comments is not None:
+            edits.append(("comments", args.comments))
         if args.complete:
             edits.append(("completed_flag", "ON"))
         keys = ["activity_trans_no"]
@@ -222,7 +227,7 @@ def task_payload(args: argparse.Namespace, supplier_id: str) -> dict:
             ("link_id", supplier_id),
             ("transaction_type_cd", "Inventory Return"),
             ("transaction_no", args.return_number),
-            ("comments", args.comments),
+            ("comments", args.comments or DEFAULT_COMMENTS),
         ]
         keys = []
     return {
@@ -295,12 +300,17 @@ def write_task(args: argparse.Namespace) -> None:
             f"transaction_no={str(row['transaction_no']).strip()!r} completed={row['completed_flag']} "
             f"comments={row['comments']!r}"
         )
+        expected = (
+            row["comments"]
+            if args.task_no and args.comments is None
+            else (args.comments or DEFAULT_COMMENTS)
+        )
         linked = args.task_no or (
             row["transaction_type_cd"] == RETURN_TRANSACTION_TYPE
             and str(row["transaction_no"]).strip() == args.return_number
         )
         print(
-            f"Verify: {'OK' if linked and row['comments'] == args.comments else 'CHECK THE ROW'}"
+            f"Verify: {'OK' if linked and row['comments'] == expected else 'CHECK THE ROW'}"
         )
 
 
@@ -339,7 +349,11 @@ def main() -> None:
         default="FOLLOW UP",
         help="An activity ID that exists on your tenant",
     )
-    task.add_argument("--comments", default="Supplier is evaluating the part.")
+    task.add_argument(
+        "--comments",
+        default=None,
+        help="Task comments; on an update, omit to leave them as they are",
+    )
     task.add_argument(
         "--complete", action="store_true", help="With --task-no: mark the task complete"
     )
