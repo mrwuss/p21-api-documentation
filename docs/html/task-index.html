@@ -807,6 +807,10 @@
 <td><a href="02-OData-API.html#pagination-helper">02 § Pagination Helper</a> · <a href="02-OData-API.html#page-size-guidance">02 § Page Size Guidance</a></td>
 </tr>
 <tr>
+<td>A <strong>direct SQL</strong> lookup by <code>item_id</code> or <code>supplier_part_no</code> is slow (scans)</td>
+<td><a href="02-OData-API.html#item-id-and-supplier-part-number-lookups-bind-varchar-not-nvarchar">02 § bind <code>varchar</code>, not <code>nvarchar</code></a> — the columns are <code>varchar(40)</code>; an <code>nvarchar</code> parameter converts the column; <code>CAST(? AS varchar(40))</code> restores the seek. OData <code>eq</code> is not affected</td>
+</tr>
+<tr>
 <td>Date filters (<code>now()</code> is unsupported)</td>
 <td><a href="02-OData-API.html#now-function-not-supported">02 § now() Not Supported</a></td>
 </tr>

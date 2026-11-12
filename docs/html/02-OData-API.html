@@ -751,6 +751,7 @@
 </li>
 <li><a href="#performance-tips">Performance Tips</a><ul>
 <li><a href="#measured-performance">Measured Performance</a></li>
+<li><a href="#item-id-and-supplier-part-number-lookups-bind-varchar-not-nvarchar">Item ID and supplier part number lookups: bind varchar, not nvarchar</a></li>
 <li><a href="#avoiding-n1-query-patterns">Avoiding N+1 Query Patterns</a></li>
 <li><a href="#the-in-operator-is-silently-ignored-do-not-use-it">The in operator is silently ignored — do not use it</a></li>
 </ul>
@@ -3219,6 +3220,40 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 </tr>
 </tbody>
 </table></div>
+<h3 id="item-id-and-supplier-part-number-lookups-bind-varchar-not-nvarchar">Item ID and supplier part number lookups: bind <code>varchar</code>, not <code>nvarchar</code></h3>
+<p><code>inv_mast.item_id</code> and <code>inventory_supplier.supplier_part_no</code> are <strong><code>varchar(40)</code></strong>, collation <code>SQL_Latin1_General_CP1_CI_AS</code>, each with an index that leads on the column. A <strong>direct SQL</strong> read that compares either column to an <code>nvarchar</code> parameter makes SQL Server convert the column on every row, so it scans instead of seeking. Many drivers send a text parameter as <code>nvarchar</code> unless told otherwise; Python's <code>pyodbc</code> does.</p>
+<p>Measured on play 26.1.6004.0 (November 2026), read-only, about 330,000 items and 375,000 item-supplier rows, a fresh random set of values for each run, three rounds in rotating order:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Lookup, one query per value</th>
+<th><code>nvarchar</code> parameter (driver default)</th>
+<th><code>CAST(? AS varchar(40))</code></th>
+<th>Control: <code>CONVERT(nvarchar(40), column) = ?</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>inv_mast.item_id</code>, 200 values</td>
+<td>6.5–6.6 s (about 33 ms each)</td>
+<td>0.13–0.16 s (under 1 ms each)</td>
+<td>about 33 ms each, the same as the default</td>
+</tr>
+<tr>
+<td><code>inventory_supplier.supplier_part_no</code>, 200 values</td>
+<td>22–23 s (about 110 ms each)</td>
+<td>1.0–1.5 s</td>
+<td>about 105 ms each</td>
+</tr>
+</tbody>
+</table></div>
+<p>The default costs the same as a lookup that deliberately converts the column, which is a scan. Fix it in the SQL text, which works with any driver:</p>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">inv_mast_uid</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">inv_mast</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">item_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">CAST</span><span class="p">(</span><span class="o">?</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="nb">varchar</span><span class="p">(</span><span class="mi">40</span><span class="p">));</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">inventory_supplier_uid</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">inventory_supplier</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">supplier_part_no</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">CAST</span><span class="p">(</span><span class="o">?</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="nb">varchar</span><span class="p">(</span><span class="mi">40</span><span class="p">));</span>
+</code></pre></div>
+
+<p>Or bind the parameter's type. In <code>pyodbc</code>, before each <code>execute</code>: <code>cursor.setinputsizes([(pyodbc.SQL_VARCHAR, 40, 0)])</code> (in a separate run, 0.14 s for 200 item IDs against 0.17 s with the <code>CAST</code>, and 0.32 s against 0.34 s for 200 part numbers). In other drivers, declare the parameter as <code>varchar(40)</code> rather than relying on the default.</p>
+<p><strong>OData <code>eq</code> filters do not show this cost.</strong> Measured the same way over OData (40 lookups per form, median of each, two rounds): <code>item_id eq '...'</code> took 285–299 ms and <code>supplier_part_no eq '...'</code> 271–282 ms, the same as an integer-key lookup on the same table (283–296 ms and 280–284 ms). A non-sargable <code>endswith(item_id, '...')</code> took 348–367 ms. <code>toupper(...)</code> in a filter returns 404, so it is not a way to fold case over OData either.</p>
 <h3 id="avoiding-n1-query-patterns">Avoiding N+1 Query Patterns</h3>
 <p>When working with related entities (e.g., pages → books → libraries), avoid fetching related data in a loop:</p>
 <blockquote>
@@ -3584,6 +3619,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 </li>
 <li><a href="#performance-tips">Performance Tips</a><ul>
 <li><a href="#measured-performance">Measured Performance</a></li>
+<li><a href="#item-id-and-supplier-part-number-lookups-bind-varchar-not-nvarchar">Item ID and supplier part number lookups: bind varchar, not nvarchar</a></li>
 <li><a href="#avoiding-n1-query-patterns">Avoiding N+1 Query Patterns</a></li>
 <li><a href="#the-in-operator-is-silently-ignored-do-not-use-it">The in operator is silently ignored — do not use it</a></li>
 </ul>
