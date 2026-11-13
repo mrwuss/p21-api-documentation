@@ -171,6 +171,8 @@ All documentation is derived from:
 | **A window with `frame_menu.service_name` NULL is not out of reach** — the web client's `ui/full` surface opens windows by menu class (`m_*`), no `/api/` prefix, raw-JSON-string body; NULL *and* web-disabled is what means no API surface | [docs/04 § The ui/full Surface](docs/04-Interactive-API.md#the-uifull-surface-the-web-clients-own-rest-api) · [docs/04 § Window→Service Discovery](docs/04-Interactive-API.md#8-window-to-service-discovery-frame_menu) |
 | Which REST families a tenant exposes (`apiref.aspx`, per-family `/help`) | [docs/05 § Discovering what your tenant actually exposes](docs/05-Entity-API.md#discovering-what-your-tenant-actually-exposes) |
 | Application Security settings that gate API access (*Access to SOA Admin Page*, audit-trail user override) | [docs/00 § Application Security settings](docs/00-Authentication.md#application-security-settings-that-affect-api-access) |
+| **User Application Security is a `List` keyed on `display_name`** (`User` service, exact-case label, `code_value` `Yes`/`No`) — any other `Type` or `Keys`, or a label that differs in case, is `Column is disabled: display_name`; the first save stores a row for every setting that was following its default | [docs/03 § User Service — Application Security Settings](docs/03-Transaction-API.md#user-service-application-security-settings) |
+| **Price library books** (`StrategicPricingLibrary` `LIST_DETAIL.list_detail` keyed `price_book_id`): `sequence_number` adds or moves, `row_status_flag` `Delete` removes; `price_book_description` is `Column is disabled` on a book already in the library | [docs/03 § StrategicPricingLibrary Service](docs/03-Transaction-API.md#strategicpricinglibrary-service-adding-a-price-book-at-a-position) |
 | **`ufc_*` fields differ by identity** — `/definition` and `/transaction/get` can list a user-defined field for one token and not another (a consumer-key token with vs without `username` included); writing a field your identity lacks is `Invalid column name: ufc_...` | [docs/03 § the user-defined fields differ by user](docs/03-Transaction-API.md#invalid-column-name-ufc_-the-user-defined-fields-differ-by-user) |
 | **Router URL needs its trailing slash** — `/api/ui/router/v1?urlType=external` 307s, and .NET `HttpClient` **strips `Authorization` on any redirect**, so the call 401s with a perfectly good token | [docs/00 § UI Server URL](docs/00-Authentication.md#ui-server-url) · [docs/06 § 401 Authorization header was not present](docs/06-Error-Handling.md#401-authorization-header-was-not-present-or-bearer-was-missing) |
 | Lowercase `item_id` accepted by TAPI, crashes the client on open — uppercase in code, never reproduce to test | [docs/03 § Item Service Gotchas](docs/03-Transaction-API.md#item-service-gotchas) |
@@ -214,4 +216,4 @@ All documentation is derived from:
 
 ---
 
-*Last updated: 2026-10-29*
+*Last updated: 2026-11-13*

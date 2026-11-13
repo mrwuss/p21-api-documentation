@@ -890,8 +890,12 @@
 <td><a href="03-Transaction-API.html#transactionset-fields">03 § Edit fields</a> — a blank stores NULL, an empty string or nothing, depending on the field; read it back</td>
 </tr>
 <tr>
-<td>Add a price book to a pricing library at a position</td>
-<td><a href="03-Transaction-API.html#strategicpricinglibrary-service-adding-a-price-book-at-a-position">03 § StrategicPricingLibrary Service</a></td>
+<td>Add a price book to a pricing library at a position, <strong>move</strong> it, or <strong>remove</strong> it</td>
+<td><a href="03-Transaction-API.html#strategicpricinglibrary-service-adding-a-price-book-at-a-position">03 § StrategicPricingLibrary Service</a> — <code>LIST_DETAIL.list_detail</code> keyed <code>price_book_id</code>; <code>Column is disabled: price_book_description</code> on a book already in the library</td>
+</tr>
+<tr>
+<td>Set a user's <strong>Application Security</strong> setting (User Maintenance tab)</td>
+<td><a href="03-Transaction-API.html#user-service-application-security-settings">03 § User Service — Application Security Settings</a> — a <code>List</code> keyed on <code>display_name</code>, exact-case label; the first save stores a row for every setting</td>
 </tr>
 <tr>
 <td>Validate a payload offline before posting (JSON or XML)</td>
@@ -1036,6 +1040,10 @@
 <tr>
 <td><strong><code>Column is disabled</code> for my service account but not for a person</strong></td>
 <td><a href="03-Transaction-API.html#column-is-disabled-can-mean-disabled-for-you">03 § Column is disabled Can Mean "Disabled For You"</a> — role/DynaChange-scoped; test with the account that will run it</td>
+</tr>
+<tr>
+<td><strong><code>Column is disabled: display_name</code></strong> on the <code>User</code> service</td>
+<td><a href="03-Transaction-API.html#user-service-application-security-settings">03 § User Service — Application Security Settings</a> — the row matched no setting: wrong <code>Type</code>, no <code>display_name</code> key, or a label that differs in case</td>
 </tr>
 <tr>
 <td><strong><code>Invalid column name: ufc_...</code></strong> on a field you can see, or a <code>ufc_*</code> field missing from <code>/definition</code></td>

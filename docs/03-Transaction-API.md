@@ -6209,7 +6209,7 @@ A `Contact` create takes an `address_id`. Set it to an existing address and the 
 
 ### StrategicPricingLibrary Service — Adding a Price Book at a Position
 
-A price library's books are the `LIST_DETAIL.list_detail` grid, and `sequence_number` sets each book's place. Send the grid as a `List` keyed on `price_book_id`, with `price_book_description` as well as the ID and the position:
+A price library's books are the `LIST_DETAIL.list_detail` grid, and `sequence_number` sets each book's place. Send the grid as a `List` keyed on `price_book_id`. The definition lists no key for this grid (`KeyFields` is empty), so the key is yours to supply. A row that adds a book carries the ID, the position and `price_book_description`:
 
 ```json
 {
@@ -6232,10 +6232,378 @@ A price library's books are the `LIST_DETAIL.list_detail` grid, and `sequence_nu
 ```
 
 - **`sequence_number` `0` puts the book first.** It is stored as `1`, and the books already in the library move down by one (`price_book_x_library`, read back over OData).
-- **Without `price_book_description` the row fails** with *"This column is required."*, even though the description belongs to the book.
-- A new library needs `type_cd` (a label such as `First Of`; `Column is disabled: company_id` if you send `company_id`) and `description`, and can take its first book in the same transaction.
+- A new library needs `type_cd` (a label such as `First Of`; `Column is disabled: company_id` if you send `company_id`) and `description`, and can take its first books in the same transaction.
 
-*(Verified on play 26.1.5950.0, 2026-10-29, on a throwaway library. Community lead: P21WWUG forum.)*
+The same keyed row moves and removes a book. Re-run on play 26.1.6004.0 (2026-11-13) on a throwaway library of three books, with `price_book_x_library` read back over OData after every POST:
+
+| The `LIST_DETAIL.list_detail` row | Result |
+|---|---|
+| A book not in the library, `sequence_number` `0`, with or without `price_book_description` | `Succeeded: 1`; stored at `1`, the others move down |
+| A book already in the library, `price_book_id` + `sequence_number` only | `Succeeded: 1`; the book moves (`0` to first, `2` to second, `3` of three to last) and the others renumber `1`..`n` |
+| A book already in the library, with `price_book_description` | `Failed: 1`, `Column is disabled: price_book_description`; nothing written |
+| `price_book_id` + `row_status_flag` `Delete` | `Succeeded: 1`; the `price_book_x_library` row is gone and the others renumber `1`..`n` |
+
+- **`price_book_description` is build-dependent on a new row and refused on an existing one.** A row that adds a book with the description succeeds on both builds. Without it, 26.1.5950.0 answered *"This column is required."* and 26.1.6004.0 added the book. Read the library first, and send the description only for a book that is not in it yet.
+- **Removing a book deletes the link row.** No soft-deleted `price_book_x_library` row remains, and adding the same book again creates a new row. The same books' links in other libraries, and the `price_book` rows themselves, were unchanged after every POST.
+- `row_status_flag` `Delete` on `FORM.form` soft-deletes the library (`price_library.row_status_flag` `700`). Its book links stay, and the same keyed `Delete` rows still remove them afterwards.
+
+*(Verified on play 26.1.5950.0, 2026-10-29, and re-run on play 26.1.6004.0, 2026-11-13, each on a throwaway library. Community lead: P21WWUG forum. Verified by @mrwuss, [#237](https://github.com/mrwuss/p21-api-documentation/issues/237).)*
+
+### User Service — Application Security Settings
+
+The **Application Security** tab of User Maintenance is one grid on the `User` service: `TABPAGE_APPLICATIONSECURITY.tabpage_applicationsecurity`, one row per setting, with `display_name` (the setting's label) and `code_value` (`Yes` or `No`). Send it as a `List` keyed on `display_name`, after the `TABPAGE_1.user_maint` form that names the user:
+
+```json
+{
+  "Name": "User",
+  "UseCodeValues": false,
+  "Transactions": [{
+    "Status": "New",
+    "DataElements": [
+      {"Name": "TABPAGE_1.user_maint", "Type": "Form", "Keys": ["user_id"],
+       "Rows": [{"Edits": [{"Name": "user_id", "Value": "TESTUSER"}]}]},
+      {"Name": "TABPAGE_APPLICATIONSECURITY.tabpage_applicationsecurity",
+       "Type": "List", "Keys": ["display_name"],
+       "Rows": [{"Edits": [
+         {"Name": "display_name", "Value": "Enable RMB Save As"},
+         {"Name": "code_value",   "Value": "Yes"}
+       ]}]}
+    ]
+  }]
+}
+```
+
+Verified on play 26.1.6004.0 (2026-11-13) on a test login. After every POST the user was read back two ways: all 63 settings with `POST /transaction/get`, and the stored rows in `users_x_application_security` over OData.
+
+| The security element you send | Result |
+|---|---|
+| `Type` `List`, `Keys` `["display_name"]`, the exact label, `code_value` `Yes` | `Succeeded: 1`; that setting reads back `Yes`, the other 62 are unchanged |
+| The same row with `code_value` `No` | `Succeeded: 1`; the setting reads back `No` |
+| `Type` `List`, `Keys` `[]` | `Failed: 1`, `Column is disabled: display_name`; nothing written |
+| `Type` `Form`, `Keys` `["display_name"]` | `Failed: 1`, `Column is disabled: display_name`; nothing written |
+| `Type` `List`, `Keys` `["display_name"]`, the label in lower case | `Failed: 1`, `Column is disabled: display_name`; nothing written |
+
+- **`Column is disabled: display_name` means the shape or the label is wrong**, not that the setting is locked. The label only selects the row. Each of the three wrong shapes above returned this error for a setting that the keyed, exact-case row then changed. The full message is `Transaction 1: TABPAGE_APPLICATIONSECURITY.tabpage_applicationsecurity: Error processing data element: tabpage_applicationsecurity : Column is disabled: display_name`.
+- **Copy the label, do not type it.** `POST /transaction/get` on any user returns every label on the tab with its current value. The labels are also `application_security.display_name` over OData. The definition agrees with the working shape: `GET /api/v2/definition/User` lists this element as a `List` with `KeyFields` `["display_name"]`.
+- **The first save stores a row for every setting.** Before the test the user had 16 rows in `users_x_application_security`; every other setting followed `application_security.default_code_value`. The one-setting POST left 64 rows: one for each of the 63 settings on the tab and one for a setting the tab does not list. Each new row holds that setting's default, so no effective value changed, but those settings no longer follow the default. Setting the value back does not remove the rows.
+- **Read-back tables.** `users_x_application_security` holds `users_id`, `application_security_uid` and `code_value` (`1103` Yes, `1104` No). `application_security` holds one row per setting with `display_name` and `default_code_value`. The save stamped the user's `date_last_modified` and `last_maintained_by` (`p21_view_users`) with the time of the POST and the API user.
+- **Not tested:** more than one row per POST, and any setting other than `Enable RMB Save As`. The grid also carries the settings that gate API access ([Application Security settings that affect API access](00-Authentication.md#application-security-settings-that-affect-api-access)); none of those was written.
+
+Payload: [`user-application-security.json`](../examples/payloads/json/user-application-security.json).
+
+<!-- tabs -->
+
+```python
+"""Set one Application Security setting for a P21 user (User service), then read it back."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+USER_ID = "TESTUSER"                      # the P21 user to change (users.id)
+SETTING = "Enable RMB Save As"            # the label, exactly as the tab shows it
+VALUE = "Yes"                             # "Yes" or "No"
+# ---------------------------------------------------------------------------
+
+SECURITY = "TABPAGE_APPLICATIONSECURITY.tabpage_applicationsecurity"
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+        },
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+def setting(client: httpx.Client, ui_server: str) -> str | None:
+    """The setting's value as the User window shows it, or None if no row has that label."""
+    r = client.post(f"{ui_server}/api/v2/transaction/get", json={
+        "ServiceName": "User",
+        "TransactionStates": [{"DataElementName": "TABPAGE_1.user_maint",
+                               "Keys": [{"Name": "user_id", "Value": USER_ID}]}],
+    })
+    r.raise_for_status()
+    for transaction in r.json().get("Transactions") or []:
+        for element in transaction["DataElements"]:
+            if element["Name"] != SECURITY:
+                continue
+            for row in element["Rows"]:
+                edits = {e["Name"]: e["Value"] for e in row["Edits"]}
+                if edits.get("display_name") == SETTING:
+                    return edits.get("code_value")
+    return None
+
+
+payload = {
+    "Name": "User",
+    "UseCodeValues": False,
+    "Transactions": [{
+        "Status": "New",
+        "DataElements": [
+            {"Name": "TABPAGE_1.user_maint", "Type": "Form", "Keys": ["user_id"],
+             "Rows": [{"Edits": [{"Name": "user_id", "Value": USER_ID}],
+                       "RelativeDateEdits": []}]},
+            # A List keyed on display_name. The label selects the row and must
+            # match exactly, case included. Any other Type or Keys, or a label
+            # that matches no row, fails "Column is disabled: display_name".
+            {"Name": SECURITY, "Type": "List", "Keys": ["display_name"],
+             "Rows": [{"Edits": [{"Name": "display_name", "Value": SETTING},
+                                 {"Name": "code_value", "Value": VALUE}],
+                       "RelativeDateEdits": []}]},
+        ],
+    }],
+}
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    client.headers.update({"Authorization": f"Bearer {token}",
+                           "Accept": "application/json"})
+    before = setting(client, ui_server)
+    if before is None:
+        raise RuntimeError(f"User {USER_ID} has no setting labelled {SETTING!r}")
+    print("before:", before)
+    r = client.post(f"{ui_server}/api/v2/transaction", json=payload)
+    r.raise_for_status()
+    result = r.json()
+    summary = result["Summary"]
+    if summary["Failed"] or not summary["Succeeded"]:
+        raise RuntimeError(f"Write failed: {summary} {result.get('Messages')}")
+    print("summary:", summary)
+    after = setting(client, ui_server)
+    print("after: ", after)
+    if after != VALUE:
+        raise RuntimeError(f"Read-back is {after!r}, expected {VALUE!r}")
+```
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+const string UserId = "TESTUSER";                    // the P21 user to change (users.id)
+const string Setting = "Enable RMB Save As";         // the label, exactly as the tab shows it
+const string Value = "Yes";                          // "Yes" or "No"
+// ---------------------------------------------------------------------------
+
+const string Security = "TABPAGE_APPLICATIONSECURITY.tabpage_applicationsecurity";
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(
+    new MediaTypeWithQualityHeaderValue("application/json"));
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", token);
+
+var payload = new
+{
+    Name = "User",
+    UseCodeValues = false,
+    Transactions = new[]
+    {
+        new
+        {
+            Status = "New",
+            DataElements = new object[]
+            {
+                new
+                {
+                    Name = "TABPAGE_1.user_maint", Type = "Form", Keys = new[] { "user_id" },
+                    Rows = new[] { new { Edits = new[] { new { Name = "user_id", Value = UserId } }, RelativeDateEdits = Array.Empty<object>() } },
+                },
+                // A List keyed on display_name. The label selects the row and must
+                // match exactly, case included. Any other Type or Keys, or a label
+                // that matches no row, fails "Column is disabled: display_name".
+                new
+                {
+                    Name = Security, Type = "List", Keys = new[] { "display_name" },
+                    Rows = new[]
+                    {
+                        new
+                        {
+                            Edits = new[]
+                            {
+                                new { Name = "display_name", Value = Setting },
+                                new { Name = "code_value", Value = Value },
+                            },
+                            RelativeDateEdits = Array.Empty<object>(),
+                        },
+                    },
+                },
+            },
+        },
+    },
+};
+
+var before = await SettingAsync(client, uiServer)
+    ?? throw new InvalidOperationException($"User {UserId} has no setting labelled '{Setting}'");
+Console.WriteLine($"before: {before}");
+using (var r = await client.PostAsync($"{uiServer}/api/v2/transaction",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")))
+{
+    r.EnsureSuccessStatusCode();
+    using var d = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+    var s = d.RootElement.GetProperty("Summary");
+    if (s.GetProperty("Failed").GetInt32() > 0 || s.GetProperty("Succeeded").GetInt32() == 0)
+    {
+        throw new InvalidOperationException($"Write failed: {s} {d.RootElement.GetProperty("Messages")}");
+    }
+    Console.WriteLine($"summary: {s}");
+}
+var after = await SettingAsync(client, uiServer);
+Console.WriteLine($"after:  {after}");
+if (after != Value)
+{
+    throw new InvalidOperationException($"Read-back is '{after}', expected '{Value}'");
+}
+
+// The setting's value as the User window shows it, or null if no row has that label.
+static async Task<string?> SettingAsync(HttpClient c, string uiServer)
+{
+    var body = JsonSerializer.Serialize(new
+    {
+        ServiceName = "User",
+        TransactionStates = new[]
+        {
+            new
+            {
+                DataElementName = "TABPAGE_1.user_maint",
+                Keys = new[] { new { Name = "user_id", Value = UserId } },
+            },
+        },
+    });
+    using var r = await c.PostAsync($"{uiServer}/api/v2/transaction/get",
+        new StringContent(body, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    using var d = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+    if (!d.RootElement.TryGetProperty("Transactions", out var transactions)
+        || transactions.ValueKind != JsonValueKind.Array)
+    {
+        return null;
+    }
+    foreach (var transaction in transactions.EnumerateArray())
+    {
+        foreach (var element in transaction.GetProperty("DataElements").EnumerateArray())
+        {
+            if (element.GetProperty("Name").GetString() != Security)
+            {
+                continue;
+            }
+            foreach (var row in element.GetProperty("Rows").EnumerateArray())
+            {
+                string? label = null, value = null;
+                foreach (var edit in row.GetProperty("Edits").EnumerateArray())
+                {
+                    var name = edit.GetProperty("Name").GetString();
+                    if (name == "display_name") { label = edit.GetProperty("Value").GetString(); }
+                    if (name == "code_value") { value = edit.GetProperty("Value").GetString(); }
+                }
+                if (label == Setting)
+                {
+                    return value;
+                }
+            }
+        }
+    }
+    return null;
+}
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient c, string token)
+{
+    using var q = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    q.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    using var r = await c.SendAsync(q);
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on play 26.1.6004.0 against the test login, each setting `Enable RMB Save As` to `Yes` and back to `No` and reading it back each time.
+
+*(Verified on play 26.1.6004.0, 2026-11-13. Community lead: P21WWUG forum, reported on 2025.1.5595. Verified by @mrwuss, [#237](https://github.com/mrwuss/p21-api-documentation/issues/237).)*
 
 ### Contact Service — Phone Numbers
 
