@@ -660,6 +660,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-11-13">2026-11-13</a></li>
 <li><a href="#2026-11-12">2026-11-12</a></li>
 <li><a href="#2026-11-11">2026-11-11</a></li>
 <li><a href="#2026-10-29-v1300">2026-10-29 — v1.30.0</a></li>
@@ -768,6 +769,11 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-11-13">2026-11-13</h2>
+<ul>
+<li><strong>docs:</strong> <strong><a href="03-Transaction-API.html#user-service-application-security-settings">User Service — Application Security Settings</a></strong>, verified on play 26.1.6004.0: the User Maintenance Application Security tab is writable through the <code>User</code> service as a <code>List</code> keyed on <code>display_name</code> (the exact-case label) with <code>code_value</code> <code>Yes</code> or <code>No</code>. <code>Keys</code> <code>[]</code>, <code>Type</code> <code>Form</code> and a lower-case label each fail <code>Column is disabled: display_name</code> and write nothing. The first save stores a <code>users_x_application_security</code> row for every setting that was following its default. Python and C# programs and a payload file. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/237">#237</a>. — <em>P21WWUG forum lead, verified @mrwuss</em></li>
+<li><strong>fix:</strong> <strong><a href="03-Transaction-API.html#strategicpricinglibrary-service-adding-a-price-book-at-a-position">StrategicPricingLibrary: move and remove a book, and <code>price_book_description</code></a></strong>, re-run on play 26.1.6004.0: the keyed row with <code>sequence_number</code> alone moves a book already in the library, and <code>row_status_flag</code> <code>Delete</code> removes it (the link row is deleted and the rest renumber). A new row without <code>price_book_description</code> succeeded on 6004.0, where 26.1.5950.0 answered <em>"This column is required."</em>; on a book already in the library the description fails <code>Column is disabled: price_book_description</code>. Refs <a href="https://github.com/mrwuss/p21-api-documentation/issues/237">#237</a>. — <em>P21WWUG forum lead, verified @mrwuss</em></li>
+</ul>
 <h2 id="2026-11-12">2026-11-12</h2>
 <ul>
 <li><strong>docs:</strong> <strong><a href="04-Interactive-API.html#inventory-return-notes-and-the-lock-after-shipping">Inventory return notes, and the lock after shipping</a></strong>, verified on play 26.1.6004.0: header and line notes (<code>inventory_return_hdr_notepad</code>, <code>inventory_return_line_notepad</code>) save through the <code>InventoryReturn</code> window's Notepad Entry popup at <code>971</code>, <code>972</code> and <code>973</code>. At <code>974</code> and <code>975</code> <code>PUT /v2/data</code> returns <code>Status: 2</code> with no message, the <code>Quick.Save</code> tool and the <code>ui/full</code> save report <code>savesucceeded</code> and write nothing, <code>/transaction</code> answers <code>Column is disabled: topic</code> or <code>Save is not enabled.</code>, and <code>/commands</code> returns 204. A note on a shipped return saves only with a voucher in <code>ConvertInventoryReturnToVoucher</code>. A <code>Task</code> with <code>transaction_type_cd</code> <code>Inventory Return</code> stays writable; an open task prompts its assignees on load, and an Interactive load returns <code>Status: 3</code>. Python program and a payload file. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/283">#283</a>. — <em>@mrwuss</em></li>
@@ -1780,6 +1786,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-11-13">2026-11-13</a></li>
 <li><a href="#2026-11-12">2026-11-12</a></li>
 <li><a href="#2026-11-11">2026-11-11</a></li>
 <li><a href="#2026-10-29-v1300">2026-10-29 — v1.30.0</a></li>

@@ -559,6 +559,8 @@ The two settings above are the ones that gate OData. The **Application Security*
 
 *(Source: P21 26.2 help, *System Setup > Users > Setting Application Security Settings for a User*.)*
 
+The tab is also readable and writable through the Transaction API: see [User Service — Application Security Settings](03-Transaction-API.md#user-service-application-security-settings) for the request shape and what a save stores.
+
 ### Attributing writes to a real user
 
 API writes normally land against the authenticating account — `last_maintained_by` shows the service user, and the audit trail records it, which is why a shared integration account makes "who changed this?" unanswerable.

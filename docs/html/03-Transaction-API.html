@@ -769,6 +769,7 @@
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
 <li><a href="#contact-service-linking-a-new-contact-to-an-existing-address">Contact Service — Linking a New Contact to an Existing Address</a></li>
 <li><a href="#strategicpricinglibrary-service-adding-a-price-book-at-a-position">StrategicPricingLibrary Service — Adding a Price Book at a Position</a></li>
+<li><a href="#user-service-application-security-settings">User Service — Application Security Settings</a></li>
 <li><a href="#contact-service-phone-numbers">Contact Service — Phone Numbers</a></li>
 <li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
 <li><a href="#inventorycostedit-service-changing-an-items-average-cost">InventoryCostEdit Service — Changing an Item's Average Cost</a></li>
@@ -8359,7 +8360,7 @@ You cannot delete it. DataElement: customersalesrep, Column: row_status_flag, Va
 </table></div>
 <p><em>(Verified on play 26.1.5950.0, 2026-10-29, with two throwaway contacts read back over OData. Only <code>first_name</code>, <code>last_name</code> and <code>address_id</code> were sent; no address-validation popup or message came back. Community lead: Pat Merlino and Felipe Maurer, P21WWUG forum.)</em></p>
 <h3 id="strategicpricinglibrary-service-adding-a-price-book-at-a-position">StrategicPricingLibrary Service — Adding a Price Book at a Position</h3>
-<p>A price library's books are the <code>LIST_DETAIL.list_detail</code> grid, and <code>sequence_number</code> sets each book's place. Send the grid as a <code>List</code> keyed on <code>price_book_id</code>, with <code>price_book_description</code> as well as the ID and the position:</p>
+<p>A price library's books are the <code>LIST_DETAIL.list_detail</code> grid, and <code>sequence_number</code> sets each book's place. Send the grid as a <code>List</code> keyed on <code>price_book_id</code>. The definition lists no key for this grid (<code>KeyFields</code> is empty), so the key is yours to supply. A row that adds a book carries the ID, the position and <code>price_book_description</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;StrategicPricingLibrary&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -8381,10 +8382,415 @@ You cannot delete it. DataElement: customersalesrep, Column: row_status_flag, Va
 
 <ul>
 <li><strong><code>sequence_number</code> <code>0</code> puts the book first.</strong> It is stored as <code>1</code>, and the books already in the library move down by one (<code>price_book_x_library</code>, read back over OData).</li>
-<li><strong>Without <code>price_book_description</code> the row fails</strong> with <em>"This column is required."</em>, even though the description belongs to the book.</li>
-<li>A new library needs <code>type_cd</code> (a label such as <code>First Of</code>; <code>Column is disabled: company_id</code> if you send <code>company_id</code>) and <code>description</code>, and can take its first book in the same transaction.</li>
+<li>A new library needs <code>type_cd</code> (a label such as <code>First Of</code>; <code>Column is disabled: company_id</code> if you send <code>company_id</code>) and <code>description</code>, and can take its first books in the same transaction.</li>
 </ul>
-<p><em>(Verified on play 26.1.5950.0, 2026-10-29, on a throwaway library. Community lead: P21WWUG forum.)</em></p>
+<p>The same keyed row moves and removes a book. Re-run on play 26.1.6004.0 (2026-11-13) on a throwaway library of three books, with <code>price_book_x_library</code> read back over OData after every POST:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>The <code>LIST_DETAIL.list_detail</code> row</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A book not in the library, <code>sequence_number</code> <code>0</code>, with or without <code>price_book_description</code></td>
+<td><code>Succeeded: 1</code>; stored at <code>1</code>, the others move down</td>
+</tr>
+<tr>
+<td>A book already in the library, <code>price_book_id</code> + <code>sequence_number</code> only</td>
+<td><code>Succeeded: 1</code>; the book moves (<code>0</code> to first, <code>2</code> to second, <code>3</code> of three to last) and the others renumber <code>1</code>..<code>n</code></td>
+</tr>
+<tr>
+<td>A book already in the library, with <code>price_book_description</code></td>
+<td><code>Failed: 1</code>, <code>Column is disabled: price_book_description</code>; nothing written</td>
+</tr>
+<tr>
+<td><code>price_book_id</code> + <code>row_status_flag</code> <code>Delete</code></td>
+<td><code>Succeeded: 1</code>; the <code>price_book_x_library</code> row is gone and the others renumber <code>1</code>..<code>n</code></td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong><code>price_book_description</code> is build-dependent on a new row and refused on an existing one.</strong> A row that adds a book with the description succeeds on both builds. Without it, 26.1.5950.0 answered <em>"This column is required."</em> and 26.1.6004.0 added the book. Read the library first, and send the description only for a book that is not in it yet.</li>
+<li><strong>Removing a book deletes the link row.</strong> No soft-deleted <code>price_book_x_library</code> row remains, and adding the same book again creates a new row. The same books' links in other libraries, and the <code>price_book</code> rows themselves, were unchanged after every POST.</li>
+<li><code>row_status_flag</code> <code>Delete</code> on <code>FORM.form</code> soft-deletes the library (<code>price_library.row_status_flag</code> <code>700</code>). Its book links stay, and the same keyed <code>Delete</code> rows still remove them afterwards.</li>
+</ul>
+<p><em>(Verified on play 26.1.5950.0, 2026-10-29, and re-run on play 26.1.6004.0, 2026-11-13, each on a throwaway library. Community lead: P21WWUG forum. Verified by @mrwuss, <a href="https://github.com/mrwuss/p21-api-documentation/issues/237">#237</a>.)</em></p>
+<h3 id="user-service-application-security-settings">User Service — Application Security Settings</h3>
+<p>The <strong>Application Security</strong> tab of User Maintenance is one grid on the <code>User</code> service: <code>TABPAGE_APPLICATIONSECURITY.tabpage_applicationsecurity</code>, one row per setting, with <code>display_name</code> (the setting's label) and <code>code_value</code> (<code>Yes</code> or <code>No</code>). Send it as a <code>List</code> keyed on <code>display_name</code>, after the <code>TABPAGE_1.user_maint</code> form that names the user:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;User&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.user_maint&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;user_id&quot;</span><span class="p">],</span>
+<span class="w">       </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;user_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TESTUSER&quot;</span><span class="p">}]}]},</span>
+<span class="w">      </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_APPLICATIONSECURITY.tabpage_applicationsecurity&quot;</span><span class="p">,</span>
+<span class="w">       </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;display_name&quot;</span><span class="p">],</span>
+<span class="w">       </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">         </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;display_name&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Enable RMB Save As&quot;</span><span class="p">},</span>
+<span class="w">         </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;code_value&quot;</span><span class="p">,</span><span class="w">   </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Yes&quot;</span><span class="p">}</span>
+<span class="w">       </span><span class="p">]}]}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Verified on play 26.1.6004.0 (2026-11-13) on a test login. After every POST the user was read back two ways: all 63 settings with <code>POST /transaction/get</code>, and the stored rows in <code>users_x_application_security</code> over OData.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>The security element you send</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Type</code> <code>List</code>, <code>Keys</code> <code>["display_name"]</code>, the exact label, <code>code_value</code> <code>Yes</code></td>
+<td><code>Succeeded: 1</code>; that setting reads back <code>Yes</code>, the other 62 are unchanged</td>
+</tr>
+<tr>
+<td>The same row with <code>code_value</code> <code>No</code></td>
+<td><code>Succeeded: 1</code>; the setting reads back <code>No</code></td>
+</tr>
+<tr>
+<td><code>Type</code> <code>List</code>, <code>Keys</code> <code>[]</code></td>
+<td><code>Failed: 1</code>, <code>Column is disabled: display_name</code>; nothing written</td>
+</tr>
+<tr>
+<td><code>Type</code> <code>Form</code>, <code>Keys</code> <code>["display_name"]</code></td>
+<td><code>Failed: 1</code>, <code>Column is disabled: display_name</code>; nothing written</td>
+</tr>
+<tr>
+<td><code>Type</code> <code>List</code>, <code>Keys</code> <code>["display_name"]</code>, the label in lower case</td>
+<td><code>Failed: 1</code>, <code>Column is disabled: display_name</code>; nothing written</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong><code>Column is disabled: display_name</code> means the shape or the label is wrong</strong>, not that the setting is locked. The label only selects the row. Each of the three wrong shapes above returned this error for a setting that the keyed, exact-case row then changed. The full message is <code>Transaction 1: TABPAGE_APPLICATIONSECURITY.tabpage_applicationsecurity: Error processing data element: tabpage_applicationsecurity : Column is disabled: display_name</code>.</li>
+<li><strong>Copy the label, do not type it.</strong> <code>POST /transaction/get</code> on any user returns every label on the tab with its current value. The labels are also <code>application_security.display_name</code> over OData. The definition agrees with the working shape: <code>GET /api/v2/definition/User</code> lists this element as a <code>List</code> with <code>KeyFields</code> <code>["display_name"]</code>.</li>
+<li><strong>The first save stores a row for every setting.</strong> Before the test the user had 16 rows in <code>users_x_application_security</code>; every other setting followed <code>application_security.default_code_value</code>. The one-setting POST left 64 rows: one for each of the 63 settings on the tab and one for a setting the tab does not list. Each new row holds that setting's default, so no effective value changed, but those settings no longer follow the default. Setting the value back does not remove the rows.</li>
+<li><strong>Read-back tables.</strong> <code>users_x_application_security</code> holds <code>users_id</code>, <code>application_security_uid</code> and <code>code_value</code> (<code>1103</code> Yes, <code>1104</code> No). <code>application_security</code> holds one row per setting with <code>display_name</code> and <code>default_code_value</code>. The save stamped the user's <code>date_last_modified</code> and <code>last_maintained_by</code> (<code>p21_view_users</code>) with the time of the POST and the API user.</li>
+<li><strong>Not tested:</strong> more than one row per POST, and any setting other than <code>Enable RMB Save As</code>. The grid also carries the settings that gate API access (<a href="00-Authentication.html#application-security-settings-that-affect-api-access">Application Security settings that affect API access</a>); none of those was written.</li>
+</ul>
+<p>Payload: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/json/user-application-security.json"><code>user-application-security.json</code></a>.</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Set one Application Security setting for a P21 user (User service), then read it back.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;api_user&quot;</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;api_pass&quot;</span>
+<span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
+<span class="n">USER_ID</span> <span class="o">=</span> <span class="s2">&quot;TESTUSER&quot;</span>                      <span class="c1"># the P21 user to change (users.id)</span>
+<span class="n">SETTING</span> <span class="o">=</span> <span class="s2">&quot;Enable RMB Save As&quot;</span>            <span class="c1"># the label, exactly as the tab shows it</span>
+<span class="n">VALUE</span> <span class="o">=</span> <span class="s2">&quot;Yes&quot;</span>                             <span class="c1"># &quot;Yes&quot; or &quot;No&quot;</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="n">SECURITY</span> <span class="o">=</span> <span class="s2">&quot;TABPAGE_APPLICATIONSECURITY.tabpage_applicationsecurity&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;v2 token endpoint — credentials go in the body, never in headers.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">PASSWORD</span><span class="p">},</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;AccessToken&gt;([^&lt;]+)&lt;/AccessToken&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No AccessToken in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Transaction and Interactive calls go to the UI server, not BASE_URL.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/ui/router/v1/?urlType=external&quot;</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;Url&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;Url&gt;([^&lt;]+)&lt;/Url&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No Url in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">setting</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">,</span> <span class="n">ui_server</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The setting&#39;s value as the User window shows it, or None if no row has that label.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/api/v2/transaction/get&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;ServiceName&quot;</span><span class="p">:</span> <span class="s2">&quot;User&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;TransactionStates&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;DataElementName&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_1.user_maint&quot;</span><span class="p">,</span>
+                               <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;user_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">USER_ID</span><span class="p">}]}],</span>
+    <span class="p">})</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">transaction</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Transactions&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]:</span>
+        <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">transaction</span><span class="p">[</span><span class="s2">&quot;DataElements&quot;</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">element</span><span class="p">[</span><span class="s2">&quot;Name&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">SECURITY</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">element</span><span class="p">[</span><span class="s2">&quot;Rows&quot;</span><span class="p">]:</span>
+                <span class="n">edits</span> <span class="o">=</span> <span class="p">{</span><span class="n">e</span><span class="p">[</span><span class="s2">&quot;Name&quot;</span><span class="p">]:</span> <span class="n">e</span><span class="p">[</span><span class="s2">&quot;Value&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;Edits&quot;</span><span class="p">]}</span>
+                <span class="k">if</span> <span class="n">edits</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;display_name&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">SETTING</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">edits</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;code_value&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;User&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;UseCodeValues&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="s2">&quot;Transactions&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;Status&quot;</span><span class="p">:</span> <span class="s2">&quot;New&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;DataElements&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_1.user_maint&quot;</span><span class="p">,</span> <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span> <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;user_id&quot;</span><span class="p">],</span>
+             <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;user_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">USER_ID</span><span class="p">}],</span>
+                       <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[]}]},</span>
+            <span class="c1"># A List keyed on display_name. The label selects the row and must</span>
+            <span class="c1"># match exactly, case included. Any other Type or Keys, or a label</span>
+            <span class="c1"># that matches no row, fails &quot;Column is disabled: display_name&quot;.</span>
+            <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="n">SECURITY</span><span class="p">,</span> <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;List&quot;</span><span class="p">,</span> <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;display_name&quot;</span><span class="p">],</span>
+             <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;display_name&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">SETTING</span><span class="p">},</span>
+                                 <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;code_value&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">VALUE</span><span class="p">}],</span>
+                       <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[]}]},</span>
+        <span class="p">],</span>
+    <span class="p">}],</span>
+<span class="p">}</span>
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">VERIFY_SSL</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+    <span class="n">ui_server</span> <span class="o">=</span> <span class="n">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
+    <span class="n">client</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                           <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">})</span>
+    <span class="n">before</span> <span class="o">=</span> <span class="n">setting</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">ui_server</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">before</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;User </span><span class="si">{</span><span class="n">USER_ID</span><span class="si">}</span><span class="s2"> has no setting labelled </span><span class="si">{</span><span class="n">SETTING</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;before:&quot;</span><span class="p">,</span> <span class="n">before</span><span class="p">)</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/api/v2/transaction&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="n">summary</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;Summary&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;Failed&quot;</span><span class="p">]</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;Succeeded&quot;</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Write failed: </span><span class="si">{</span><span class="n">summary</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Messages&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;summary:&quot;</span><span class="p">,</span> <span class="n">summary</span><span class="p">)</span>
+    <span class="n">after</span> <span class="o">=</span> <span class="n">setting</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">ui_server</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;after: &quot;</span><span class="p">,</span> <span class="n">after</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">after</span> <span class="o">!=</span> <span class="n">VALUE</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Read-back is </span><span class="si">{</span><span class="n">after</span><span class="si">!r}</span><span class="s2">, expected </span><span class="si">{</span><span class="n">VALUE</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
+
+<span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_pass&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">UserId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TESTUSER&quot;</span><span class="p">;</span><span class="w">                    </span><span class="c1">// the P21 user to change (users.id)</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Setting</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Enable RMB Save As&quot;</span><span class="p">;</span><span class="w">         </span><span class="c1">// the label, exactly as the tab shows it</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Yes&quot;</span><span class="p">;</span><span class="w">                          </span><span class="c1">// &quot;Yes&quot; or &quot;No&quot;</span>
+<span class="c1">// ---------------------------------------------------------------------------</span>
+
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Security</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_APPLICATIONSECURITY.tabpage_applicationsecurity&quot;</span><span class="p">;</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="n">HttpClientHandler</span><span class="p">.</span><span class="n">DangerousAcceptAnyServerCertificateValidator</span><span class="p">,</span>
+<span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromMinutes</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">MediaTypeWithQualityHeaderValue</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">uiServer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetUiServerAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;User&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">UseCodeValues</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span><span class="p">,</span>
+<span class="w">    </span><span class="n">Transactions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">new</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">Status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="n">DataElements</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="kt">object</span><span class="p">[]</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">new</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_1.user_maint&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;user_id&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                    </span><span class="n">Rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Edits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;user_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">UserId</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="n">RelativeDateEdits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">object</span><span class="o">&gt;</span><span class="p">()</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                </span><span class="p">},</span>
+<span class="w">                </span><span class="c1">// A List keyed on display_name. The label selects the row and must</span>
+<span class="w">                </span><span class="c1">// match exactly, case included. Any other Type or Keys, or a label</span>
+<span class="w">                </span><span class="c1">// that matches no row, fails &quot;Column is disabled: display_name&quot;.</span>
+<span class="w">                </span><span class="k">new</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Security</span><span class="p">,</span><span class="w"> </span><span class="n">Type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;List&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;display_name&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                    </span><span class="n">Rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="k">new</span>
+<span class="w">                        </span><span class="p">{</span>
+<span class="w">                            </span><span class="n">Edits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">                            </span><span class="p">{</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;display_name&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Setting</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;code_value&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                            </span><span class="p">},</span>
+<span class="w">                            </span><span class="n">RelativeDateEdits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">object</span><span class="o">&gt;</span><span class="p">(),</span>
+<span class="w">                        </span><span class="p">},</span>
+<span class="w">                    </span><span class="p">},</span>
+<span class="w">                </span><span class="p">},</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="p">};</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">before</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">SettingAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">uiServer</span><span class="p">)</span>
+<span class="w">    </span><span class="o">??</span><span class="w"> </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">InvalidOperationException</span><span class="p">(</span><span class="s">$&quot;User {UserId} has no setting labelled &#39;{Setting}&#39;&quot;</span><span class="p">);</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;before: {before}&quot;</span><span class="p">);</span>
+<span class="k">using</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span><span class="s">$&quot;{uiServer}/api/v2/transaction&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="n">payload</span><span class="p">),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">)))</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">d</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Summary&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Failed&quot;</span><span class="p">).</span><span class="n">GetInt32</span><span class="p">()</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Succeeded&quot;</span><span class="p">).</span><span class="n">GetInt32</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span><span class="s">$&quot;Write failed: {s} {d.RootElement.GetProperty(&quot;</span><span class="n">Messages</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;summary: {s}&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">after</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">SettingAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">uiServer</span><span class="p">);</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;after:  {after}&quot;</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">after</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">Value</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span><span class="s">$&quot;Read-back is &#39;{after}&#39;, expected &#39;{Value}&#39;&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// The setting&#39;s value as the User window shows it, or null if no row has that label.</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string?</span><span class="o">&gt;</span><span class="w"> </span><span class="n">SettingAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">uiServer</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="k">new</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">ServiceName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;User&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="n">TransactionStates</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">new</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="n">DataElementName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_1.user_maint&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="n">Keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;user_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">UserId</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">    </span><span class="p">});</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span><span class="s">$&quot;{uiServer}/api/v2/transaction/get&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">body</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">d</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;Transactions&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">transactions</span><span class="p">)</span>
+<span class="w">        </span><span class="o">||</span><span class="w"> </span><span class="n">transactions</span><span class="p">.</span><span class="n">ValueKind</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">JsonValueKind</span><span class="p">.</span><span class="n">Array</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">null</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">transaction</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">transactions</span><span class="p">.</span><span class="n">EnumerateArray</span><span class="p">())</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">element</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">transaction</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;DataElements&quot;</span><span class="p">).</span><span class="n">EnumerateArray</span><span class="p">())</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">element</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Name&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">()</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">Security</span><span class="p">)</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">            </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">element</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Rows&quot;</span><span class="p">).</span><span class="n">EnumerateArray</span><span class="p">())</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="kt">string?</span><span class="w"> </span><span class="n">label</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">null</span><span class="p">,</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">null</span><span class="p">;</span>
+<span class="w">                </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">edit</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">row</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Edits&quot;</span><span class="p">).</span><span class="n">EnumerateArray</span><span class="p">())</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="kt">var</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">edit</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Name&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">                    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;display_name&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">label</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">edit</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Value&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span><span class="w"> </span><span class="p">}</span>
+<span class="w">                    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;code_value&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">edit</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Value&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span><span class="w"> </span><span class="p">}</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">label</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">Setting</span><span class="p">)</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="k">return</span><span class="w"> </span><span class="k">value</span><span class="p">;</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="k">null</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">c</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Username</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/api/security/token/v2&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;AccessToken&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Transaction and Interactive calls go to the UI server, not BaseUrl.</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetUiServerAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">token</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">q</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpRequestMessage</span><span class="p">(</span>
+<span class="w">        </span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Get</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;{BaseUrl}/api/ui/router/v1/?urlType=external&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">q</span><span class="p">.</span><span class="n">Headers</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">SendAsync</span><span class="p">(</span><span class="n">q</span><span class="p">);</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;Url&quot;</span><span class="p">).</span><span class="n">TrimEnd</span><span class="p">(</span><span class="sc">&#39;/&#39;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Some middleware answers these two endpoints in XML even when asked for JSON.</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">f</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">p</span><span class="p">).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="n">f</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">v</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span>
+<span class="w">        </span><span class="n">ex</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">JsonException</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="n">KeyNotFoundException</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">Text</span><span class="p">.</span><span class="n">RegularExpressions</span><span class="p">.</span><span class="n">Regex</span><span class="p">.</span><span class="n">Match</span><span class="p">(</span>
+<span class="w">        </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;&lt;{f}&gt;([^&lt;]+)&lt;/{f}&gt;&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">m</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;No {f} in response: {p[..Math.Min(200, p.Length)]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">Groups</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<p>Both programs ran on play 26.1.6004.0 against the test login, each setting <code>Enable RMB Save As</code> to <code>Yes</code> and back to <code>No</code> and reading it back each time.</p>
+<p><em>(Verified on play 26.1.6004.0, 2026-11-13. Community lead: P21WWUG forum, reported on 2025.1.5595. Verified by @mrwuss, <a href="https://github.com/mrwuss/p21-api-documentation/issues/237">#237</a>.)</em></p>
 <h3 id="contact-service-phone-numbers">Contact Service — Phone Numbers</h3>
 <p>A contact's phone numbers are not on the contact's main form. The <code>Contact</code> service splits them out:</p>
 <div class="table-wrap"><table>
@@ -10435,6 +10841,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
 <li><a href="#contact-service-linking-a-new-contact-to-an-existing-address">Contact Service — Linking a New Contact to an Existing Address</a></li>
 <li><a href="#strategicpricinglibrary-service-adding-a-price-book-at-a-position">StrategicPricingLibrary Service — Adding a Price Book at a Position</a></li>
+<li><a href="#user-service-application-security-settings">User Service — Application Security Settings</a></li>
 <li><a href="#contact-service-phone-numbers">Contact Service — Phone Numbers</a></li>
 <li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
 <li><a href="#inventorycostedit-service-changing-an-items-average-cost">InventoryCostEdit Service — Changing an Item's Average Cost</a></li>

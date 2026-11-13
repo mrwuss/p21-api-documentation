@@ -1375,6 +1375,7 @@ HTTP 500
 </tbody>
 </table></div>
 <p><em>(Source: P21 26.2 help, <em>System Setup &gt; Users &gt; Setting Application Security Settings for a User</em>.)</em></p>
+<p>The tab is also readable and writable through the Transaction API: see <a href="03-Transaction-API.html#user-service-application-security-settings">User Service — Application Security Settings</a> for the request shape and what a save stores.</p>
 <h3 id="attributing-writes-to-a-real-user">Attributing writes to a real user</h3>
 <p>API writes normally land against the authenticating account — <code>last_maintained_by</code> shows the service user, and the audit trail records it, which is why a shared integration account makes "who changed this?" unanswerable.</p>
 <p><strong>Allow overriding audit trail user</strong> exists to solve exactly that. Epicor's description:</p>

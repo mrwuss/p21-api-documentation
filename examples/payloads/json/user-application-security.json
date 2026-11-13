@@ -1,0 +1,51 @@
+{
+  "Name": "User",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.user_maint",
+          "Type": "Form",
+          "Keys": [
+            "user_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "user_id",
+                  "Value": "TESTUSER"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TABPAGE_APPLICATIONSECURITY.tabpage_applicationsecurity",
+          "Type": "List",
+          "Keys": [
+            "display_name"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "display_name",
+                  "Value": "Enable RMB Save As"
+                },
+                {
+                  "Name": "code_value",
+                  "Value": "Yes"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
