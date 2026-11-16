@@ -197,13 +197,15 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
 
     # 3. Read back -- Succeeded is not proof every value landed
     rows = read_group(client, headers)
+    if len(rows) != 1:
+        raise SystemExit(f"Read-back found {len(rows)} rows, expected 1")
     row = rows[0]
     print({k: row.get(k) for k in (
         "product_group_id", "product_group_desc", "asset_account_no", "revenue_account_no",
         "cos_account_no", "include_in_size_analysis_flag", "delete_flag", "product_group_uid")})
     expected = {k: v for k, v in edits.items() if k != "delete_flag"}
     wrong = {k: (row.get(k), v) for k, v in expected.items() if row.get(k) != v}
-    if len(rows) != 1 or wrong or row.get("delete_flag") != "N":
+    if wrong or row.get("delete_flag") != "N":
         raise SystemExit(f"Read-back does not match: {wrong}")
     print("Read-back matches")
 ```
@@ -310,6 +312,8 @@ if (failed > 0 || succeeded == 0)
 
 // 3. Read back -- Succeeded is not proof every value landed
 var rows = await ODataAsync(client, "product_group", filter);
+if (rows.Count != 1)
+    throw new InvalidOperationException($"Read-back found {rows.Count} rows, expected 1");
 var row = rows[0];
 foreach (var key in new[] { "product_group_id", "product_group_desc", "asset_account_no",
              "revenue_account_no", "cos_account_no", "include_in_size_analysis_flag",
@@ -317,7 +321,7 @@ foreach (var key in new[] { "product_group_id", "product_group_desc", "asset_acc
     Console.WriteLine($"{key}={Field(row, key)}");
 var wrong = edits.Where(e => e.Name != "delete_flag" && Field(row, e.Name) != e.Value)
     .Select(e => e.Name).ToList();
-if (rows.Count != 1 || wrong.Count > 0 || Field(row, "delete_flag") != "N")
+if (wrong.Count > 0 || Field(row, "delete_flag") != "N")
     throw new InvalidOperationException($"Read-back does not match: {string.Join(", ", wrong)}");
 Console.WriteLine("Read-back matches");
 
@@ -374,6 +378,7 @@ static string ReadField(string payload, string field)
     return match.Groups[1].Value;
 }
 ```
+<!-- /tabs -->
 
 ## Verify
 
