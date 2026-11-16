@@ -1,5 +1,5 @@
 {
- "fetched_date": "2026-11-12",
+ "fetched_date": "2026-11-16",
  "ok": [
   "Address",
   "Assembly",
@@ -21,6 +21,7 @@
   "Location",
   "Order",
   "PickZone",
+  "ProductGroup",
   "ProductionOrder",
   "ProductionOrderPicking",
   "ProductionOrderProcessing",

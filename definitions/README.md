@@ -52,16 +52,16 @@ Set `P21_SCRUB_TERMS` (comma-separated company identifiers) before publishing an
 
 ## Services included
 
-**36 services**, and this list, [`_manifest.json`](_manifest.json) and `DOCUMENTED_SERVICES` in [`scripts/fetch_definitions.py`](../scripts/fetch_definitions.py) are kept in agreement — a default `python scripts/fetch_definitions.py` refreshes exactly the files in this folder, no more and no less. If you add a definition, add it to the fetch list in the same commit.
+**48 services**, and this list, [`_manifest.json`](_manifest.json) and `DOCUMENTED_SERVICES` in [`scripts/fetch_definitions.py`](../scripts/fetch_definitions.py) are kept in agreement — a default `python scripts/fetch_definitions.py` refreshes exactly the files in this folder, no more and no less. If you add a definition, add it to the fetch list in the same commit.
 
 | Area | Services |
 |---|---|
-| Sell side | `Order`, `RMA`, `ShipTo`, `Shipping`, `Customer`, `Address`, `Salesrep` |
-| Buy side | `PurchaseOrder`, `PurchaseOrderReceipt`, `ConvertPOToVoucher`, `RequisitionPurchaseOrder`, `VoucherByItem`, `Supplier` |
-| Inventory | `Item`, `ItemDefaults`, `InventoryAdjustment`, `BinLocation`, `PickZone`, `PutawayZone`, `Assembly` |
+| Sell side | `Order`, `RMA`, `ShipTo`, `Shipping`, `DirectShipConfirmation`, `Customer`, `Address`, `Contact`, `Salesrep`, `Task` |
+| Buy side | `PurchaseOrder`, `PurchaseOrderReceipt`, `ConvertPOToVoucher`, `RequisitionPurchaseOrder`, `VoucherByItem`, `Supplier`, `Vendor`, `InventoryReturn`, `InventoryReturnShipping`, `ConvertInventoryReturnToVoucher` |
+| Inventory | `Item`, `ItemDefaults`, `ProductGroup`, `InventoryAdjustment`, `InventoryCostEdit`, `Location`, `BinLocation`, `PickZone`, `PutawayZone`, `Assembly` |
 | Pricing | `SalesPricePage`, `SalesPriceBook`, `JobContractPricing`, `PurchasePricingPageSupplier`, `PurchasePricingPageSupplierDiscGrp`, `PurchasePricingPageSupplierItem` |
 | Production & labor | `ProductionOrder`, `ProductionOrderPicking`, `ProductionOrderProcessing`, `Labor`, `LaborProcess`, `TimeEntry` |
-| Reports (`m_*`, hidden from `/api/v2/services` but callable) | `m_picktickets`, `m_reprintpicktickets`, `m_reprintpurchaseorders`, `m_storedprocedureexecutor` |
+| Reports (`m_*`, hidden from `/api/v2/services` but callable) | `m_picktickets`, `m_reprintpicktickets`, `m_reprintpurchaseorders`, `m_storedprocedureexecutor`; merges `m_itemmerge`, `m_customermerge` |
 
 **Not every service named in `docs/` has a file here, and that is deliberate** — the folder holds the services whose *schema* the documentation leans on, not every service it mentions. The gap is small and closing; if a doc page references a service you cannot find here, fetch it yourself with `--services {Name}`.
 

@@ -26,6 +26,7 @@ One page per task, **self-contained**: the complete working payload, a full runn
 | [update-supplier-contact](update-supplier-contact.md) | Write a supplier's email / central phone (shared `address` record) | Transaction (`Address`) |
 | [create-customer](create-customer.md) | Create a customer master record (salesrep + default_branch gotchas) | Transaction (`Customer`) |
 | [create-ship-to](create-ship-to.md) | Add a ship-to to an existing customer (element map, stored codes, inherited rep) | Transaction (`ShipTo`) |
+| [create-product-group](create-product-group.md) | Create a product group with its GL accounts (check the ID first: `New` on an existing ID overwrites it) | Transaction (`ProductGroup`) |
 | [create-requisition-po](create-requisition-po.md) | Create a requisition PO (`po_type` 'R'; vendor vs supplier) | Transaction (`RequisitionPurchaseOrder`) |
 | [reassign-salesrep](reassign-salesrep.md) | Reassign a customer's and ship-tos' salesrep (two grids, two delete mechanisms) | Transaction (`Customer`, `ShipTo`) |
 | [ar-aging](ar-aging.md) | Age open receivables on each invoice's own terms | OData (`invoice_hdr`, `customer`) |

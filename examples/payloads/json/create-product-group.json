@@ -1,0 +1,51 @@
+{
+    "Name": "ProductGroup",
+    "UseCodeValues": false,
+    "Transactions": [
+        {
+            "Status": "New",
+            "DataElements": [
+                {
+                    "Name": "FORM.form",
+                    "Type": "Form",
+                    "Keys": [],
+                    "Rows": [
+                        {
+                            "Edits": [
+                                {
+                                    "Name": "company_id",
+                                    "Value": "ACME"
+                                },
+                                {
+                                    "Name": "product_group_id",
+                                    "Value": "PGSENS"
+                                },
+                                {
+                                    "Name": "product_group_desc",
+                                    "Value": "Sensors"
+                                },
+                                {
+                                    "Name": "asset_account_no",
+                                    "Value": "ACCT-1000"
+                                },
+                                {
+                                    "Name": "revenue_account_no",
+                                    "Value": "ACCT-4000"
+                                },
+                                {
+                                    "Name": "cos_account_no",
+                                    "Value": "ACCT-5000"
+                                },
+                                {
+                                    "Name": "delete_flag",
+                                    "Value": "OFF"
+                                }
+                            ],
+                            "RelativeDateEdits": []
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

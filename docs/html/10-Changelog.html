@@ -617,12 +617,13 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">28</span></summary>
+            <summary>Recipes <span class="nav-count">29</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
             <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
             <li><a href="recipes/create-customer.html">Create a Customer</a></li>
+            <li><a href="recipes/create-product-group.html">Create a Product Group</a></li>
             <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
             <li><a href="recipes/create-ship-to.html">Create a Ship-To</a></li>
@@ -660,6 +661,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-11-16">2026-11-16</a></li>
 <li><a href="#2026-11-13">2026-11-13</a></li>
 <li><a href="#2026-11-12">2026-11-12</a></li>
 <li><a href="#2026-11-11">2026-11-11</a></li>
@@ -769,6 +771,10 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-11-16">2026-11-16</h2>
+<ul>
+<li><strong>docs:</strong> <strong><a href="recipes/create-product-group.html">Create a product group</a></strong>, a new recipe verified on play 26.1.6004.0 with an OData read-back after every POST: <code>ProductGroup</code> is one <code>FORM.form</code> keyed <code>company_id</code> + <code>product_group_id</code>, with the description and the asset, revenue and COS accounts required. <code>include_in_size_analysis_flag</code> is <code>Column is disabled</code> on a new group and an existing one, and a new group stores <code>N</code>; an account the company lacks is refused by name; <code>delete_flag</code> <code>ON</code> soft-deletes; and a <code>New</code> on an ID that already exists reports <code>Succeeded: 1</code> and overwrites that group, so the programs check the ID over OData first and refuse. Python and C# programs (both run), a payload file, and <code>definitions/ProductGroup.json</code>. The definitions fetch list and README now name all 48 services in the manifest. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/287">#287</a>. — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-11-13">2026-11-13</h2>
 <ul>
 <li><strong>docs:</strong> <strong><a href="03-Transaction-API.html#user-service-application-security-settings">User Service — Application Security Settings</a></strong>, verified on play 26.1.6004.0: the User Maintenance Application Security tab is writable through the <code>User</code> service as a <code>List</code> keyed on <code>display_name</code> (the exact-case label) with <code>code_value</code> <code>Yes</code> or <code>No</code>. <code>Keys</code> <code>[]</code>, <code>Type</code> <code>Form</code> and a lower-case label each fail <code>Column is disabled: display_name</code> and write nothing. The first save stores a <code>users_x_application_security</code> row for every setting that was following its default. Python and C# programs and a payload file. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/237">#237</a>. — <em>P21WWUG forum lead, verified @mrwuss</em></li>
@@ -1786,6 +1792,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-11-16">2026-11-16</a></li>
 <li><a href="#2026-11-13">2026-11-13</a></li>
 <li><a href="#2026-11-12">2026-11-12</a></li>
 <li><a href="#2026-11-11">2026-11-11</a></li>
