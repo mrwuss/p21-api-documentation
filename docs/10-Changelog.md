@@ -18,6 +18,10 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-11-16
+
+- **docs:** **[Create a product group](recipes/create-product-group.md)**, a new recipe verified on play 26.1.6004.0 with an OData read-back after every POST: `ProductGroup` is one `FORM.form` keyed `company_id` + `product_group_id`, with the description and the asset, revenue and COS accounts required. `include_in_size_analysis_flag` is `Column is disabled` on a new group and an existing one, and a new group stores `N`; an account the company lacks is refused by name; `delete_flag` `ON` soft-deletes; and a `New` on an ID that already exists reports `Succeeded: 1` and overwrites that group, so the programs check the ID over OData first and refuse. Python and C# programs (both run), a payload file, and `definitions/ProductGroup.json`. The definitions fetch list and README now name all 48 services in the manifest. Closes [#287](https://github.com/mrwuss/p21-api-documentation/issues/287). — *@mrwuss*
+
 ## 2026-11-13
 
 - **docs:** **[User Service — Application Security Settings](03-Transaction-API.md#user-service-application-security-settings)**, verified on play 26.1.6004.0: the User Maintenance Application Security tab is writable through the `User` service as a `List` keyed on `display_name` (the exact-case label) with `code_value` `Yes` or `No`. `Keys` `[]`, `Type` `Form` and a lower-case label each fail `Column is disabled: display_name` and write nothing. The first save stores a `users_x_application_security` row for every setting that was following its default. Python and C# programs and a payload file. Closes [#237](https://github.com/mrwuss/p21-api-documentation/issues/237). — *P21WWUG forum lead, verified @mrwuss*

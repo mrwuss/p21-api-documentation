@@ -478,6 +478,7 @@ Other verified XML specifics:
 | `Customer` | Customer Maintenance | Customer records |
 | `ShipTo` | Ship To Maintenance | Ship-to records and their salesrep grid (see [ShipTo Service — Creating a Ship-To](#shipto-service-creating-a-ship-to)) |
 | `Supplier` | Supplier Maintenance | Supplier records |
+| `ProductGroup` | Product Group Maintenance | Product groups and their GL accounts; a `New` on an existing ID overwrites it. See [create-product-group](recipes/create-product-group.md) |
 | `SalesPricePage` | Sales Price Page Maintenance | Price page management — also drivable through the Transaction API, see [08 § Transaction API Alternative](08-SalesPricePage-Codes.md#transaction-api-alternative) |
 | `PurchaseOrder` | Purchase Order Entry | Create POs (Regular). Pick a non-Regular PO type via a **type-specific service**, not by setting `po_hdr_po_type` — see [Purchase Order Types](#purchase-order-types-and-the-disabled-po_hdr_po_type-column) |
 | `RequisitionPurchaseOrder` | Purchase Order Entry (type preset to Requisition) | Create requisition (internal / not-for-resale) POs — `po_hdr.po_type = 'R'`. Same window as PO Entry; easy to miss in `/api/v2/services`. See [create-requisition-po](recipes/create-requisition-po.md) |

@@ -31,6 +31,7 @@ Placeholders (`ACME`, `WIDGET-001`, customer `100198`, …) are generic — subs
 | Set a contact's direct phone and cell number (`Contact`, `PHONE.phone`) | [json](json/contact-phone.json) | — | `POST /api/v2/transaction` |
 | Set one Application Security setting for a user (`User`, a `List` keyed `display_name`; 26.1.6004.0) | [json](json/user-application-security.json) | — | `POST /api/v2/transaction` |
 | Create a ship-to (add the wanted rep, retire the inherited one) | [json](json/create-ship-to.json) | — | `POST /api/v2/transaction` |
+| Create a product group (`ProductGroup`, `FORM.form`) | [json](json/create-product-group.json) | — | `POST /api/v2/transaction` |
 | Edit an item's moving average cost at one location (posts to the GL) | [json](json/inventory-cost-edit.json) | — | `POST /api/v2/transaction` |
 | Create an item-level sales price page (FORM + COSTS + VALUES) | [json](json/sales-price-page-create.json) | — | `POST /api/v2/transaction` |
 | Link a sales price page to a price book (add `row_status_flag: "Delete"` to the `LIST.list_detail` row to unlink) | [json](json/sales-price-book-link.json) | — | `POST /api/v2/transaction` |

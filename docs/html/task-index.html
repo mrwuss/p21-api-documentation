@@ -617,12 +617,13 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">28</span></summary>
+            <summary>Recipes <span class="nav-count">29</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
             <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
             <li><a href="recipes/create-customer.html">Create a Customer</a></li>
+            <li><a href="recipes/create-product-group.html">Create a Product Group</a></li>
             <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
             <li><a href="recipes/create-ship-to.html">Create a Ship-To</a></li>
@@ -1260,6 +1261,11 @@
 <td><strong>Create a brand-new item</strong> — one <code>Item</code> POST (26.1.6004.0), or <code>A Default Sales Unit... Must Each Be Specified</code> / <code>Product Group ID is a required column</code> / <code>'Sales Group' is a required column</code> on the way</td>
 <td>—</td>
 <td><a href="03-Transaction-API.html#creating-a-new-item-in-one-item-post">03 § Creating a New Item in One <code>Item</code> POST</a> — or <a href="11-Inventory-REST-API.html#minimum-create-payload">11 § Minimum Create Payload</a></td>
+</tr>
+<tr>
+<td><strong>Create a product group</strong> (accounts, <code>include_in_size_analysis_flag</code> disabled; a <code>New</code> on an existing ID overwrites it)</td>
+<td><a href="recipes/create-product-group.html">create-product-group</a></td>
+<td><a href="03-Transaction-API.html#upsert-semantics-keyed-rows-insert-when-absent">03 § Upsert Semantics</a></td>
 </tr>
 <tr>
 <td>Add or remove an item's <strong>alternate code</strong>; where alternate codes and supplier part numbers live</td>

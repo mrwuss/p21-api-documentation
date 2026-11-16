@@ -72,6 +72,7 @@ DOCUMENTED_SERVICES = [
     "PickZone",
     "PutawayZone",
     "Order",
+    "ProductGroup",
     "ProductionOrder",
     "ProductionOrderPicking",
     "ProductionOrderProcessing",
@@ -90,11 +91,22 @@ DOCUMENTED_SERVICES = [
     "Supplier",
     "TimeEntry",
     "VoucherByItem",
+    "Contact",
+    "ConvertInventoryReturnToVoucher",
+    "DirectShipConfirmation",
+    "InventoryCostEdit",
+    "InventoryReturn",
+    "InventoryReturnShipping",
+    "Task",
+    "Vendor",
     # Report services (hidden from /api/v2/services but callable)
     "m_picktickets",
     "m_reprintpicktickets",
     "m_reprintpurchaseorders",
     "m_storedprocedureexecutor",
+    # Merge services (hidden from /api/v2/services but callable)
+    "m_itemmerge",
+    "m_customermerge",
 ]
 
 # Boolean-style lists are always safe to keep.
