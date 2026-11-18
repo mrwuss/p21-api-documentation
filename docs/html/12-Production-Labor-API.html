@@ -696,6 +696,7 @@
 <li><a href="#shipping-and-invoicing-the-linked-sales-order">Shipping and Invoicing the Linked Sales Order</a></li>
 <li><a href="#inventory-adjustment-write-offs">Inventory Adjustment (Write-Offs)</a></li>
 <li><a href="#cost-model-know-this-before-trusting-cogs">Cost Model — Know This Before Trusting COGS</a></li>
+<li><a href="#component-cost-read-inventory_cost-not-unit_cost">Component cost: read inventory_cost, not unit_cost</a></li>
 <li><a href="#production-order-gotchas-field-verified">Production Order Gotchas (Field-Verified)</a></li>
 <li><a href="#key-tables">Key Tables</a></li>
 <li><a href="#reading-labor-actuals-and-production-order-columns">Reading Labor Actuals and Production Order Columns</a></li>
@@ -1744,7 +1745,7 @@
 <blockquote>
 <p>⚠️ <strong>Shell-confirm warning — do NOT confirm with a bare Transaction API POST.</strong> Posting <code>row_status_flag = 'Confirm'</code> through <code>/api/v2/transaction</code> flips the ticket status (1962) and stamps <code>qty_confirmed</code>, but leaves <strong><code>qty_applied = 0</code> and moves no stock</strong> — a shell confirm. The per-bin posted quantities live in a disabled <code>TP_BIN</code> grid that only the windowed (Interactive API or desktop) confirm populates. The real confirm applies the pick and moves the picked components to the make location's WIP bin (<code>inv_loc.primary_bin</code> at <code>prod_order_hdr.source_location_id</code>; bin <code>0</code> when no primary is set).</p>
 </blockquote>
-<p>Pick ticket status codes (<code>prod_pick_ticket_hdr.row_status_flag</code>): <code>702</code> = Open, <code>1962</code> = Picked (the status a confirm sets; <code>code_p21</code> names it <em>Picked</em>), <code>1268</code> = Completed. Detail rows: <code>704</code> = normal, <code>1268</code> at completion.</p>
+<p>Pick ticket status codes (<code>prod_pick_ticket_hdr.row_status_flag</code>): <code>702</code> = Open, <code>1962</code> = Picked (the status a confirm sets; <code>code_p21</code> names it <em>Picked</em>), <code>976</code> = Canceled, <code>1268</code> = Completed. Detail rows: <code>704</code> = normal, <code>1268</code> at completion. Picked tickets belong almost only to open orders: on a test tenant restored from production, 655 tickets at <code>1962</code> belonged to open orders and 1 to a completed order. Production and sales-order pick ticket numbers (<code>prod_pick_ticket_number</code>, <code>oe_pick_ticket.pick_ticket_no</code>) did not overlap there.</p>
 <h3 id="completing-the-production-order-production-receipt">Completing the Production Order (Production Receipt)</h3>
 <p>Complete with the <code>ProductionOrderProcessing</code> window:</p>
 <ol>
@@ -1774,8 +1775,203 @@
 <li><strong>Assembly receipt cost</strong> (<code>inv_tran</code> <code>PROP</code> <code>unit_cost_amt</code>) = component costs <strong>+ labor posted before completion</strong>. Labor logged after completion misses the receipt.</li>
 <li><strong>Shipment COGS</strong> (<code>invoice_line.cogs_amount</code>, <code>inv_tran</code> <code>WO</code>) = the item's <strong>moving-average cost at ship time</strong>, NOT that order's specific receipt.</li>
 <li><strong>Moving-average pooling:</strong> while two or more units of the same item sit in stock, a cost added to one (e.g. a labor overrun) smears across all of them — an unrelated unit ships at a blended cost. Make-to-order (one in, one out) is largely immune; <strong>build-to-stock is exposed by design</strong>. True per-job cost is the <code>PROP</code> receipt, not the invoice COGS.</li>
-<li><strong>Labor posted after invoicing</strong> generates a separate <em>"Post Freight/Labor Prod. Order: NNNN"</em> invoice ($0 price, ± COGS) — P21's standard post-order cost-adjustment channel; the original invoice is untouched.</li>
+<li><strong>Labor posted after invoicing</strong> generates a separate <em>"Post Freight/Labor Prod. Order: NNNN"</em> invoice ($0 price, ± COGS) — P21's standard post-order cost-adjustment channel; the original invoice is untouched. These invoices carry <code>invoice_hdr.source_type_cd</code> <code>2871</code> (<em>Completed Production Order Adjustment</em>); filter on it to find or exclude them (11,285 on a test tenant restored from production, 26.1.6004.0).</li>
 </ul>
+<h3 id="component-cost-read-inventory_cost-not-unit_cost">Component cost: read <code>inventory_cost</code>, not <code>unit_cost</code></h3>
+<p><code>prod_order_line_component</code> has two cost columns, and only one of them is the cost the component was consumed at. Measured read-only on a test tenant restored from production, 26.1.6004.0 (November 2026), on components with <code>qty_used</code> &gt; 0 on completed orders:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Components</th>
+<th><code>unit_cost</code></th>
+<th><code>inventory_cost</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>All completed orders</td>
+<td>745,960</td>
+<td>0 on 94,610; differs from <code>inventory_cost</code> on 337,432</td>
+<td>non-zero on 45,316 of the components whose <code>unit_cost</code> is 0</td>
+</tr>
+<tr>
+<td>2026 orders with a <code>PROP</code> consumption row in <code>inv_tran</code></td>
+<td>30,801</td>
+<td>equals that row's <code>unit_cost_amt</code> on 9,659</td>
+<td>equals it on <strong>30,746</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><code>inventory_cost</code> is the per-unit cost on the component's <code>PROP</code> consumption row in <code>inv_tran</code> (<code>document_no</code> = the order, <code>quantity</code> negative), so <code>qty_used</code> × <code>inventory_cost</code> is what completion relieved. <code>unit_cost</code> can be 0 or out of date for the same component. The other 13,882 components of 2026 had no <code>PROP</code> row to compare with.</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Component cost of a completed production order: qty_used x inventory_cost, beside unit_cost.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">decimal</span><span class="w"> </span><span class="kn">import</span> <span class="n">Decimal</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;api_user&quot;</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;api_pass&quot;</span>
+<span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
+<span class="n">PROD_ORDER_NUMBER</span> <span class="o">=</span> <span class="mi">500100</span>                <span class="c1"># prod_order_hdr.prod_order_number, a completed order</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;v2 token endpoint — credentials go in the body, never in headers.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">PASSWORD</span><span class="p">},</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;AccessToken&gt;([^&lt;]+)&lt;/AccessToken&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No AccessToken in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">VERIFY_SSL</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+    <span class="n">client</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">})</span>
+    <span class="c1"># IEEE754Compatible=true sends decimals as strings, so the sums stay exact.</span>
+    <span class="n">client</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Accept&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;application/json;IEEE754Compatible=true&quot;</span>
+    <span class="n">odata</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/table&quot;</span>
+
+    <span class="n">hdr</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">odata</span><span class="si">}</span><span class="s2">/prod_order_hdr&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="s2">&quot;prod_order_number,complete&quot;</span><span class="p">,</span> <span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;prod_order_number eq </span><span class="si">{</span><span class="n">PROD_ORDER_NUMBER</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">})</span>
+    <span class="n">hdr</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">hdr</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span> <span class="ow">or</span> <span class="n">hdr</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;value&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;complete&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;Y&quot;</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">PROD_ORDER_NUMBER</span><span class="si">}</span><span class="s2"> is not a completed production order&quot;</span><span class="p">)</span>
+
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">odata</span><span class="si">}</span><span class="s2">/prod_order_line_component&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="s2">&quot;line_number,inv_mast_uid,qty_used,unit_cost,inventory_cost&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;prod_order_number eq </span><span class="si">{</span><span class="n">PROD_ORDER_NUMBER</span><span class="si">}</span><span class="s2"> and qty_used gt 0&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;$orderby&quot;</span><span class="p">:</span> <span class="s2">&quot;line_number,inv_mast_uid&quot;</span><span class="p">})</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="n">total_inventory</span> <span class="o">=</span> <span class="n">total_unit</span> <span class="o">=</span> <span class="n">Decimal</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;value&quot;</span><span class="p">]:</span>
+        <span class="n">used</span><span class="p">,</span> <span class="n">unit</span><span class="p">,</span> <span class="n">inv</span> <span class="o">=</span> <span class="n">Decimal</span><span class="p">(</span><span class="n">c</span><span class="p">[</span><span class="s2">&quot;qty_used&quot;</span><span class="p">]),</span> <span class="n">Decimal</span><span class="p">(</span><span class="n">c</span><span class="p">[</span><span class="s2">&quot;unit_cost&quot;</span><span class="p">]),</span> <span class="n">Decimal</span><span class="p">(</span><span class="n">c</span><span class="p">[</span><span class="s2">&quot;inventory_cost&quot;</span><span class="p">])</span>
+        <span class="n">total_inventory</span> <span class="o">+=</span> <span class="n">used</span> <span class="o">*</span> <span class="n">inv</span>
+        <span class="n">total_unit</span> <span class="o">+=</span> <span class="n">used</span> <span class="o">*</span> <span class="n">unit</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;line </span><span class="si">{</span><span class="n">c</span><span class="p">[</span><span class="s1">&#39;line_number&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> item </span><span class="si">{</span><span class="n">c</span><span class="p">[</span><span class="s1">&#39;inv_mast_uid&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: used </span><span class="si">{</span><span class="n">used</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, &quot;</span>
+              <span class="sa">f</span><span class="s2">&quot;unit_cost </span><span class="si">{</span><span class="n">unit</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, inventory_cost </span><span class="si">{</span><span class="n">inv</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="c1"># inventory_cost is the cost P21 relieved the component at; unit_cost is not.</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;component cost </span><span class="si">{</span><span class="n">total_inventory</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> (from unit_cost it would be </span><span class="si">{</span><span class="n">total_unit</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Globalization</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json.Nodes</span><span class="p">;</span>
+
+<span class="c1">// Component cost of a completed production order: qty_used x inventory_cost, beside unit_cost.</span>
+<span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_pass&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">ProdOrderNumber</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">500100</span><span class="p">;</span><span class="w">                 </span><span class="c1">// prod_order_hdr.prod_order_number, a completed order</span>
+<span class="c1">// ---------------------------------------------------------------------------</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="n">HttpClientHandler</span><span class="p">.</span><span class="n">DangerousAcceptAnyServerCertificateValidator</span><span class="p">,</span>
+<span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromMinutes</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="c1">// IEEE754Compatible=true sends decimals as strings, so the sums stay exact.</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span>
+<span class="w">    </span><span class="n">MediaTypeWithQualityHeaderValue</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="s">&quot;application/json;IEEE754Compatible=true&quot;</span><span class="p">));</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">odata</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/table&quot;</span><span class="p">;</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">hdr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">Rows</span><span class="p">(</span><span class="s">&quot;prod_order_hdr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;prod_order_number,complete&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;prod_order_number eq {ProdOrderNumber}&quot;</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">hdr</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">hdr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!</span><span class="p">[</span><span class="s">&quot;complete&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">GetValue</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">()</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;Y&quot;</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;{ProdOrderNumber} is not a completed production order&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">decimal</span><span class="w"> </span><span class="n">totalInventory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">totalUnit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">c</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">Rows</span><span class="p">(</span><span class="s">&quot;prod_order_line_component&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;line_number,inv_mast_uid,qty_used,unit_cost,inventory_cost&quot;</span><span class="p">,</span>
+<span class="w">                             </span><span class="s">$&quot;prod_order_number eq {ProdOrderNumber} and qty_used gt 0&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;line_number,inv_mast_uid&quot;</span><span class="p">))</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">decimal</span><span class="w"> </span><span class="n">used</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Dec</span><span class="p">(</span><span class="n">c</span><span class="o">!</span><span class="p">[</span><span class="s">&quot;qty_used&quot;</span><span class="p">]),</span><span class="w"> </span><span class="n">unit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Dec</span><span class="p">(</span><span class="n">c</span><span class="p">[</span><span class="s">&quot;unit_cost&quot;</span><span class="p">]),</span><span class="w"> </span><span class="n">inv</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Dec</span><span class="p">(</span><span class="n">c</span><span class="p">[</span><span class="s">&quot;inventory_cost&quot;</span><span class="p">]);</span>
+<span class="w">    </span><span class="n">totalInventory</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">used</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">inv</span><span class="p">;</span>
+<span class="w">    </span><span class="n">totalUnit</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">used</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">unit</span><span class="p">;</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;line {c[&quot;</span><span class="n">line_number</span><span class="s">&quot;]} item {c[&quot;</span><span class="n">inv_mast_uid</span><span class="s">&quot;]}: used {used:0.####}, &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">                      </span><span class="s">$&quot;unit_cost {unit:F4}, inventory_cost {inv:F4}&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="c1">// inventory_cost is the cost P21 relieved the component at; unit_cost is not.</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;component cost {totalInventory:F2} (from unit_cost it would be {totalUnit:F2})&quot;</span><span class="p">);</span>
+
+<span class="k">static</span><span class="w"> </span><span class="kt">decimal</span><span class="w"> </span><span class="nf">Dec</span><span class="p">(</span><span class="n">JsonNode</span><span class="o">?</span><span class="w"> </span><span class="n">n</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="kt">decimal</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">n</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">NumberStyles</span><span class="p">.</span><span class="n">Float</span><span class="p">,</span><span class="w"> </span><span class="n">CultureInfo</span><span class="p">.</span><span class="n">InvariantCulture</span><span class="p">);</span>
+
+<span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JsonArray</span><span class="o">&gt;</span><span class="w"> </span><span class="n">Rows</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">table</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="k">select</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">filter</span><span class="p">,</span><span class="w"> </span><span class="kt">string?</span><span class="w"> </span><span class="n">orderBy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{odata}/{table}?$select={select}&amp;$filter={Uri.EscapeDataString(filter)}&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">              </span><span class="p">(</span><span class="n">orderBy</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="k">null</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s">$&quot;&amp;$orderby={orderBy}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="n">url</span><span class="p">);</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">JsonNode</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">())</span><span class="o">!</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">AsArray</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">c</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Username</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/api/security/token/v2&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;AccessToken&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Some middleware answers the token endpoint in XML even when asked for JSON.</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">f</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">p</span><span class="p">).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="n">f</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">v</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span>
+<span class="w">        </span><span class="n">ex</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">JsonException</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="n">KeyNotFoundException</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">Text</span><span class="p">.</span><span class="n">RegularExpressions</span><span class="p">.</span><span class="n">Regex</span><span class="p">.</span><span class="n">Match</span><span class="p">(</span>
+<span class="w">        </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;&lt;{f}&gt;([^&lt;]+)&lt;/{f}&gt;&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">m</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;No {f} in response: {p[..Math.Min(200, p.Length)]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">Groups</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<p>Both programs ran on the test tenant on 26.1.6004.0 against a completed two-line order: component cost 3,197.76 from <code>inventory_cost</code>, 2,287.08 from <code>unit_cost</code>, most of the gap one component whose <code>unit_cost</code> is 0.</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — lead from an integration, measured on a test tenant, November 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/303">#303</a>).</p>
+</blockquote>
 <h3 id="production-order-gotchas-field-verified">Production Order Gotchas (Field-Verified)</h3>
 <p>Learned running production orders at volume through the API. Credit <a href="https://github.com/AWestemeier">Alex Westemeier</a> — verified on production and play, September 2026. The location-order and pick-ticket-cancel bullets were <strong>re-run here</strong> on play 26.1.5950.0, 2026-10-10 (scratch tests on a throwaway assembly, noted in each bullet); the other bullets are from the original report.</p>
 <p><strong>Creating</strong></p>
@@ -2646,6 +2842,7 @@
 <li><a href="#shipping-and-invoicing-the-linked-sales-order">Shipping and Invoicing the Linked Sales Order</a></li>
 <li><a href="#inventory-adjustment-write-offs">Inventory Adjustment (Write-Offs)</a></li>
 <li><a href="#cost-model-know-this-before-trusting-cogs">Cost Model — Know This Before Trusting COGS</a></li>
+<li><a href="#component-cost-read-inventory_cost-not-unit_cost">Component cost: read inventory_cost, not unit_cost</a></li>
 <li><a href="#production-order-gotchas-field-verified">Production Order Gotchas (Field-Verified)</a></li>
 <li><a href="#key-tables">Key Tables</a></li>
 <li><a href="#reading-labor-actuals-and-production-order-columns">Reading Labor Actuals and Production Order Columns</a></li>

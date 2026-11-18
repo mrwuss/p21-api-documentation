@@ -2449,6 +2449,66 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <blockquote>
 <p><strong>Credit:</strong> <em>@mrwuss</em> — verified against production data 26.1, June 2026, re-checked October 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/183">#183</a>).</p>
 </blockquote>
+<h4 id="invoice_lineinvoice_line_type-and-invoice_hdrsource_type_cd"><code>invoice_line.invoice_line_type</code> and <code>invoice_hdr.source_type_cd</code></h4>
+<p><code>invoice_line.invoice_line_type</code> says what kind of line a row is, as a <code>code_p21</code> code. Counted on a test tenant restored from production, 26.1.6004.0 (November 2026), with each code's <code>code_description</code>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th><code>invoice_line_type</code></th>
+<th><code>code_p21</code></th>
+<th>Lines</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>(none)</td>
+<td>1,474,569</td>
+</tr>
+<tr>
+<td><code>981</code></td>
+<td>Regular Component Invoice</td>
+<td>772,170</td>
+</tr>
+<tr>
+<td><code>928</code></td>
+<td>Incoming Freight</td>
+<td>306,089</td>
+</tr>
+<tr>
+<td><code>982</code></td>
+<td>Bypass Component Invoice</td>
+<td>300,712</td>
+</tr>
+<tr>
+<td><code>929</code></td>
+<td>Outgoing Freight</td>
+<td>203,769</td>
+</tr>
+<tr>
+<td><code>930</code></td>
+<td>Tax</td>
+<td>131,612</td>
+</tr>
+<tr>
+<td><code>1136</code></td>
+<td>Tax Adjustment</td>
+<td>6,449</td>
+</tr>
+<tr>
+<td><code>1577</code></td>
+<td>Labor</td>
+<td>5</td>
+</tr>
+<tr>
+<td><code>1719</code></td>
+<td>Part</td>
+<td>2</td>
+</tr>
+</tbody>
+</table></div>
+<p>A revenue or margin report that sums every line counts freight and tax as sales; filter on the type. On the header, <code>invoice_hdr.source_type_cd</code> <code>2871</code> (<em>Completed Production Order Adjustment</em>) marks the cost-only invoices P21 posts when cost reaches a production order after it was invoiced (<a href="12-Production-Labor-API.html#cost-model-know-this-before-trusting-cogs">12 § Cost Model</a>).</p>
+<p>On <code>oe_pick_ticket</code>, no ticket carried an <code>invoice_no</code> without a <code>ship_date</code> (0 of 850,343); 40 had a <code>ship_date</code> and no invoice yet.</p>
 <h4 id="inv_adj_linecost-is-0-on-lines-valued-at-moving-average"><code>inv_adj_line.cost</code> is 0 on lines valued at moving average</h4>
 <p>An inventory adjustment writes <code>inv_adj_hdr</code> / <code>inv_adj_line</code> and posts <code>inv_tran</code> rows with <code>trans_type = 'IA'</code>. On lines that P21 values at moving-average cost when the adjustment posts, <strong><code>inv_adj_line.cost</code> stays <code>0</code></strong>. The cost that reached the books is <strong><code>inv_tran.unit_cost_amt</code></strong> on the <code>IA</code> row. Value adjustments from <code>inv_tran</code>, not from the adjustment lines.</p>
 <p>Two more traps when you total adjustments:</p>

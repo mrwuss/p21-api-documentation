@@ -512,7 +512,7 @@ Confirm with the `ProductionOrderPicking` window: header `tp_prodpickticketconf`
 
 > ⚠️ **Shell-confirm warning — do NOT confirm with a bare Transaction API POST.** Posting `row_status_flag = 'Confirm'` through `/api/v2/transaction` flips the ticket status (1962) and stamps `qty_confirmed`, but leaves **`qty_applied = 0` and moves no stock** — a shell confirm. The per-bin posted quantities live in a disabled `TP_BIN` grid that only the windowed (Interactive API or desktop) confirm populates. The real confirm applies the pick and moves the picked components to the make location's WIP bin (`inv_loc.primary_bin` at `prod_order_hdr.source_location_id`; bin `0` when no primary is set).
 
-Pick ticket status codes (`prod_pick_ticket_hdr.row_status_flag`): `702` = Open, `1962` = Picked (the status a confirm sets; `code_p21` names it *Picked*), `1268` = Completed. Detail rows: `704` = normal, `1268` at completion.
+Pick ticket status codes (`prod_pick_ticket_hdr.row_status_flag`): `702` = Open, `1962` = Picked (the status a confirm sets; `code_p21` names it *Picked*), `976` = Canceled, `1268` = Completed. Detail rows: `704` = normal, `1268` at completion. Picked tickets belong almost only to open orders: on a test tenant restored from production, 655 tickets at `1962` belonged to open orders and 1 to a completed order. Production and sales-order pick ticket numbers (`prod_pick_ticket_number`, `oe_pick_ticket.pick_ticket_no`) did not overlap there.
 
 ### Completing the Production Order (Production Receipt)
 
@@ -549,7 +549,184 @@ The `InventoryAdjustment` service posts on-hand adjustments with no invoice: hea
 - **Assembly receipt cost** (`inv_tran` `PROP` `unit_cost_amt`) = component costs **+ labor posted before completion**. Labor logged after completion misses the receipt.
 - **Shipment COGS** (`invoice_line.cogs_amount`, `inv_tran` `WO`) = the item's **moving-average cost at ship time**, NOT that order's specific receipt.
 - **Moving-average pooling:** while two or more units of the same item sit in stock, a cost added to one (e.g. a labor overrun) smears across all of them — an unrelated unit ships at a blended cost. Make-to-order (one in, one out) is largely immune; **build-to-stock is exposed by design**. True per-job cost is the `PROP` receipt, not the invoice COGS.
-- **Labor posted after invoicing** generates a separate *"Post Freight/Labor Prod. Order: NNNN"* invoice ($0 price, ± COGS) — P21's standard post-order cost-adjustment channel; the original invoice is untouched.
+- **Labor posted after invoicing** generates a separate *"Post Freight/Labor Prod. Order: NNNN"* invoice ($0 price, ± COGS) — P21's standard post-order cost-adjustment channel; the original invoice is untouched. These invoices carry `invoice_hdr.source_type_cd` `2871` (*Completed Production Order Adjustment*); filter on it to find or exclude them (11,285 on a test tenant restored from production, 26.1.6004.0).
+
+### Component cost: read `inventory_cost`, not `unit_cost`
+
+`prod_order_line_component` has two cost columns, and only one of them is the cost the component was consumed at. Measured read-only on a test tenant restored from production, 26.1.6004.0 (November 2026), on components with `qty_used` > 0 on completed orders:
+
+| | Components | `unit_cost` | `inventory_cost` |
+|---|---|---|---|
+| All completed orders | 745,960 | 0 on 94,610; differs from `inventory_cost` on 337,432 | non-zero on 45,316 of the components whose `unit_cost` is 0 |
+| 2026 orders with a `PROP` consumption row in `inv_tran` | 30,801 | equals that row's `unit_cost_amt` on 9,659 | equals it on **30,746** |
+
+`inventory_cost` is the per-unit cost on the component's `PROP` consumption row in `inv_tran` (`document_no` = the order, `quantity` negative), so `qty_used` × `inventory_cost` is what completion relieved. `unit_cost` can be 0 or out of date for the same component. The other 13,882 components of 2026 had no `PROP` row to compare with.
+
+<!-- tabs -->
+
+```python
+"""Component cost of a completed production order: qty_used x inventory_cost, beside unit_cost."""
+import re
+from decimal import Decimal
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+PROD_ORDER_NUMBER = 500100                # prod_order_hdr.prod_order_number, a completed order
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    client.headers.update({"Authorization": f"Bearer {token}", "Accept": "application/json"})
+    # IEEE754Compatible=true sends decimals as strings, so the sums stay exact.
+    client.headers["Accept"] = "application/json;IEEE754Compatible=true"
+    odata = f"{BASE_URL}/odataservice/odata/table"
+
+    hdr = client.get(f"{odata}/prod_order_hdr", params={
+        "$select": "prod_order_number,complete", "$filter": f"prod_order_number eq {PROD_ORDER_NUMBER}"})
+    hdr.raise_for_status()
+    if not hdr.json()["value"] or hdr.json()["value"][0]["complete"] != "Y":
+        raise SystemExit(f"{PROD_ORDER_NUMBER} is not a completed production order")
+
+    r = client.get(f"{odata}/prod_order_line_component", params={
+        "$select": "line_number,inv_mast_uid,qty_used,unit_cost,inventory_cost",
+        "$filter": f"prod_order_number eq {PROD_ORDER_NUMBER} and qty_used gt 0",
+        "$orderby": "line_number,inv_mast_uid"})
+    r.raise_for_status()
+    total_inventory = total_unit = Decimal(0)
+    for c in r.json()["value"]:
+        used, unit, inv = Decimal(c["qty_used"]), Decimal(c["unit_cost"]), Decimal(c["inventory_cost"])
+        total_inventory += used * inv
+        total_unit += used * unit
+        print(f"line {c['line_number']} item {c['inv_mast_uid']}: used {used:g}, "
+              f"unit_cost {unit:.4f}, inventory_cost {inv:.4f}")
+    # inventory_cost is the cost P21 relieved the component at; unit_cost is not.
+    print(f"component cost {total_inventory:.2f} (from unit_cost it would be {total_unit:.2f})")
+```
+
+```csharp
+using System.Globalization;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
+// Component cost of a completed production order: qty_used x inventory_cost, beside unit_cost.
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+const long ProdOrderNumber = 500100;                 // prod_order_hdr.prod_order_number, a completed order
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+// IEEE754Compatible=true sends decimals as strings, so the sums stay exact.
+client.DefaultRequestHeaders.Accept.Add(
+    MediaTypeWithQualityHeaderValue.Parse("application/json;IEEE754Compatible=true"));
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", token);
+var odata = $"{BaseUrl}/odataservice/odata/table";
+
+var hdr = await Rows("prod_order_hdr", "prod_order_number,complete", $"prod_order_number eq {ProdOrderNumber}");
+if (hdr.Count == 0 || hdr[0]!["complete"]?.GetValue<string>() != "Y")
+{
+    Console.WriteLine($"{ProdOrderNumber} is not a completed production order");
+    return;
+}
+
+decimal totalInventory = 0, totalUnit = 0;
+foreach (var c in await Rows("prod_order_line_component", "line_number,inv_mast_uid,qty_used,unit_cost,inventory_cost",
+                             $"prod_order_number eq {ProdOrderNumber} and qty_used gt 0", "line_number,inv_mast_uid"))
+{
+    decimal used = Dec(c!["qty_used"]), unit = Dec(c["unit_cost"]), inv = Dec(c["inventory_cost"]);
+    totalInventory += used * inv;
+    totalUnit += used * unit;
+    Console.WriteLine($"line {c["line_number"]} item {c["inv_mast_uid"]}: used {used:0.####}, " +
+                      $"unit_cost {unit:F4}, inventory_cost {inv:F4}");
+}
+// inventory_cost is the cost P21 relieved the component at; unit_cost is not.
+Console.WriteLine($"component cost {totalInventory:F2} (from unit_cost it would be {totalUnit:F2})");
+
+static decimal Dec(JsonNode? n) => decimal.Parse(n!.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture);
+
+async Task<JsonArray> Rows(string table, string select, string filter, string? orderBy = null)
+{
+    var url = $"{odata}/{table}?$select={select}&$filter={Uri.EscapeDataString(filter)}" +
+              (orderBy is null ? "" : $"&$orderby={orderBy}");
+    using var r = await client.GetAsync(url);
+    r.EnsureSuccessStatusCode();
+    return JsonNode.Parse(await r.Content.ReadAsStringAsync())!["value"]!.AsArray();
+}
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers the token endpoint in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on the test tenant on 26.1.6004.0 against a completed two-line order: component cost 3,197.76 from `inventory_cost`, 2,287.08 from `unit_cost`, most of the gap one component whose `unit_cost` is 0.
+
+> **Credit:** *@mrwuss* — lead from an integration, measured on a test tenant, November 2026 ([#303](https://github.com/mrwuss/p21-api-documentation/issues/303)).
 
 ### Production Order Gotchas (Field-Verified)
 
