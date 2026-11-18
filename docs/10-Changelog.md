@@ -18,7 +18,7 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
-## 2026-11-18
+## 2026-11-18 — v1.31.1
 
 - **fix:** **[`m_invoices`: `reprint_flag`, the API print flag and the ship date range](03-Transaction-API.md#m_invoices-reprint_flag-the-api-print-flag-and-the-ship-date-range)**, verified on a test tenant, 26.1.6004.0: `reprint_flag` `ON` renders an invoice and never changes its print status; `OFF` is a first print that sets `printed`/`print_flag` and the print dates; `allow_api_to_print_and_reprint_invoice` matters only for `ON` on an unprinted invoice (`Y` renders it, `N` or omitted refuses it). The date pair is the ship date range; a rebill credit memo needs `include_rebill_credits` `ON`. Python and C# programs (both run). **Report refusals are HTTP 400 with a message on 26.1.6004.0**, not an empty 500: a `reprint_flag` mismatch on [`m_reprintpurchaseorders`](03-Transaction-API.md#reprint_flag-must-match-the-pos-po_hdrprinted) or `m_invoices` and a missing record return *No records to print for this range.*, a wrong `company_id` *The company "…" could not be retrieved.*; updated in docs/03, docs/06, the PDF recipe, the payload notes and the PO examples' comments. Closes [#310](https://github.com/mrwuss/p21-api-documentation/issues/310). — *@mrwuss*
 
