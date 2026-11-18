@@ -1810,6 +1810,22 @@
 <td><a href="03-Transaction-API.html#m_invoices-reprint_flag-the-api-print-flag-and-the-ship-date-range">03 § <code>m_invoices</code>: <code>reprint_flag</code>, the API print flag and the ship date range</a> — <code>ON</code> never changes the print status; <code>OFF</code> is a first print; the API flag only matters for <code>ON</code> on an unprinted invoice</td>
 </tr>
 <tr>
+<td>Token request <strong>401 with <code>WWW-Authenticate: Negotiate, NTLM</code></strong> and an HTML body — the base URL is a web site, not P21</td>
+<td><a href="06-Error-Handling.html#401-with-www-authenticate-negotiate-ntlm-the-base-url-is-not-the-p21-api">06 § 401 with <code>Negotiate, NTLM</code></a> — probe the token endpoint with no credential first</td>
+</tr>
+<tr>
+<td><strong><code>created_by</code> is <code>Admin</code></strong> on items created through <code>POST /api/inventory/parts</code></td>
+<td><a href="11-Inventory-REST-API.html#who-a-create-is-recorded-as-created_by-is-admin">11 § Who a create is recorded as</a> — the token's user is in <code>last_maintained_by</code></td>
+</tr>
+<tr>
+<td><strong>Assembly create defaults</strong> — components print on pick tickets (<code>print_compnts_on_pick_ticket</code>)</td>
+<td><a href="03-Transaction-API.html#assembly-defaults-on-create-print-flags-and-the-creating-user">03 § Assembly defaults on create</a></td>
+</tr>
+<tr>
+<td>PO create on a <strong>deleted supplier</strong> — <em>Supplier information was not successfully retrieved</em></td>
+<td><a href="03-Transaction-API.html#purchaseorder-service-creating-a-po">03 § PurchaseOrder — Creating a PO</a></td>
+</tr>
+<tr>
 <td><strong>Print or reprint a PO PDF</strong> — HTTP 400 <em>No records to print</em> (or an empty 500 on older builds) on every attempt</td>
 <td><a href="03-Transaction-API.html#reprint_flag-must-match-the-pos-po_hdrprinted">03 § <code>reprint_flag</code> must match the PO's <code>po_hdr.printed</code></a> — read <code>printed</code> over OData and send it; never hardcode <code>Y</code></td>
 </tr>

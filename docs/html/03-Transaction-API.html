@@ -5147,6 +5147,53 @@ successfully. Do you want to continue to retrieve? [Response: No]
 <blockquote>
 <p><strong>Credit:</strong> verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by <a href="https://github.com/AWestemeier">Alex Westemeier</a>. <strong>Python and C# examples run on play 26.1.5950.0, 2026-10-10:</strong> each created an assembly (two components, <code>production_order_processing</code> <code>OFF</code>) on a throwaway item made with the Inventory REST API, set <code>production_order_processing</code> to <code>ON</code>, changed one component's quantity from 2 to 5, and deleted the other component — every step confirmed by the OData read-back. The component-of-another-assembly refusals above were re-run on the same build.</p>
 </blockquote>
+<h4 id="assembly-defaults-on-create-print-flags-and-the-creating-user">Assembly defaults on create: print flags and the creating user</h4>
+<p>A create that sends only <code>inv_mast_item_id</code> and the components stores the window's defaults for every print flag. On a test tenant, 26.1.6004.0 (November 2026), the new <code>assembly_hdr</code> matched <code>GET /api/v2/defaults/Assembly</code> exactly:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Field (label)</th>
+<th>Default</th>
+<th>Stored</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>print_compnts_on_pick_ticket</code> (<em>Pick Tickets</em>)</td>
+<td><code>ON</code></td>
+<td><code>Y</code> — components print on pick tickets</td>
+</tr>
+<tr>
+<td><code>print_components_on_invoice</code> (<em>Invoices</em>)</td>
+<td><code>OFF</code></td>
+<td><code>N</code></td>
+</tr>
+<tr>
+<td><code>print_return_to_stock_components</code></td>
+<td><code>ON</code></td>
+<td><code>Y</code></td>
+</tr>
+<tr>
+<td><code>print_incomplete_assemblies</code></td>
+<td><code>ON</code></td>
+<td><code>Y</code></td>
+</tr>
+<tr>
+<td><code>print_traveler_with_prodorder</code></td>
+<td><code>OFF</code></td>
+<td><code>N</code></td>
+</tr>
+<tr>
+<td><code>production_order_processing</code></td>
+<td><code>ON</code></td>
+<td><code>Y</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>The defaults are the tenant's, so read <code>/defaults</code> on yours and send any flag you need set the other way. <code>assembly_hdr</code> and <code>assembly_line</code> record the token's user in both <code>created_by</code> and <code>last_maintained_by</code>, in upper case, unlike the <a href="11-Inventory-REST-API.html#who-a-create-is-recorded-as-created_by-is-admin">Inventory REST item create</a>, which records <code>Admin</code> as the creator; the program there reads both.</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — lead from an integration, verified on a test tenant, November 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/307">#307</a>).</p>
+</blockquote>
 <h4 id="defaults-and-disabled-fields-on-create">Defaults and Disabled Fields on Create</h4>
 <p><strong>Send <code>production_order_processing</code> explicitly.</strong> On a create that omits it, the new assembly came back with <code>production_order_processing</code> = <code>ON</code>, which makes it a production-order assembly rather than a kit (see <a href="12-Production-Labor-API.html#assembly-behavior-flags">12 § Assembly Behavior Flags</a>). The <code>ON</code> default may come from a system setting rather than the service, so it can differ on your tenant. The field is writable on create — send <code>ON</code> or <code>OFF</code> deliberately and read <code>assembly_hdr</code> back.</p>
 <p><strong><code>item_desc</code> and <code>prorate_cost_by</code> are disabled on create.</strong> Sending either aborts the transaction:</p>
@@ -7116,6 +7163,7 @@ General Exception: This pick ticket has already been invoiced.
 <li><strong><code>required_date</code> genuinely is required</strong> — order date plus a few days.</li>
 <li>The PO landed <strong><code>approved='Y'</code></strong> immediately (config-dependent), so it is receivable straight away.</li>
 <li><strong><code>po_type</code> is not settable here</strong> — ours defaulted to <code>'B'</code>. Direct-ship (<code>'D'</code>) POs cannot be built by this service at all; they come from the Order-window wizard.</li>
+<li><strong>A deleted supplier is refused on the header.</strong> A <code>vendor_id</code> whose supplier has <code>supplier.delete_flag</code> <code>Y</code> returns <code>Failed: 1</code> with <em>"Supplier information was not successfully retrieved. Either the supplier ID is not valid or the supplier ID is not valid for the specified vendor ID."</em> (<code>Column: vendor_id</code>), with or without <code>supplier_id</code>. On that tenant every deleted supplier's <code>vendor_supplier</code> link was deleted too, which is what the message describes. Verified on a test tenant, 26.1.6004.0 (November 2026) (<a href="https://github.com/mrwuss/p21-api-documentation/issues/307">#307</a>). A refusal worded <em>"The selected Supplier [id] has been disabled"</em> is not P21's: it comes from a site's own DynaChange business rule, and its text arrives in <code>Messages</code> the same way.</li>
 </ul>
 <h3 id="purchaseorder-service-editing-a-completed-po">PurchaseOrder Service — Editing a Completed PO</h3>
 <p>A header edit on a completed PO (<code>po_hdr.complete = 'Y'</code>) fails with <code>Failed: 1</code> and <em>"Save is not enabled."</em>: the window's Save is greyed out, as it is in the client. The client's workaround works through the API too. Add one blank row to the lines grid in the same transaction, and the header edit saves; the blank row is thrown away.</p>
