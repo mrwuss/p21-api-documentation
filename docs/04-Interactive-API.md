@@ -6237,7 +6237,7 @@ When setting numeric fields, send whole numbers as integer strings (`"30"`), not
 {"WindowId": "...", "DatawindowName": "list", "Row": 1}
 ```
 
-`Row` is 1-based; see [Rows are 1-based; Row 0 is invalid](#rows-are-1-based-row-0-is-invalid).
+The v2 `Row` is 1-based; see [Rows are 1-based; Row 0 is invalid](#rows-are-1-based-row-0-is-invalid). The v1 body is shown as it was documented; how v1 numbers rows was not tested.
 
 ### Get Window Data / Close Window
 
