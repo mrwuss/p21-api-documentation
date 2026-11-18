@@ -215,17 +215,17 @@ Each **Edit** object supports:
 > | `prod_order_hdr.comment` (`ProductionOrder`, `prod_order_hdr_comment`) | nothing: the **old value stays**, and the Interactive window cannot clear it either |
 >
 > A blank is not a reliable way to clear a field, and you can't predict the result from the request. Read the field back, and filter with both `eq ''` and `eq null` when you look for empty values. *(Verified on play 26.1.5950.0, 2026-10-29, on a test item and a test order, each restored afterward; other fields not checked.)*
->
-> **A production order's comment can be overwritten but not cleared.** On a test tenant, 26.1.6004.0 (November 2026), this POST stored a text comment on an open order; the same POST with `""`, `" "` and `null` each answered `Succeeded: 1`, transaction `Passed`, no message, and the text stayed. In the Interactive `ProductionOrder` window, a change of `prod_order_hdr_comment` to `""` answered `Status: 1`, the window still showed the old text, and the save kept it. To blank a comment in practice, overwrite it with text that says so.
->
-> ```json
-> {"Name": "ProductionOrder", "UseCodeValues": false, "Transactions": [{"Status": "New", "DataElements": [
->   {"Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": ["prod_order_number"],
->    "Rows": [{"Edits": [{"Name": "prod_order_number", "Value": "500100"},
->                        {"Name": "prod_order_hdr_comment", "Value": "Rush: customer pickup Friday"}]}]}]}]}
-> ```
->
-> *(Lead from an integration; verified @mrwuss, [#305](https://github.com/mrwuss/p21-api-documentation/issues/305).)*
+
+**A production order's comment can be overwritten but not cleared.** On a test tenant, 26.1.6004.0 (November 2026), this POST stored a text comment on an open order; the same POST with `""`, `" "` and `null` each answered `Succeeded: 1`, transaction `Passed`, no message, and the text stayed. In the Interactive `ProductionOrder` window, a change of `prod_order_hdr_comment` to `""` answered `Status: 1`, the window still showed the old text, and the save kept it. To blank a comment in practice, overwrite it with text that says so.
+
+```json
+{"Name": "ProductionOrder", "UseCodeValues": false, "Transactions": [{"Status": "New", "DataElements": [
+  {"Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": ["prod_order_number"],
+   "Rows": [{"Edits": [{"Name": "prod_order_number", "Value": "500100"},
+                       {"Name": "prod_order_hdr_comment", "Value": "Rush: customer pickup Friday"}]}]}]}]}
+```
+
+*(Lead from an integration; verified @mrwuss, [#305](https://github.com/mrwuss/p21-api-documentation/issues/305).)*
 
 ---
 
