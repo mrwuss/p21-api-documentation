@@ -18,7 +18,9 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
-## 2026-11-18
+## 2026-11-18 — v1.31.0
+
+This release also includes the 2026-11-16, 2026-11-13, 2026-11-12 and 2026-11-11 entries below.
 
 - **docs:** **[A production order's comment can be overwritten but not cleared](03-Transaction-API.md#row-edit-fields)**, verified on a test tenant, 26.1.6004.0: through the `ProductionOrder` service a blank (`""`, `" "` or `null`) `prod_order_hdr_comment` answers `Succeeded: 1` and keeps the old text, and the Interactive window's change to `""` keeps it too. Added to the *What a blank stores* table with the payload. Closes [#305](https://github.com/mrwuss/p21-api-documentation/issues/305). — *@mrwuss*
 - **docs:** **[Component cost: read `inventory_cost`, not `unit_cost`](12-Production-Labor-API.md#component-cost-read-inventory_cost-not-unit_cost)**, measured read-only on a test tenant, 26.1.6004.0: on completed production orders `inventory_cost` equals the component's `PROP` consumption cost in `inv_tran` on 30,746 of 30,801 components, `unit_cost` on 9,659, and `unit_cost` is 0 on 94,610. Python and C# programs (both run). Also: post-completion cost invoices carry `invoice_hdr.source_type_cd` `2871`; **[`invoice_line.invoice_line_type`](02-OData-API.md#invoice_lineinvoice_line_type-and-invoice_hdrsource_type_cd)** codes decoded; pick ticket status `976` Canceled, where `1962` Picked tickets sit, and that a sales-order pick ticket with an invoice has a ship date. Closes [#303](https://github.com/mrwuss/p21-api-documentation/issues/303). — *@mrwuss*
