@@ -167,9 +167,9 @@ The session creation body accepts these optional parameters:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `SessionType` | string | `"User"` | `User` (real user login), `Auto` (automated process), or `AutoInteractive` (automated without noninteractive API profile). Affects license consumption and behavior |
+| `SessionType` | string | `"User"` | `User` (real user login), `Auto` (automated process), or `AutoInteractive` (automated without noninteractive API profile). Affects license consumption and behavior. **An `Auto` session answers some prompts with their default even when `ResponseWindowHandlingEnabled` is `true`** — see [below](#sessiontype-auto-answers-some-prompts-itself) |
 | `SessionTimeout` | int | Server default (60s) | Inactivity timeout in seconds before the session is cleaned up |
-| `ResponseWindowHandlingEnabled` | bool | `true` | When `false`, response windows (dialogs) are auto-answered with the default response (usually "Yes"). Set to `true` if you need to inspect and handle dialogs yourself |
+| `ResponseWindowHandlingEnabled` | bool | `true` | When `false`, response windows (dialogs) are auto-answered with the default response (usually "Yes"). Set to `true` if you need to inspect and handle dialogs yourself, and leave `SessionType` out or set it to `User` ([why](#sessiontype-auto-answers-some-prompts-itself)) |
 | `ClientPlatformApp` | string | null | Identifier for your application (useful for server-side logging) |
 | `WorkstationID` | string | null | User-defined value to identify the PC or device initiating the session |
 
@@ -1080,6 +1080,288 @@ With `ResponseWindowHandlingEnabled: false` this sequence never reaches the `w_m
 Under `false`, a response window that is *not* a plain message box is a hard error carrying its class name rather than a silent auto-answer — noisy, but far easier to diagnose than the message-box case. A `w_message` reached by some other route is auto-answered with its default, and the answer P21 gave itself is echoed in `Messages` as `"<question text> [Response: Yes]"` — observed on the Item window's GL-account sync prompt, fired by changing a location's `product_group_id`.
 
 > **Credit:** [@yeshayak](https://github.com/yeshayak) found that `w_message` is drivable and wrote this example; re-verified here on 26.1.5950.0, which is where the `false`-mode behaviour above and the two nesting traps were added.
+
+### `SessionType: Auto` answers some prompts itself
+
+`ResponseWindowHandlingEnabled: true` is not enough on its own to see every dialog. In a session created with **`SessionType: Auto`**, P21 answers the Item window's GL-account prompt with its default (Yes) and the change returns `Status: 1`, with no message saying a question was asked. Verified on a test tenant, 26.1.6004.0 (November 2026), by changing a location's `product_group_id` (`TABPAGE_18.inv_loc_detail`) to a group whose accounts differ, and reading the location's accounts in the window (`TABPAGE_24.inv_loc_accounts`). Nothing was saved:
+
+| Session body | The change returns | The location's accounts |
+|---|---|---|
+| `ResponseWindowHandlingEnabled: true`, no `SessionType` | `Status: 3`, `w_message` | Kept after `cb_2` (No); rewritten after `cb_1` (Yes) |
+| `true`, `SessionType: User` | `Status: 3`, `w_message` | Kept after No |
+| `true`, `SessionType: AutoInteractive` | `Status: 3`, `w_message` | Kept after No |
+| **`true`, `SessionType: Auto`** | **`Status: 1`**, no message | **Rewritten to the new group's accounts** |
+| `false`, `SessionType: Auto` | `Status: 1`, no message | Rewritten |
+
+Saved, that answer overwrites the location's GL accounts: an integration found it that way, when an `Auto` session's product-group change replaced two locations' accounts on a test tenant.
+
+It is not every dialog. Closing a window with an unsaved change still raised the *save changes?* `w_message` (`Status: 3`) in an `Auto` session, as it does in the others. Which other prompts an `Auto` session answers for you is not known, so:
+
+- **Leave `SessionType` out, or send `User`, in any session that must see its dialogs.** Keep `Auto` for sessions that never meet a prompt whose default you would not accept.
+- **Read back the records a change can touch**, as for any [write](#verifying-writes-dont-trust-save-status-alone): a `Status: 1` from an `Auto` session does not mean no question was asked.
+
+The program changes the product group in each kind of session, answers No wherever the prompt reaches it, and closes without saving:
+
+<!-- tabs -->
+
+```python
+"""Show which session types stop on the Item window's GL-account prompt. Saves nothing."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server: use a test tenant
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+ITEM_ID = "WIDGET-001"                    # an item stocked at exactly one location
+NEW_PRODUCT_GROUP = "PG02"                # a group whose GL accounts differ from the item's
+# ---------------------------------------------------------------------------
+
+SESSIONS = {
+    "no SessionType": {"ResponseWindowHandlingEnabled": True},
+    "SessionType User": {"ResponseWindowHandlingEnabled": True, "SessionType": "User"},
+    "SessionType Auto": {"ResponseWindowHandlingEnabled": True, "SessionType": "Auto"},
+}
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def popup_id(result: dict) -> str | None:
+    """The windowopened event of a Status 3 (Blocked) answer carries the dialog's ID."""
+    for event in result.get("Events") or []:
+        if event.get("Name") == "windowopened":
+            for kv in event.get("Data") or []:
+                if str(kv.get("Key", "")).lower() == "windowid":
+                    return kv.get("Value")
+    return None
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    client.headers.update({"Authorization": f"Bearer {token}", "Accept": "application/json"})
+    ui = client.get(f"{BASE_URL}/api/ui/router/v1/?urlType=external").json()["Url"].rstrip("/")
+    api = f"{ui}/api/ui/interactive"
+
+    def call(method: str, path: str, body: object = None) -> dict:
+        r = client.request(method, f"{api}{path}", json=body)
+        r.raise_for_status()
+        return r.json()
+
+    def accounts(wid: str) -> list[str]:
+        """The location's GL accounts as the window holds them (not the database)."""
+        call("PUT", "/v2/tab", {"WindowId": wid, "PageName": "TABPAGE_24"})
+        for dw in call("GET", f"/v2/data?id={wid}"):
+            if dw["Name"] == "inv_loc_accounts":
+                row, cols = dw["Data"][0], dw["Columns"]
+                return [row[cols.index(c)] for c in ("gl_account_no", "revenue_account_no", "cos_account_no")]
+        raise RuntimeError("inv_loc_accounts not found")
+
+    for label, session_body in SESSIONS.items():
+        call("POST", "/sessions", session_body)
+        wid = None
+        try:
+            opened = call("POST", "/v2/window", {"ServiceName": "Item"})
+            wid = opened.get("WindowId") or opened.get("Id")
+            call("PUT", "/v2/change", {"WindowId": wid, "List": [
+                {"TabName": "TABPAGE_1", "DatawindowName": "tp_1_dw_1", "FieldName": "item_id", "Value": ITEM_ID}]})
+            call("PUT", "/v2/tab", {"WindowId": wid, "PageName": "TABPAGE_17"})
+            call("PUT", "/v2/row", {"WindowId": wid, "DatawindowName": "invloclist", "Row": 1})
+            before = accounts(wid)
+            call("PUT", "/v2/tab", {"WindowId": wid, "PageName": "TABPAGE_18"})
+            result = call("PUT", "/v2/change", {"WindowId": wid, "List": [
+                {"TabName": "TABPAGE_18", "DatawindowName": "inv_loc_detail",
+                 "FieldName": "product_group_id", "Value": NEW_PRODUCT_GROUP}]})
+            dialog = popup_id(result) if result.get("Status") == 3 else None
+            if dialog:
+                # The prompt is waiting: this program answers No (cb_2) to keep the accounts.
+                call("POST", "/v2/tools", {"WindowId": dialog, "ToolName": "cb_2", "ToolText": "&No"})
+            after = accounts(wid)
+            outcome = "stopped on the prompt; answered No" if dialog else "no prompt reached the caller"
+            changed = "accounts REWRITTEN" if after != before else "accounts kept"
+            print(f"{label:17} Status {result.get('Status')}: {outcome}; {changed} {before} -> {after}")
+        finally:
+            if wid:
+                closed = call("DELETE", f"/v2/window?id={wid}")
+                close_dialog = popup_id(closed) if closed.get("Status") == 3 else None
+                if close_dialog:   # "Save changes?" — No discards everything
+                    call("POST", "/v2/tools", {"WindowId": close_dialog, "ToolName": "cb_2", "ToolText": "&No"})
+            client.delete(f"{api}/sessions")
+```
+
+```csharp
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
+// Show which session types stop on the Item window's GL-account prompt. Saves nothing.
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server: use a test tenant
+const string Username = "api_user";
+const string Password = "api_pass";
+const string ItemId = "WIDGET-001";                  // an item stocked at exactly one location
+const string NewProductGroup = "PG02";               // a group whose GL accounts differ from the item's
+// ---------------------------------------------------------------------------
+
+var sessions = new Dictionary<string, object>
+{
+    ["no SessionType"] = new { ResponseWindowHandlingEnabled = true },
+    ["SessionType User"] = new { ResponseWindowHandlingEnabled = true, SessionType = "User" },
+    ["SessionType Auto"] = new { ResponseWindowHandlingEnabled = true, SessionType = "Auto" },
+};
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(
+    new MediaTypeWithQualityHeaderValue("application/json"));
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", token);
+var router = JsonNode.Parse(await client.GetStringAsync($"{BaseUrl}/api/ui/router/v1/?urlType=external"))!;
+var api = $"{router["Url"]!.GetValue<string>().TrimEnd('/')}/api/ui/interactive";
+
+foreach (var (label, sessionBody) in sessions)
+{
+    await Call(HttpMethod.Post, "/sessions", sessionBody);
+    string? wid = null;
+    try
+    {
+        var opened = await Call(HttpMethod.Post, "/v2/window", new { ServiceName = "Item" });
+        wid = (opened["WindowId"] ?? opened["Id"])!.GetValue<string>();
+        await Call(HttpMethod.Put, "/v2/change", new { WindowId = wid, List = new[] {
+            new { TabName = "TABPAGE_1", DatawindowName = "tp_1_dw_1", FieldName = "item_id", Value = ItemId } } });
+        await Call(HttpMethod.Put, "/v2/tab", new { WindowId = wid, PageName = "TABPAGE_17" });
+        await Call(HttpMethod.Put, "/v2/row", new { WindowId = wid, DatawindowName = "invloclist", Row = 1 });
+        var before = await Accounts(wid);
+        await Call(HttpMethod.Put, "/v2/tab", new { WindowId = wid, PageName = "TABPAGE_18" });
+        var result = await Call(HttpMethod.Put, "/v2/change", new { WindowId = wid, List = new[] {
+            new { TabName = "TABPAGE_18", DatawindowName = "inv_loc_detail", FieldName = "product_group_id", Value = NewProductGroup } } });
+        var status = result["Status"]?.GetValue<int>();
+        var dialog = status == 3 ? PopupId(result) : null;
+        if (dialog is not null)
+        {
+            // The prompt is waiting: this program answers No (cb_2) to keep the accounts.
+            await Call(HttpMethod.Post, "/v2/tools", new { WindowId = dialog, ToolName = "cb_2", ToolText = "&No" });
+        }
+        var after = await Accounts(wid);
+        var outcome = dialog is not null ? "stopped on the prompt; answered No" : "no prompt reached the caller";
+        var changed = after != before ? "accounts REWRITTEN" : "accounts kept";
+        Console.WriteLine($"{label,-17} Status {status}: {outcome}; {changed} {before} -> {after}");
+    }
+    finally
+    {
+        if (wid is not null)
+        {
+            var closed = await Call(HttpMethod.Delete, $"/v2/window?id={wid}");
+            var closeDialog = closed["Status"]?.GetValue<int>() == 3 ? PopupId(closed) : null;
+            if (closeDialog is not null)   // "Save changes?" — No discards everything
+            {
+                await Call(HttpMethod.Post, "/v2/tools", new { WindowId = closeDialog, ToolName = "cb_2", ToolText = "&No" });
+            }
+        }
+        await client.DeleteAsync($"{api}/sessions");
+    }
+}
+
+async Task<JsonNode> Call(HttpMethod method, string path, object? body = null)
+{
+    using var request = new HttpRequestMessage(method, $"{api}{path}");
+    if (body is not null)
+    {
+        request.Content = JsonContent.Create(body, body.GetType());
+    }
+    using var r = await client.SendAsync(request);
+    r.EnsureSuccessStatusCode();
+    return JsonNode.Parse(await r.Content.ReadAsStringAsync())!;
+}
+
+// The location's GL accounts as the window holds them (not the database).
+async Task<string> Accounts(string wid)
+{
+    await Call(HttpMethod.Put, "/v2/tab", new { WindowId = wid, PageName = "TABPAGE_24" });
+    foreach (var dw in (await Call(HttpMethod.Get, $"/v2/data?id={wid}")).AsArray())
+    {
+        if (dw!["Name"]!.GetValue<string>() == "inv_loc_accounts")
+        {
+            var cols = dw["Columns"]!.AsArray().Select(c => c!.GetValue<string>()).ToList();
+            var row = dw["Data"]![0]!.AsArray();
+            return string.Join("/", new[] { "gl_account_no", "revenue_account_no", "cos_account_no" }
+                .Select(c => row[cols.IndexOf(c)]!.GetValue<string>()));
+        }
+    }
+    throw new InvalidOperationException("inv_loc_accounts not found");
+}
+
+// The windowopened event of a Status 3 (Blocked) answer carries the dialog's ID.
+static string? PopupId(JsonNode result) =>
+    result["Events"]?.AsArray()
+        .Where(e => e?["Name"]?.GetValue<string>() == "windowopened")
+        .SelectMany(e => e!["Data"]!.AsArray())
+        .FirstOrDefault(kv => kv?["Key"]?.GetValue<string>().Equals("windowid", StringComparison.OrdinalIgnoreCase) == true)?["Value"]?.GetValue<string>();
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers the token endpoint in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on a test tenant on 26.1.6004.0 against an item stocked at one location: the sessions without `SessionType` and with `User` stopped on the prompt and kept the accounts; the `Auto` session reported `Status: 1` with the accounts already rewritten. The location's row in the database was unchanged afterwards.
+
+> **Credit:** *@mrwuss* — lead from an integration that lost two locations' accounts this way, re-verified on a test tenant, November 2026 ([#297](https://github.com/mrwuss/p21-api-documentation/issues/297)).
 
 ---
 
@@ -5353,7 +5635,7 @@ This is how you take a rule such as the [Item Issues Detected save rule](03-Tran
 
 | Step | Call | Result |
 |---|---|---|
-| Session | `POST /api/ui/interactive/sessions/` `{"SessionType": "Auto", "ResponseWindowHandlingEnabled": true}` | |
+| Session | `POST /api/ui/interactive/sessions/` `{"SessionType": "Auto", "ResponseWindowHandlingEnabled": true}` | An `Auto` session answers some prompts itself ([details](#sessiontype-auto-answers-some-prompts-itself)); none was met on this path |
 | Host window | `POST /v2/window` `{"ServiceName": "Customer"}` | Any registered service works as the host |
 | Open the organizer | `POST /v2/tools` `{"WindowId": "<host>", "ToolName": "dc.organizer.rule"}` | `Status: 3`; the organizer's id is `windowid` on the `windowopened` event |
 | Read the rules | `GET /v2/data?id=<organizer>` | `LIST.list` holds one row per rule |
@@ -5408,7 +5690,7 @@ Why status alone is not a reliable "it persisted" signal:
 5. **Save before close** - Unsaved changes are lost
 6. **Keep sessions short** - Long sessions consume server resources (pool default: 5 instances)
 7. **Log window IDs** - Helps debugging
-8. **Use SessionType wisely** - `Auto` for background processes, `User` for interactive integrations
+8. **Use SessionType wisely** - `Auto` for background processes, `User` for interactive integrations; an `Auto` session [answers some prompts itself](#sessiontype-auto-answers-some-prompts-itself), so a session that must see its dialogs leaves `SessionType` out or sends `User`
 9. **Read back after writing** - Save status can report success without persisting a sub-record (see [Verifying Writes](#verifying-writes-dont-trust-save-status-alone))
 
 ---
