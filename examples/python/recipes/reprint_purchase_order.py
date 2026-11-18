@@ -6,7 +6,8 @@ save it, and read the PO's print history back.
 
 reprint_flag is not a "reprint please" switch: it must EQUAL the PO's own
 po_hdr.printed -- "N" for a PO that was never printed, "Y" for one that was.
-A mismatch returns an empty HTTP 500 on every attempt. So this script reads
+A mismatch fails on every attempt (HTTP 400 "No records to print for this
+range." on 26.1.6004.0, an empty HTTP 500 on earlier builds). So this script reads
 printed over OData first, sends it, and re-reads it before any retry (another
 user can print the PO in between). A first print ("N") marks the PO printed.
 
@@ -83,7 +84,7 @@ def build_payload(company_id: str, po_no: str, reprint_flag: str) -> dict:
 
 
 def get_printed_flag(client: httpx.Client, base_url: str, po_no: str) -> str:
-    """Read po_hdr.printed -- reprint_flag must equal it, or the report 500s.
+    """Read po_hdr.printed -- reprint_flag must equal it, or the report refuses the PO.
 
     Args:
         client: Authenticated httpx client.

@@ -7500,41 +7500,255 @@ On `m_unvoucheredpos` the name was matched without regard to case: `criteria.cri
 
 > **`UseCodeValues` requirements vary per report service.** `m_reprintpurchaseorders` works with `UseCodeValues: false` (as above), but a production-order `m_picktickets` run **requires `UseCodeValues: true` with code values** — e.g. `create_pick_ticket_type` must be the code `"P"`; the display label `"Production Order"` is rejected, and `UseCodeValues: false` returns HTTP 500. A sales-order run of the same service is the reverse: the label `"Sales Order"` with `UseCodeValues: false` works, and `true` with `"S"` or `"O"` returned an empty HTTP 500 (play 26.1.5950.0, 2026-10-17). When a report errors on seemingly-correct criteria, try the other setting: `UseCodeValues: true` with the code values from the service's definition (`ValidValues`), or `false` with the labels.
 
-#### `m_invoices` needs the API print flag, and a date range that covers the invoice
+#### `m_invoices`: `reprint_flag`, the API print flag and the ship date range
 
-The invoice print window has a criteria field just for API callers, `allow_api_to_print_and_reprint_invoice`, whose default is `N`. Without `Y` the call is an **empty HTTP 500**. With it, an invoice inside the window's default date range prints from three fields (`invoice_no`, `reprint_flag` and the flag). The example also sends the date pair, which a recent invoice needs:
+The invoice print window runs in two modes, chosen by `reprint_flag`, and has a criteria field just for API callers, `allow_api_to_print_and_reprint_invoice` (default `N`). Verified on a test tenant, 26.1.6004.0 (November 2026), with `invoice_hdr` read back over OData after every call:
 
-```json
-{
-    "Name": "m_invoices",
-    "UseCodeValues": false,
-    "Transactions": [{
+| Invoice (`invoice_hdr.printed`) | `reprint_flag` | `allow_api_to_print_and_reprint_invoice` | Result | Print status after |
+|---|---|---|---|---|
+| `Y` | `ON` | `Y`, `N` or omitted | PDF | Unchanged |
+| `Y` | `OFF` | `Y` | HTTP 400, *No records to print for this range.* | Unchanged |
+| `N` | `ON` | `Y` | PDF | Unchanged: the invoice stays unprinted |
+| `N` | `ON` | `N` or omitted | HTTP 400, *No records to print for this range.* | Unchanged |
+| `N` | `OFF` | `Y` or omitted | PDF | **Printed**: `printed` and `print_flag` `N` → `Y`; `printed_date` and `print_date` set to the time of the call |
+
+- **`ON` is reprint mode and never changes the print status.** With the API flag `Y` it also renders an invoice that has not printed, which gives you a copy without marking it printed. The PDF carries no reprint marking.
+- **`OFF` is a first print.** It renders only never-printed invoices and marks them printed. `date_last_modified` and `last_maintained_by` did not change.
+- **The API flag matters only for `ON` on an unprinted invoice.** On 26.1.5950.0 (2026-10-29) a call without it was recorded as an empty HTTP 500; the print state of those invoices was not recorded, so whether that was the same rule is not known.
+- **`dt_beg_date2` / `dt_end_date2` are the window's *Ship Date* range**, and the invoice's `ship_date` must fall inside it even when you name one invoice. A range that ended 12 days before the ship date was the same HTTP 400. Without the pair the window's default range applies: on 2026-11-18 `GET /api/v2/defaults/m_invoices` ended it at the end of that day, but on 2026-10-29 it ended six days earlier, which refused every newer invoice. Send a wide pair; ISO (`1900-01-01T00:00:00`) and `MM/DD/YYYY` were both accepted.
+- **A credit memo for a rebill** (`invoice_hdr.source_type_cd` `2638`) is the same HTTP 400 unless the request sends `include_rebill_credits` `ON`, whose default is `OFF`.
+- **A missing invoice is the same HTTP 400.** The refusal is `{"ErrorMessage": "Unexpected results generating document request from criteria. --> Messages returned during document request processing: <No records to print for this range. ..."}`. Read the invoice over OData first, so the refusal means only a mismatch.
+
+The program below saves an invoice as a PDF in reprint mode and reads the print status back:
+
+<!-- tabs -->
+
+```python
+"""Save an invoice as a PDF without changing its print status, and prove it by reading it back."""
+import base64
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+COMPANY_ID = "ACME"
+INVOICE_NO = "2001234"                    # invoice_hdr.invoice_no (text: quote it in OData)
+# ---------------------------------------------------------------------------
+
+STATUS = "invoice_no,printed,print_flag,printed_date,print_date"
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def print_status(client: httpx.Client) -> dict:
+    r = client.get(f"{BASE_URL}/odataservice/odata/table/invoice_hdr",
+                   params={"$filter": f"invoice_no eq '{INVOICE_NO}'", "$select": STATUS})
+    r.raise_for_status()
+    rows = r.json()["value"]
+    if not rows:
+        raise SystemExit(f"invoice {INVOICE_NO} not found")
+    return rows[0]
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120) as client:
+    token = get_token(client)
+    client.headers.update({"Authorization": f"Bearer {token}", "Accept": "application/json"})
+    ui = client.get(f"{BASE_URL}/api/ui/router/v1/?urlType=external").json()["Url"].rstrip("/")
+
+    before = print_status(client)
+    edits = {
+        "company_id": COMPANY_ID,
+        "invoice_no": INVOICE_NO,
+        "invoice_no2": INVOICE_NO,
+        "dt_beg_date2": "1900-01-01T00:00:00",   # the window's ship date range: cover the invoice
+        "dt_end_date2": "2099-12-31T23:59:59",
+        "print_qty": "1",
+        "reprint_flag": "ON",                     # reprint mode: never changes the print status
+        # Y also renders an invoice that has not printed yet; N refuses it with HTTP 400.
+        "allow_api_to_print_and_reprint_invoice": "Y",
+    }
+    body = {"Name": "m_invoices", "UseCodeValues": False, "Transactions": [{
         "Status": "New",
-        "DataElements": [{
-            "Keys": [],
-            "Name": "TABPAGE_1.tp_1_dw_1",
-            "Type": "Form",
-            "Rows": [{"Edits": [
-                {"Name": "invoice_no", "Value": "2001234"},
-                {"Name": "reprint_flag", "Value": "ON"},
-                {"Name": "allow_api_to_print_and_reprint_invoice", "Value": "Y"},
-                {"Name": "dt_beg_date2", "Value": "01/01/2000"},
-                {"Name": "dt_end_date2", "Value": "12/31/2030"}
-            ]}]
-        }]
-    }]
+        "DataElements": [{"Keys": [], "Type": "Form", "Name": "TABPAGE_1.tp_1_dw_1",
+                          "Rows": [{"Edits": [{"Name": k, "Value": v} for k, v in edits.items()]}]}]}]}
+    r = client.post(f"{ui}/api/v2/process/pdfreport", json=body)
+    result = r.json() if r.content else None
+    if isinstance(result, dict) and result.get("ErrorMessage"):
+        raise SystemExit(f"HTTP {r.status_code}: {result['ErrorMessage']}")
+    r.raise_for_status()
+    doc = result[0]
+    if doc["ResponseStatus"]["StatusCode"] != "Success" or not doc.get("DocumentData"):
+        raise SystemExit(f"no PDF: {doc['ResponseStatus'].get('Message')}")
+    path = f"invoice_{INVOICE_NO}.pdf"          # FileName holds a document counter, not the invoice number
+    with open(path, "wb") as f:
+        f.write(base64.b64decode(doc["DocumentData"]))
+
+    after = print_status(client)
+    print(f"saved {path}; printed was {before['printed']}, is {after['printed']}; "
+          f"print status unchanged: {after == before}")
+```
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
+// Save an invoice as a PDF without changing its print status, and prove it by reading it back.
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+const string CompanyId = "ACME";
+const string InvoiceNo = "2001234";                  // invoice_hdr.invoice_no (text: quote it in OData)
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+// Trailing slash: without it the router 307s and HttpClient drops the Authorization header.
+var router = JsonNode.Parse(await client.GetStringAsync($"{BaseUrl}/api/ui/router/v1/?urlType=external"))!;
+var ui = router["Url"]!.GetValue<string>().TrimEnd('/');
+
+var before = await PrintStatusAsync();
+var edits = new (string Name, string Value)[]
+{
+    ("company_id", CompanyId),
+    ("invoice_no", InvoiceNo),
+    ("invoice_no2", InvoiceNo),
+    ("dt_beg_date2", "1900-01-01T00:00:00"),   // the window's ship date range: cover the invoice
+    ("dt_end_date2", "2099-12-31T23:59:59"),
+    ("print_qty", "1"),
+    ("reprint_flag", "ON"),                     // reprint mode: never changes the print status
+    // Y also renders an invoice that has not printed yet; N refuses it with HTTP 400.
+    ("allow_api_to_print_and_reprint_invoice", "Y"),
+};
+var body = new
+{
+    Name = "m_invoices",
+    UseCodeValues = false,
+    Transactions = new[]
+    {
+        new
+        {
+            Status = "New",
+            DataElements = new[]
+            {
+                new
+                {
+                    Keys = Array.Empty<string>(),
+                    Type = "Form",
+                    Name = "TABPAGE_1.tp_1_dw_1",
+                    Rows = new[] { new { Edits = edits.Select(e => new { e.Name, e.Value }).ToArray() } },
+                },
+            },
+        },
+    },
+};
+using var r = await client.PostAsync($"{ui}/api/v2/process/pdfreport",
+    new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json"));
+var text = await r.Content.ReadAsStringAsync();
+var result = text.Length > 0 ? JsonNode.Parse(text) : null;
+if (result is JsonObject err && err["ErrorMessage"] is not null)
+{
+    Console.WriteLine($"HTTP {(int)r.StatusCode}: {err["ErrorMessage"]}");
+    return;
+}
+r.EnsureSuccessStatusCode();
+var doc = result!.AsArray()[0]!;
+var data = doc["DocumentData"]?.GetValue<string>();
+if (doc["ResponseStatus"]?["StatusCode"]?.GetValue<string>() != "Success" || string.IsNullOrEmpty(data))
+{
+    Console.WriteLine($"no PDF: {doc["ResponseStatus"]?["Message"]}");
+    return;
+}
+var path = $"invoice_{InvoiceNo}.pdf";   // FileName holds a document counter, not the invoice number
+await File.WriteAllBytesAsync(path, Convert.FromBase64String(data));
+
+var after = await PrintStatusAsync();
+Console.WriteLine($"saved {path}; printed was {before["printed"]}, is {after["printed"]}; " +
+                  $"print status unchanged: {JsonNode.DeepEquals(before, after)}");
+
+async Task<JsonNode> PrintStatusAsync()
+{
+    var filter = Uri.EscapeDataString($"invoice_no eq '{InvoiceNo}'");
+    var json = await client.GetStringAsync(
+        $"{BaseUrl}/odataservice/odata/table/invoice_hdr?$filter={filter}" +
+        "&$select=invoice_no,printed,print_flag,printed_date,print_date");
+    var rows = JsonNode.Parse(json)!["value"]!.AsArray();
+    if (rows.Count == 0)
+    {
+        throw new InvalidOperationException($"invoice {InvoiceNo} not found");
+    }
+    return rows[0]!;
+}
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers the token endpoint in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
 }
 ```
 
-The date pair matters for recent invoices. The window defaults `dt_end_date2` to a date that can be days old (`GET /api/v2/defaults/m_invoices` returned 2026-10-23 on 2026-10-29), so an invoice dated after it is outside the run. That also fails as an empty HTTP 500, not as an empty result. Send `dt_beg_date2` and `dt_end_date2` wide enough to cover the invoice date.
+<!-- /tabs -->
 
-| Criteria sent | Invoice dated inside the default range | Invoice dated after it |
-|---|---|---|
-| `invoice_no`, `reprint_flag` | empty 500 | empty 500 |
-| + `allow_api_to_print_and_reprint_invoice` `Y` | PDF (`IN… INVOICE.pdf`, about 139 KB) | empty 500 |
-| + a wide `dt_beg_date2` / `dt_end_date2` | — | PDF |
+Both programs ran on the test tenant on 26.1.6004.0 against a printed invoice and an unprinted one: each saved the PDF and reported the print status unchanged (`printed` stayed `Y` and `N`).
 
-*(Verified on play 26.1.5950.0, 2026-10-29, with two invoices. Community lead: P21WWUG forum, which reported `[]` rather than a 500 for the date case on an older build.)*
+> **Credit:** *@mrwuss* — verified on a test tenant, November 2026 ([#310](https://github.com/mrwuss/p21-api-documentation/issues/310)). The 26.1.5950.0 observations are from a run with two invoices on 2026-10-29; the lead came from the P21WWUG forum, which reported `[]` rather than a 500 for the date case on an older build.
 
 #### `reprint_flag` must match the PO's `po_hdr.printed`
 
@@ -7542,22 +7756,22 @@ The date pair matters for recent invoices. The window defaults `dt_end_date2` to
 
 | `reprint_flag` | Renders POs where | A PO in the other state |
 |---|---|---|
-| `N` | `po_hdr.printed = 'N'` (never printed) | Empty HTTP 500 |
-| `Y` | `po_hdr.printed = 'Y'` (printed at least once) | Empty HTTP 500 |
+| `N` | `po_hdr.printed = 'N'` (never printed) | HTTP 400, *No records to print for this range.* |
+| `Y` | `po_hdr.printed = 'Y'` (printed at least once) | HTTP 400, *No records to print for this range.* |
 
-A mismatch fails **deterministically**: every attempt returns the same empty-bodied 500, which looks identical to the [transient report-engine fault](#an-empty-5xx-has-several-causes-and-is-usually-transient) below. A payload that hardcodes `reprint_flag: "Y"` therefore fails on every PO that nobody has printed yet, and retrying does not help.
+A mismatch fails **deterministically**. On 26.1.6004.0 it is HTTP 400 with an `ErrorMessage` containing *No records to print for this range.*, the same answer as a PO that doesn't exist. On 26.1.5950.0 and earlier it was an empty-bodied 500, which looks identical to the [transient report-engine fault](#an-empty-5xx-has-several-causes-and-is-usually-transient) below. A payload that hardcodes `reprint_flag: "Y"` therefore fails on every PO that nobody has printed yet, and retrying does not help.
 
 To print any PO reliably:
 
 1. Read the header over OData: `GET /odataservice/odata/table/po_hdr?$filter=po_no eq 500100&$select=po_no,printed` (`po_no` is numeric, so do not quote it).
 2. Send `reprint_flag` equal to that `printed` value.
-3. On an empty 500, re-read `printed` before you retry. Another user or process can print the PO between your read and your call, which flips the flag you need.
+3. On a refusal, re-read `printed` before you retry. Another user or process can print the PO between your read and your call, which flips the flag you need.
 
 A first print (`N`) on an approved PO marks it printed: `po_hdr.printed` changes to `'Y'`, so the next run for that PO needs `Y`. The report payload never requests *Transmit Document Links*, and no transmission was observed during verification.
 
 The definition lists `ValidValues` `ON`/`OFF` for `reprint_flag`; the verified calls sent `Y`/`N` with `UseCodeValues: false`.
 
-> **Credit:** *@mrwuss* — verified on play 26.1, September 2026, across seven POs: every never-printed PO failed with `Y` on repeated attempts and succeeded with `N` ([#162](https://github.com/mrwuss/p21-api-documentation/issues/162)). Re-run on play 26.1.5950.0, 2026-10-10, with the [examples below](#example-generate-and-save-a-po-reprint) and their repo files: each language printed a never-printed PO (`N`), the read-back showed `printed` flipped to `Y`, and a second run on the same PO (`Y`) returned the reprint. Sending `N` for a printed PO returned the empty-bodied 500 on both attempts.
+> **Credit:** *@mrwuss* — verified on play 26.1, September 2026, across seven POs: every never-printed PO failed with `Y` on repeated attempts and succeeded with `N` ([#162](https://github.com/mrwuss/p21-api-documentation/issues/162)). Re-run on play 26.1.5950.0, 2026-10-10, with the [examples below](#example-generate-and-save-a-po-reprint) and their repo files: each language printed a never-printed PO (`N`), the read-back showed `printed` flipped to `Y`, and a second run on the same PO (`Y`) returned the reprint. Sending `N` for a printed PO returned the empty-bodied 500 on both attempts. Re-run on a test tenant, 26.1.6004.0, November 2026 ([#310](https://github.com/mrwuss/p21-api-documentation/issues/310)): `Y` on a never-printed PO and `N` on a printed one each returned HTTP 400 *No records to print for this range.* on both attempts and changed nothing; `N` then printed the never-printed PO, after which `Y` returned its reprint.
 
 #### An empty 5xx has several causes — and is usually transient
 
@@ -7568,13 +7782,13 @@ So an empty-bodied 5xx here is **not** a signal that your payload is wrong. It h
 | Cause | How to tell |
 |---|---|
 | **Transient report-engine fault** (most common) | The identical request succeeds seconds later. Retry before investigating anything else. |
-| **Bad criteria** — e.g. a `company_id` that doesn't exist | Deterministic: every attempt fails. Verified on Play 26.1 — a wrong `company_id` returns an empty 500, not a useful message. |
-| **`reprint_flag` doesn't match the PO's print history** (`m_reprintpurchaseorders`) — `Y` on a PO with `po_hdr.printed = 'N'`, or `N` on one with `'Y'` | Deterministic for that PO. Read `po_hdr.printed` and send it as `reprint_flag`; re-read it before each retry, because it can change between attempts — see [`reprint_flag` must match the PO's `po_hdr.printed`](#reprint_flag-must-match-the-pos-po_hdrprinted). |
+| **Bad criteria** — e.g. a `company_id` that doesn't exist | Deterministic: every attempt fails. On 26.1.6004.0 a wrong `company_id` is HTTP 400 *The company "…" could not be retrieved.*; earlier 26.1 builds returned an empty 500. |
+| **`reprint_flag` doesn't match the PO's print history** (`m_reprintpurchaseorders`) — `Y` on a PO with `po_hdr.printed = 'N'`, or `N` on one with `'Y'` | Deterministic for that PO. An empty 500 on 26.1.5950.0 and earlier; HTTP 400 *No records to print for this range.* on 26.1.6004.0. Read `po_hdr.printed` and send it as `reprint_flag`; re-read it before each retry, because it can change between attempts — see [`reprint_flag` must match the PO's `po_hdr.printed`](#reprint_flag-must-match-the-pos-po_hdrprinted). |
 | **The record isn't printable**, or report generation isn't available in that environment | Deterministic. On the Play tenant at 26.1.5910.3 **every** report returned an empty 500 — `m_reprintpurchaseorders` and `m_reprintpicktickets`, criteria straight from each service's own `/defaults`, both `UseCodeValues` settings, and six `Accept` variants — while `/definition` and `/defaults` for those same services returned 200. The same payload shape works in production, and on that same Play tenant at 26.1.5950.0 `m_reprintpurchaseorders` and `m_reprintpicktickets` both print normally, so treat a blanket failure like that as an environment property, not a payload bug. |
 
 **Retry idempotent report calls.** Generating a PDF reads data and emits a document; running it twice costs latency, not correctness. The production integration uses **3 attempts with a 0.5 s × attempt backoff**, which covers the observed fault rate without masking a real outage.
 
-**Do the existence check yourself, first.** A missing record and a transient fault both surface as an unhelpful 5xx, so read the record over OData before calling the report. That turns "not found" into a clear error of your own and leaves the 5xx meaning only "the report engine faulted".
+**Do the existence check yourself, first.** On 26.1.6004.0 a missing record is HTTP 400 *No records to print for this range.*, the same answer as a `reprint_flag` mismatch; on earlier builds it and a transient fault both surfaced as an unhelpful 5xx. Read the record over OData before calling the report. That turns "not found" into a clear error of your own and leaves the 5xx meaning only "the report engine faulted".
 
 **Classify the error envelope *before* the status code.** Unlike `/transaction`, which reports failure through `Summary`/`Messages`, this endpoint returns P21's `ErrorType`/`ErrorMessage` envelope — and it can arrive on a **200 as well as a 4xx/5xx**. Parse the body and check for `ErrorMessage` first; if you branch on `response.status_code` alone you will mask the one message that explains the failure (for example `No records to print for this range.`).
 
@@ -7686,7 +7900,7 @@ def get_ui_server(client: httpx.Client, token: str) -> str:
 
 
 def get_printed_flag(client: httpx.Client, token: str) -> str:
-    """reprint_flag must equal po_hdr.printed, or the report returns an empty 500."""
+    """reprint_flag must equal po_hdr.printed, or the report refuses the PO."""
     r = client.get(
         f"{BASE_URL}/odataservice/odata/table/po_hdr",
         params={"$filter": f"po_no eq {PO_NO}", "$select": "po_no,printed"},  # numeric: no quotes
@@ -7885,7 +8099,7 @@ static async Task<string> GetUiServerAsync(HttpClient client, string token)
     return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
 }
 
-// reprint_flag must equal po_hdr.printed, or the report returns an empty 500.
+// reprint_flag must equal po_hdr.printed, or the report refuses the PO.
 static async Task<string> GetPrintedFlagAsync(HttpClient client)
 {
     var filter = Uri.EscapeDataString($"po_no eq {PoNo}");   // numeric: no quotes

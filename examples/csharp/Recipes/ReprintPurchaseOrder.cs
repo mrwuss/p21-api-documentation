@@ -7,8 +7,9 @@
 //
 // Key rules (verified live — see the doc section):
 //   - reprint_flag must EQUAL the PO's own po_hdr.printed: "N" for a PO never
-//     printed, "Y" for one that was. A mismatch is an empty HTTP 500 on every
-//     attempt. Read printed over OData first, and re-read it before each retry.
+//     printed, "Y" for one that was. A mismatch fails on every attempt: HTTP 400
+//     "No records to print for this range." on 26.1.6004.0, an empty HTTP 500
+//     on earlier builds. Read printed over OData first, and re-read it before each retry.
 //   - A first print ("N") marks the PO printed.
 //   - Status "New" (the same enum as /transaction), Type "Form", Keys: [].
 //   - Classify the ErrorType/ErrorMessage envelope before the status code;
@@ -135,7 +136,7 @@ public static class ReprintPurchaseOrder
         ["UseCodeValues"] = false,
     };
 
-    /// <summary>reprint_flag must equal po_hdr.printed, or the report returns an empty 500.</summary>
+    /// <summary>reprint_flag must equal po_hdr.printed, or the report refuses the PO.</summary>
     private static async Task<string> GetPrintedFlagAsync(HttpClient http, string baseUrl, string poNo)
     {
         var filter = Uri.EscapeDataString($"po_no eq {poNo}");   // numeric: no quotes
