@@ -476,7 +476,7 @@ P21 stores dates and times as the database server's local wall-clock time, with 
 """Turn a date-time OData returned into a filter literal that matches it, in summer and winter alike."""
 import re
 from datetime import datetime
-from zoneinfo import ZoneInfo   # on Windows: pip install tzdata
+from zoneinfo import ZoneInfo   # Python 3.11+; on Windows also pip install tzdata
 
 import httpx
 
@@ -2469,6 +2469,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
 
 ```csharp
 using System.Diagnostics;
+using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -2505,7 +2506,7 @@ while (true)
     if (last is not null)
     {
         // The next page starts after the last key seen: no $skip, so no re-read.
-        url += "&$filter=" + Uri.EscapeDataString($"{Key} gt {last}");
+        url += "&$filter=" + Uri.EscapeDataString($"{Key} gt {last.Value.ToString(CultureInfo.InvariantCulture)}");
     }
     var watch = Stopwatch.StartNew();
     using var r = await client.GetAsync(url);

@@ -1343,7 +1343,7 @@
 <div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Turn a date-time OData returned into a filter literal that matches it, in summer and winter alike.&quot;&quot;&quot;</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">zoneinfo</span><span class="w"> </span><span class="kn">import</span> <span class="n">ZoneInfo</span>   <span class="c1"># on Windows: pip install tzdata</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">zoneinfo</span><span class="w"> </span><span class="kn">import</span> <span class="n">ZoneInfo</span>   <span class="c1"># Python 3.11+; on Windows also pip install tzdata</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
@@ -3698,6 +3698,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 </div>
   <div class="tab-panel" data-lang="csharp">
 <div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Diagnostics</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Globalization</span><span class="p">;</span>
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
@@ -3734,7 +3735,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">last</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
 <span class="w">    </span><span class="p">{</span>
 <span class="w">        </span><span class="c1">// The next page starts after the last key seen: no $skip, so no re-read.</span>
-<span class="w">        </span><span class="n">url</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="s">&quot;&amp;$filter=&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">Uri</span><span class="p">.</span><span class="n">EscapeDataString</span><span class="p">(</span><span class="s">$&quot;{Key} gt {last}&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="n">url</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="s">&quot;&amp;$filter=&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">Uri</span><span class="p">.</span><span class="n">EscapeDataString</span><span class="p">(</span><span class="s">$&quot;{Key} gt {last.Value.ToString(CultureInfo.InvariantCulture)}&quot;</span><span class="p">);</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">watch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Stopwatch</span><span class="p">.</span><span class="n">StartNew</span><span class="p">();</span>
 <span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="n">url</span><span class="p">);</span>
