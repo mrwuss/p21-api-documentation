@@ -1443,6 +1443,24 @@ As with `oe_line_po` above, write `{invoice_no}` to match the column's type in `
 
 > **Credit:** *@mrwuss* — verified against production data 26.1, June 2026, re-checked October 2026 ([#183](https://github.com/mrwuss/p21-api-documentation/issues/183)).
 
+#### `invoice_line.invoice_line_type` and `invoice_hdr.source_type_cd`
+
+`invoice_line.invoice_line_type` says what kind of line a row is, as a `code_p21` code. Counted on a test tenant restored from production, 26.1.6004.0 (November 2026), with each code's `code_description`:
+
+| `invoice_line_type` | `code_p21` | Lines |
+|---|---|---|
+| `0` | (none) | 1,474,569 |
+| `981` | Regular Component Invoice | 772,170 |
+| `928` | Incoming Freight | 306,089 |
+| `982` | Bypass Component Invoice | 300,712 |
+| `929` | Outgoing Freight | 203,769 |
+| `930` | Tax | 131,612 |
+| `1136` | Tax Adjustment | 6,449 |
+| `1577` | Labor | 5 |
+| `1719` | Part | 2 |
+
+A revenue or margin report that sums every line counts freight (`928`, `929`) and tax (`930`, `1136`) as sales; leave those types out. `981` and `982` are component lines of kits and assemblies, which carry cost of their own ([below](#kit-and-assembly-lines-parent-cost-ignores-rebates-and-component-lines-carry-cogs-too)). What type `0` covers was not broken down. On the header, `invoice_hdr.source_type_cd` `2871` (*Completed Production Order Adjustment*) marks the cost-only invoices P21 posts when cost reaches a production order after it was invoiced ([12 § Cost Model](12-Production-Labor-API.md#cost-model-know-this-before-trusting-cogs)).
+
 #### `inv_adj_line.cost` is 0 on lines valued at moving average
 
 An inventory adjustment writes `inv_adj_hdr` / `inv_adj_line` and posts `inv_tran` rows with `trans_type = 'IA'`. On lines that P21 values at moving-average cost when the adjustment posts, **`inv_adj_line.cost` stays `0`**. The cost that reached the books is **`inv_tran.unit_cost_amt`** on the `IA` row. Value adjustments from `inv_tran`, not from the adjustment lines.

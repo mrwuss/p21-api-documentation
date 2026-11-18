@@ -856,6 +856,14 @@
 <td><a href="02-OData-API.html#enterpriseglobal-search-views-p21_view_es_">02 § Enterprise/Global Search Views</a></td>
 </tr>
 <tr>
+<td><strong>Production order component cost</strong> — <code>unit_cost</code> is 0 or wrong</td>
+<td><a href="12-Production-Labor-API.html#component-cost-read-inventory_cost-not-unit_cost">12 § Component cost: read <code>inventory_cost</code></a> — the cost the component was consumed at</td>
+</tr>
+<tr>
+<td>Tell <strong>freight, tax and component lines</strong> from sales lines on an invoice; find post-completion production cost invoices</td>
+<td><a href="02-OData-API.html#invoice_lineinvoice_line_type-and-invoice_hdrsource_type_cd">02 § <code>invoice_line_type</code> and <code>source_type_cd</code></a> — <code>928</code>/<code>929</code> freight, <code>930</code> tax, <code>981</code>/<code>982</code> components; header <code>2871</code></td>
+</tr>
+<tr>
 <td>Value <strong>inventory adjustments</strong> — <code>inv_adj_line.cost</code> is 0</td>
 <td><a href="02-OData-API.html#inv_adj_linecost-is-0-on-lines-valued-at-moving-average">02 § <code>inv_adj_line.cost</code> is 0</a> — use <code>inv_tran.unit_cost_amt</code>; net both directions</td>
 </tr>
