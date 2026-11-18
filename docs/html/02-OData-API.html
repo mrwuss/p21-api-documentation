@@ -718,7 +718,10 @@
 <li><a href="#error-response">Error Response</a></li>
 </ul>
 </li>
-<li><a href="#common-tables">Common Tables</a></li>
+<li><a href="#common-tables">Common Tables</a><ul>
+<li><a href="#where-notes-live">Where notes live</a></li>
+</ul>
+</li>
 <li><a href="#enterpriseglobal-search-views-p21_view_es_">Enterprise/Global Search Views (p21_view_es_*)</a><ul>
 <li><a href="#search-source-views-18">Search-source views (18)</a></li>
 <li><a href="#index-configuration-views-7">Index configuration views (7)</a></li>
@@ -2867,6 +2870,90 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <blockquote>
 <p><strong><code>address</code> columns keep their <code>mail_</code>/<code>phys_</code> prefix on OData</strong> — <code>mail_address1</code>, <code>mail_address2</code>, <code>mail_city</code>, <code>mail_state</code>, <code>mail_postal_code</code>, <code>mail_country</code> for the mailing address; <code>phys_address1</code>, <code>phys_address2</code>, <code>phys_city</code>, <code>phys_state</code>, <code>phys_postal_code</code>, <code>phys_country</code> for the physical one. A <code>$select</code> without the prefix (<code>address1</code>, <code>city</code>, <code>postal_code</code>, …) 404s: <code>Could not find a property named 'address1' on type 'dbo.address'.</code> Verified live, 26.1 (September 2026); confirmed against <code>definitions/Address.json</code>'s <code>DbColumnName</code> mapping (<code>address.mail_address1</code>, etc.). The <a href="05-Entity-API.html#address-fields-27-fields">Entity API's Address Fields</a> table documents the same columns under their PascalCase names (<code>MailAddress1</code>, <code>PhysAddress1</code>) if you're on that surface instead.</p>
 </blockquote>
+<h3 id="where-notes-live">Where notes live</h3>
+<p>P21 keeps notes in one table per kind of record, plus a shared <code>note</code> table. Row counts on a test tenant restored from production, 26.1.6004.0 (November 2026), read in SQL:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Notes on</th>
+<th>Rows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>oe_hdr_notepad</code> / <code>oe_line_notepad</code></td>
+<td>Sales order header / line</td>
+<td>134,044 / 680,546</td>
+</tr>
+<tr>
+<td><code>po_hdr_notepad</code> / <code>po_line_notepad</code></td>
+<td>PO header / line</td>
+<td>35,146 / 91,143</td>
+</tr>
+<tr>
+<td><code>invoice_hdr_notepad</code></td>
+<td>Invoice header (<code>invoice_line_notepad</code> is empty here)</td>
+<td>23,265</td>
+</tr>
+<tr>
+<td><code>inventory_return_hdr_notepad</code> / <code>inventory_return_line_notepad</code></td>
+<td>Inventory return header / line</td>
+<td>10,784 / 2,633</td>
+</tr>
+<tr>
+<td><code>customer_notepad</code> / <code>supplier_notepad</code> / <code>vendor_notepad</code></td>
+<td>Customer / supplier / vendor</td>
+<td>2,862 / 1,001 / 161</td>
+</tr>
+<tr>
+<td><code>transfer_hdr_notepad</code> / <code>transfer_line_notepad</code></td>
+<td>Transfer header / line</td>
+<td>1,479 / 1,321</td>
+</tr>
+<tr>
+<td><code>job_price_hdr_notepad</code></td>
+<td>Job price contract</td>
+<td>754</td>
+</tr>
+<tr>
+<td><code>cust_part_no_notepad</code></td>
+<td>Customer part number</td>
+<td>89</td>
+</tr>
+<tr>
+<td><code>inventory_receipt_notepad</code></td>
+<td>Inventory receipt</td>
+<td>45</td>
+</tr>
+<tr>
+<td><code>process_x_transaction_note</code></td>
+<td>Process-to-transaction notes</td>
+<td>26</td>
+</tr>
+<tr>
+<td><code>gl_notepad</code>, <code>stage_notepad</code></td>
+<td>GL, stage</td>
+<td>1 each</td>
+</tr>
+<tr>
+<td><code>note</code>, <code>note_type_cd</code> <code>1807</code> <em>Item Note</em></td>
+<td>Item (<code>document_uid</code> = <code>inv_mast_uid</code>)</td>
+<td>74,977</td>
+</tr>
+<tr>
+<td><code>note</code>, <code>note_type_cd</code> <code>2758</code> <em>Production Order Note</em></td>
+<td>Production order header</td>
+<td>19,051</td>
+</tr>
+<tr>
+<td><code>note</code>, <code>note_type_cd</code> <code>2759</code> <em>Production Order Line Note</em></td>
+<td>Production order line</td>
+<td>127</td>
+</tr>
+</tbody>
+</table></div>
+<p>The tenant has eleven more <code>*_notepad</code> tables that hold no rows: <code>b2b_temp_item</code>, <code>invoice_line</code>, <code>item</code>, <code>job_control_hdr</code>, <code>job_site</code>, <code>process</code>, <code>salesrep</code>, <code>service_item</code>, <code>ship_to</code>, <code>transfer_backorders</code>, <code>work_order</code>. <strong>Item notes are in <code>note</code>, not in <code>item_notepad</code></strong>, which is empty. <code>note</code> is keyed by <code>note_uid</code>, links to its record through <code>document_uid</code>, and marks a live note with <code>row_status_flag</code> <code>704</code> (<em>Active</em>) and a deleted one with <code>700</code> (<em>Delete</em>), where the <code>*_notepad</code> tables use <code>delete_flag</code> <code>Y</code>. How to write each kind: <a href="04-Interactive-API.html#purchaseorder-notes-repeat-adds-line-endings-the-grid-and-completed-pos">04 § Notepad writes</a>.</p>
 <hr />
 <h2 id="enterpriseglobal-search-views-p21_view_es_">Enterprise/Global Search Views (<code>p21_view_es_*</code>)</h2>
 <blockquote>
@@ -4692,7 +4779,10 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <li><a href="#error-response">Error Response</a></li>
 </ul>
 </li>
-<li><a href="#common-tables">Common Tables</a></li>
+<li><a href="#common-tables">Common Tables</a><ul>
+<li><a href="#where-notes-live">Where notes live</a></li>
+</ul>
+</li>
 <li><a href="#enterpriseglobal-search-views-p21_view_es_">Enterprise/Global Search Views (p21_view_es_*)</a><ul>
 <li><a href="#search-source-views-18">Search-source views (18)</a></li>
 <li><a href="#index-configuration-views-7">Index configuration views (7)</a></li>
