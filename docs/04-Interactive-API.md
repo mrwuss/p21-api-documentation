@@ -4471,6 +4471,7 @@ A note read immediately after the save, about 0.3 s later, was already on OData 
 ```python
 """Add a PO header note only if the same live note is not already there: P21 accepts duplicates."""
 import re
+import time
 
 import httpx
 
@@ -4565,8 +4566,14 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
             call("DELETE", f"/v2/window?id={wid}")
         client.delete(f"{api}/sessions")
 
-    # 3. Read it back.
-    added = [n for n in live_notes() if n["topic"] == TOPIC and same_text(n["note"] or "", NOTE_TEXT)]
+    # 3. Read it back; a new note can take a moment to appear on OData.
+    for _ in range(3):
+        added = [n for n in live_notes() if n["topic"] == TOPIC and same_text(n["note"] or "", NOTE_TEXT)]
+        if added:
+            break
+        time.sleep(0.5)
+    else:
+        raise RuntimeError("saved, but the note is not on OData")
     print(f"added note {added[0]['note_id']}; stored text {added[0]['note']!r}")
 ```
 
@@ -4645,8 +4652,20 @@ finally
     await client.DeleteAsync($"{api}/sessions");
 }
 
-// 3. Read it back.
-var added = (await LiveNotes()).First(Matches)!;
+// 3. Read it back; a new note can take a moment to appear on OData.
+JsonNode? added = null;
+for (var attempt = 0; attempt < 3 && added is null; attempt++)
+{
+    added = (await LiveNotes()).FirstOrDefault(Matches);
+    if (added is null)
+    {
+        await Task.Delay(500);
+    }
+}
+if (added is null)
+{
+    throw new InvalidOperationException("saved, but the note is not on OData");
+}
 Console.WriteLine($"added note {added["note_id"]}; stored text {JsonSerializer.Serialize(added["note"]!.GetValue<string>())}");
 
 bool Matches(JsonNode? n) =>
