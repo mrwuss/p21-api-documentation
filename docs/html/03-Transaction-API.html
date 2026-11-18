@@ -1192,9 +1192,20 @@ HTTP 400
 <td><code>oe_hdr.po_no</code> (<code>Order</code>)</td>
 <td>nothing: the <strong>old value stays</strong></td>
 </tr>
+<tr>
+<td><code>prod_order_hdr.comment</code> (<code>ProductionOrder</code>, <code>prod_order_hdr_comment</code>)</td>
+<td>nothing: the <strong>old value stays</strong>, and the Interactive window cannot clear it either</td>
+</tr>
 </tbody>
 </table></div>
 <p>A blank is not a reliable way to clear a field, and you can't predict the result from the request. Read the field back, and filter with both <code>eq ''</code> and <code>eq null</code> when you look for empty values. <em>(Verified on play 26.1.5950.0, 2026-10-29, on a test item and a test order, each restored afterward; other fields not checked.)</em></p>
+<p><strong>A production order's comment can be overwritten but not cleared.</strong> On a test tenant, 26.1.6004.0 (November 2026), this POST stored a text comment on an open order; the same POST with <code>""</code>, <code>" "</code> and <code>null</code> each answered <code>Succeeded: 1</code>, transaction <code>Passed</code>, no message, and the text stayed. In the Interactive <code>ProductionOrder</code> window, a change of <code>prod_order_hdr_comment</code> to <code>""</code> answered <code>Status: 1</code>, the window still showed the old text, and the save kept it. To blank a comment in practice, overwrite it with text that says so.</p>
+<p><code>json
+{"Name": "ProductionOrder", "UseCodeValues": false, "Transactions": [{"Status": "New", "DataElements": [
+  {"Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": ["prod_order_number"],
+   "Rows": [{"Edits": [{"Name": "prod_order_number", "Value": "500100"},
+                       {"Name": "prod_order_hdr_comment", "Value": "Rush: customer pickup Friday"}]}]}]}]}</code></p>
+<p><em>(Lead from an integration; verified @mrwuss, <a href="https://github.com/mrwuss/p21-api-documentation/issues/305">#305</a>.)</em></p>
 </blockquote>
 <hr />
 <h2 id="payload-anatomy-types-nesting-and-common-mistakes">Payload Anatomy -- Types, Nesting, and Common Mistakes</h2>
