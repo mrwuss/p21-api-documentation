@@ -167,6 +167,7 @@ All documentation is derived from:
 | **A `$filter` right-hand side is always a literal** — `col gt other_col` 404s on typed columns and returns **HTTP 200 with zero rows** on strings; compare columns client-side | [docs/02 § The right-hand side is always a literal](docs/02-OData-API.md#the-right-hand-side-is-always-a-literal-you-cannot-compare-two-columns) |
 | **OData silently ignores `in (...)` and `$apply`**, a `GET` query string stops at **8,192 characters** (IIS HTML 404 past it) and a flat `or` chain at **799 terms** — `POST {collection}/$query` with a `text/plain` body lifts the first limit only | [docs/02 § Long filters and `POST /$query`](docs/02-OData-API.md#long-filters-and-post-query) · [§ What the service supports](docs/02-OData-API.md#what-the-service-supports) |
 | **Age AR on the invoice's own `net_due_date`** — `customer.terms_id` is only the default for the *next* document, and an account can hold several sets of terms at once | [docs/02 § `customer.terms_id`](docs/02-OData-API.md#customerterms_id-is-the-default-for-the-next-document-not-the-terms-on-an-existing-one) |
+| **Read P21 users from `view/p21_view_users`, always with `$select`** (it carries four password columns) — `table/users` is withheld from consumer keys, and a second `users` table in another schema takes the entity set (empty list, 404 on `type '.'`) | [docs/02 § Read P21 users](docs/02-OData-API.md#read-p21-users-from-p21_view_users-not-tableusers) |
 | **OData is v4** (not v3), no server-driven paging; second surface `/data/erp/views/v1` does single-row key lookups | [docs/02 § Protocol version](docs/02-OData-API.md#protocol-version) · [docs/02 § The other OData surface](docs/02-OData-API.md#the-other-odata-surface-dataerpviewsv1) |
 | **A window with `frame_menu.service_name` NULL is not out of reach** — the web client's `ui/full` surface opens windows by menu class (`m_*`), no `/api/` prefix, raw-JSON-string body; NULL *and* web-disabled is what means no API surface | [docs/04 § The ui/full Surface](docs/04-Interactive-API.md#the-uifull-surface-the-web-clients-own-rest-api) · [docs/04 § Window→Service Discovery](docs/04-Interactive-API.md#8-window-to-service-discovery-frame_menu) |
 | Which REST families a tenant exposes (`apiref.aspx`, per-family `/help`) | [docs/05 § Discovering what your tenant actually exposes](docs/05-Entity-API.md#discovering-what-your-tenant-actually-exposes) |
@@ -217,4 +218,4 @@ All documentation is derived from:
 
 ---
 
-*Last updated: 2026-11-16*
+*Last updated: 2026-11-18*

@@ -793,7 +793,7 @@
 </tr>
 <tr>
 <td>Read <strong>P21 user accounts</strong> (<code>users</code>) — 401, or 200 with an empty <code>value</code></td>
-<td><a href="02-OData-API.html#one-table-is-withheld-from-every-token-users">02 § One table is withheld from every token: <code>users</code></a> — withheld from consumer keys <em>and</em> password grants by design; no OData workaround</td>
+<td><a href="02-OData-API.html#read-p21-users-from-p21_view_users-not-tableusers">02 § Read P21 users from <code>p21_view_users</code>, not <code>table/users</code></a> — read the view, <strong>always with <code>$select</code></strong> (it carries four password columns); <code>table/users</code> is withheld from consumer keys and can bind to a second <code>users</code> table in another schema</td>
 </tr>
 <tr>
 <td><strong>Does an OData read immediately after a Transaction write ever return stale data?</strong></td>
@@ -818,6 +818,10 @@
 <tr>
 <td>Date filters (<code>now()</code> is unsupported)</td>
 <td><a href="02-OData-API.html#now-function-not-supported">02 § now() Not Supported</a></td>
+</tr>
+<tr>
+<td>An OData read returns an <strong>empty list or a 404 on <code>type '.'</code></strong> for a table you know has rows</td>
+<td><a href="02-OData-API.html#read-p21-users-from-p21_view_users-not-tableusers">02 § Why <code>table/users</code> reads nothing</a> — a table name in two schemas binds to the wrong one; check the service document for a name listed twice and read through a <code>dbo</code> view</td>
 </tr>
 <tr>
 <td>Filter on a <strong>date and time</strong> — 404 on a value that looks right</td>
@@ -1096,7 +1100,7 @@
 </tr>
 <tr>
 <td>Consumer key 401s on a table you just granted it</td>
-<td><a href="00-Authentication.html#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire">00 § The OData allow-list is baked into the token</a> — scope is fixed at issue time and the tokens last ~20 years; mint a new one. <strong><code>users</code> never works</strong>, whatever the scope (<a href="02-OData-API.html#one-table-is-withheld-from-every-token-users">02</a>)</td>
+<td><a href="00-Authentication.html#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire">00 § The OData allow-list is baked into the token</a> — scope is fixed at issue time and the tokens last ~20 years; mint a new one. <strong><code>table/users</code> never works</strong>, whatever the scope; read <code>p21_view_users</code> (<a href="02-OData-API.html#read-p21-users-from-p21_view_users-not-tableusers">02</a>)</td>
 </tr>
 <tr>
 <td>Which <strong>OData version / what's supported</strong></td>

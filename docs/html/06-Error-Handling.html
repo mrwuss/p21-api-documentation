@@ -2220,7 +2220,7 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 <tr>
 <td><code>users</code> returns 401 (consumer key) or 200 with an empty <code>value</code> (password grant)</td>
 <td>OData</td>
-<td>Withheld from every token by design; no OData workaround — <a href="02-OData-API.html#one-table-is-withheld-from-every-token-users">details</a></td>
+<td>Read the <code>p21_view_users</code> view with <code>$select</code> (it carries password columns); <code>table/users</code> is withheld from consumer keys and, on a tenant with a second <code>users</code> table in another schema, binds to the wrong table — <a href="02-OData-API.html#read-p21-users-from-p21_view_users-not-tableusers">details</a></td>
 </tr>
 <tr>
 <td>404 <code>Edm.Decimal</code> / <code>Edm.String</code> operand types</td>

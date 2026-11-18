@@ -180,26 +180,191 @@ The table itself is real — `bin.$Key` appears in `table/$metadata`, and its da
 
 **Read `bin` data through a join instead.** `inv_loc.primary_bin` and `inv_loc.location_id` cover the common case (an item's primary bin at a location); for other bin attributes, `bin_ud` (its user-defined-field extension table) is reachable normally and may carry what you need.
 
-### One table is withheld from every token: `users`
+### Read P21 users from `p21_view_users`, not `table/users`
 
-The `users` table (P21 user accounts) cannot be read through OData by any token. The two authentication methods fail in different shapes, and one of them looks like success:
+Read P21 user accounts from the `p21_view_users` view on the `view` surface, and **always send `$select`**. The view carries every column of the `users` table, 158 of them, including four password columns: `password`, `order_validation_password`, `bypass_check_verify_password` and `docstar_server_password`. A read without `$select` returns all four.
 
-| Token | `table/users?$top=1` | `table/users/$count` |
+```http
+GET /odataservice/odata/view/p21_view_users?$select=id,name,email_address,role_uid,delete_flag&$filter=delete_flag eq 'N'&$top=500
+```
+
+What each path returns, verified on a test tenant and read-only on production, both on 26.1.6004.0 (November 2026):
+
+| Request | Password grant | Consumer key |
 |---|---|---|
-| Consumer key, with or without a username | **401** `You are not authorized to access API. Please contact administrator to get access.` | 401 |
-| Password grant | **200** with `{"value":[]}` | 404 `Value cannot be null` |
+| `table/users?$top=1` | **200** with `{"value":[]}` | **401** `You are not authorized to access API. Please contact administrator to get access.` |
+| `table/users?$select=id&$top=1` | **404** `Could not find a property named 'id' on type '.'.` | 401 |
+| `view/p21_view_users?$select=id,name&$top=2` | **200**, two rows | 401 when the key's allow-list does not name the view |
+| `view/p21_view_users?$select=id&$filter=delete_flag eq 'N'&$count=true` | 200, every active user and `@odata.count` | 401, as above |
 
-What the tests ruled out:
+**Why `table/users` reads nothing: two tables share the name.** OData exposes the base tables of every database schema under the bare table name, with no schema prefix. On the tenants tested, `dbo` and five other schemas hold tables, and one of those schemas, added by the site, holds a second table named `users`. The service document then lists `users` twice, `$metadata` holds both types (`dbo.users`, 158 columns, and the other schema's 13-column `users`), and the container binds the `users` entity set to the other schema's type. Every `$select` and `$filter` on `users` then fails against a type named `'.'`, the other table's own columns included, and a read without `$select` returns an empty list. A table in the same schema whose name is not taken twice reads normally by its bare name. No scope or permission setting repairs a name collision.
 
-- **Scope.** The consumer key's decoded `aud` claim listed `users` as an exact entry in its [OData allow-list](00-Authentication.md#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire), and the token was minted immediately before the calls. Every other table in the same list returned 200 with the same token.
-- **Columns.** Under a consumer key, `$select=id,name` returns the same 401, so the block is on the table, not on sensitive columns.
-- **Filters.** Under a password grant, `$filter` on the caller's own `id` still returns an empty `value`. A control read of `table/customer?$top=1` with the same token returns a real row, and the table is not empty in SQL.
+Check the service document (`GET /odataservice/odata/table`) for a name listed twice before you trust an empty read. Any table whose name exists in two schemas breaks the same way; read it through a `dbo` view instead.
 
-A P21 system administrator confirmed that withholding `users` from consumer keys is intended behavior: adding `users` to a key's scope has no effect by design. The password-grant result shows the restriction covers that method too. Epicor has not published a list of tables withheld this way.
+What is and is not settled:
 
-**Treat an empty `value` on `users` as "withheld", not "no rows".** A client that checks only the status code reports a password-grant read as a success that found nothing. There is no supported OData workaround. Whether a custom view that selects from `users` is also withheld is untested.
+- **Consumer keys are refused `table/users` even when the allow-list names it.** The key's decoded `aud` claim listed `users` as an exact entry, and the token was minted immediately before the call; every other table in the list returned 200 with the same token. A P21 system administrator confirmed that withholding `users` from consumer keys is intended behavior.
+- **A consumer key reads `p21_view_users` only if its allow-list names the view**, like any other object ([API Scopes](00-Authentication.md#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire)). The key tested did not name it and got 401. Whether naming the view opens it was not tested.
+- **A tenant whose database holds only `dbo.users` was not available.** The earlier reading that the empty password-grant read is a deliberate withholding was made on these same tenants, so it does not tell the two causes apart. On a tenant with a second `users` table, the collision alone explains the empty read.
+- **`/$count` is not evidence either way.** `table/users/$count` answers 404 `Value cannot be null. (Parameter 'elementType')`, and so does `table/customer/$count`; see [$count](#count-get-count).
 
-> **Credit:** *@mrwuss* — verified on production and play 26.1, September 2026, with both authentication methods; a second integrator reported the same consumer-key 401 on another play middleware host and on live ([#164](https://github.com/mrwuss/p21-api-documentation/issues/164)). An earlier reading that a password grant *could* read `users` came from a status-code-only check and is withdrawn.
+<!-- tabs -->
+
+```python
+"""List active P21 users through the p21_view_users view, naming every column (the view carries password columns)."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+PAGE = 500
+# ---------------------------------------------------------------------------
+
+# Name every column you read. Without $select the view returns all 158 columns,
+# password, order_validation_password, bypass_check_verify_password and
+# docstar_server_password among them.
+COLUMNS = "id,name,email_address,role_uid,default_location_id,delete_flag"
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    client.headers.update({"Authorization": f"Bearer {token}", "Accept": "application/json"})
+    users, skip = [], 0
+    while True:
+        # The view is on the view surface; table/users reads nothing useful (see above).
+        r = client.get(f"{BASE_URL}/odataservice/odata/view/p21_view_users", params={
+            "$select": COLUMNS,
+            "$filter": "delete_flag eq 'N'",
+            "$orderby": "id",
+            "$top": str(PAGE), "$skip": str(skip),
+        })
+        r.raise_for_status()
+        rows = r.json()["value"]
+        users += rows
+        if len(rows) < PAGE:
+            break
+        skip += PAGE
+    print(f"{len(users)} active users")
+    for u in users[:10]:
+        print(f"  {u['id']:<20} {u['name'] or '':<30} role_uid={u['role_uid']}")
+```
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+const int Page = 500;
+// ---------------------------------------------------------------------------
+
+// Name every column you read. Without $select the view returns all 158 columns,
+// password, order_validation_password, bypass_check_verify_password and
+// docstar_server_password among them.
+const string Columns = "id,name,email_address,role_uid,default_location_id,delete_flag";
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(
+    new MediaTypeWithQualityHeaderValue("application/json"));
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", token);
+
+var users = new List<JsonElement>();
+for (var skip = 0; ; skip += Page)
+{
+    // The view is on the view surface; table/users reads nothing useful (see above).
+    var url = $"{BaseUrl}/odataservice/odata/view/p21_view_users" +
+              $"?$select={Columns}&$orderby=id&$top={Page}&$skip={skip}" +
+              "&$filter=" + Uri.EscapeDataString("delete_flag eq 'N'");
+    using var r = await client.GetAsync(url);
+    r.EnsureSuccessStatusCode();
+    using var d = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+    var rows = d.RootElement.GetProperty("value").EnumerateArray().Select(x => x.Clone()).ToList();
+    users.AddRange(rows);
+    if (rows.Count < Page)
+    {
+        break;
+    }
+}
+
+Console.WriteLine($"{users.Count} active users");
+foreach (var u in users.Take(10))
+{
+    var name = u.GetProperty("name").ValueKind == JsonValueKind.Null ? "" : u.GetProperty("name").GetString();
+    Console.WriteLine($"  {u.GetProperty("id").GetString(),-20} {name,-30} role_uid={u.GetProperty("role_uid")}");
+}
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers the token endpoint in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on the test tenant on 26.1.6004.0 and listed the same active users, with a page of 500 and again with a page of 50 (several pages).
+
+> **Credit:** *@mrwuss* — `users` withheld from consumer keys verified on production and a test tenant on 26.1, September 2026, with a second integrator reporting the same consumer-key 401 on another play middleware host and on live ([#164](https://github.com/mrwuss/p21-api-documentation/issues/164)). The name collision and the `p21_view_users` path verified on both tenants on 26.1.6004.0, November 2026 ([#286](https://github.com/mrwuss/p21-api-documentation/issues/286)).
 
 ---
 
@@ -322,6 +487,8 @@ Include total count in response:
 ```http
 /odata/table/supplier?$count=true
 ```
+
+Send `$count=true` as a query option. The `/$count` path segment answers HTTP 404 `Value cannot be null. (Parameter 'elementType')` on each collection tried, on both surfaces (`table/customer/$count`, `view/p21_view_oe_hdr/$count`; test tenant, 26.1.6004.0, November 2026).
 
 ---
 
