@@ -2218,6 +2218,11 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 <td>Verify table name</td>
 </tr>
 <tr>
+<td>404 <code>Execution Timeout Expired.</code> after about 30 s</td>
+<td>OData</td>
+<td>P21's 30-second SQL limit, not a missing object; a deep <code>$skip</code> page usually causes it — page on the key — <a href="02-OData-API.html#deep-pages-page-on-the-key-not-skip">details</a></td>
+</tr>
+<tr>
 <td><code>users</code> returns 401 (consumer key) or 200 with an empty <code>value</code> (password grant)</td>
 <td>OData</td>
 <td>Read the <code>p21_view_users</code> view with <code>$select</code> (it carries password columns); <code>table/users</code> is withheld from consumer keys and, on a tenant with a second <code>users</code> table in another schema, binds to the wrong table — <a href="02-OData-API.html#read-p21-users-from-p21_view_users-not-tableusers">details</a></td>
