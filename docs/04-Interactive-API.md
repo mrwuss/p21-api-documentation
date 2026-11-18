@@ -3204,11 +3204,11 @@ static string ReadField(string payload, string field)
 ### Recipe: Add a Line Note
 
 1. Start the session with `"ResponseWindowHandlingEnabled": true`, open the `PurchaseOrder` window, and load the PO.
-2. **Select the target line row** in the line grid (`tp_17_dw_17`):
+2. **Select the target line row** in the line grid (`tp_17_dw_17`). Rows are 1-based and count every line on the PO, cancelled and deleted ones included ([details](#purchaseorder-acknowledging-a-line-in-the-window)); the first line is row 1:
 
    ```json
    PUT /api/ui/interactive/v2/row
-   {"WindowId": "{windowId}", "DatawindowName": "tp_17_dw_17", "Row": 0}
+   {"WindowId": "{windowId}", "DatawindowName": "tp_17_dw_17", "Row": 1}
    ```
 
 3. Switch to the **PO Line Notes** tab (`tp_21_dw_21`, `PageName: "TABPAGE_21"`).
@@ -6104,13 +6104,18 @@ await http.PutAsync($"{uiUrl}/api/ui/interactive/v2/data",
 
 **Related trap — never `select_row` on the detail form itself.** A single-row detail form (e.g. `inv_loc_detail`) is *bound* to the currently-selected parent list row. Sending `PUT /v2/row` against the **detail** datawindow does not select within the detail — it re-selects the *parent* list (row N on the detail = row N on `invloclist`) and **silently flips which record the detail is bound to**, typically to the list's first row. The edit then lands on the wrong location while every call reports success. Select only the parent list row, edit the detail directly, and assert the detail shows exactly the intended record before and after the change (abort without saving on mismatch). The Transaction API's nested pattern keys by `location_id` and has no such trap. *(Credit: [Alex Westemeier](https://github.com/AWestemeier))*
 
-### Row 0 Auto-Selection Quirk
+### Rows Are 1-Based; Row 0 Is Invalid
 
-After switching to a tab that contains a list or grid datawindow, row 0 is **automatically selected** by the API. Explicitly calling `change_row(0)` after switching tabs returns HTTP 422 because the row is already selected.
+Grid rows are numbered from **1**. After a tab switch to a grid, the first row is already selected (`ActiveRow` `1`). Verified on a test tenant, 26.1.6004.0 (November 2026), on the PurchaseOrder line grid (`tp_17_dw_17`, three lines) and notes grid (`tp_7_dw_7`):
 
-**Symptom:** `PUT /api/ui/interactive/v2/row` with `Row: 0` returns 422 error.
+| `PUT /api/ui/interactive/v2/row` | Result |
+|---|---|
+| `Row` 1, 2 or 3 | `Status: 1`; `ActiveRow` becomes that row |
+| `Row` 1 when row 1 is already active | `Status: 1` |
+| `Row` 0 | HTTP 400 `{"ErrorMessage": "Invalid row"}` |
+| `Row` 4 (past the end), or `Row` 1 on an empty grid | HTTP 400 `{"ErrorMessage": "Invalid row"}` |
 
-**Workaround:** Skip the `change_row(0)` call when targeting the first row. Start explicit row selection at row 1. Guard helper only — it makes no call of its own:
+Earlier builds were documented answering `Row` 0 with HTTP 422. The fix is the same: never send 0, and read a grid's `TotalRows` before you select a row in it. Guard helper only — it makes no call of its own:
 
 > Full runnable version of the row/tab calls it wraps: [Linking Price Page to Price Book](#example-linking-price-page-to-price-book)
 
@@ -6120,14 +6125,9 @@ After switching to a tab that contains a list or grid datawindow, row 0 is **aut
 
 ```python
 async def select_row_safe(window: Window, row: int, datawindow_name: str):
-    """Select a row, handling the row 0 auto-selection quirk.
-
-    Row 0 is auto-selected when switching to a tab with a grid.
-    Calling change_row(0) explicitly returns 422.
-    """
-    if row == 0:
-        # Row 0 is already selected after tab switch - skip
-        return
+    """Select a grid row. Rows are 1-based; Row 0 answers HTTP 400 "Invalid row"."""
+    if row < 1:
+        raise ValueError(f"grid rows start at 1, got {row}")
     await window.change_row(row, datawindow_name)
 ```
 
@@ -6136,12 +6136,10 @@ async def select_row_safe(window: Window, row: int, datawindow_name: str):
 ```csharp
 public async Task SelectRowSafeAsync(Window window, int row, string datawindowName)
 {
-    // Row 0 is auto-selected when switching to a tab with a grid.
-    // Calling ChangeRow(0) explicitly returns 422.
-    if (row == 0)
+    // Rows are 1-based; Row 0 answers HTTP 400 "Invalid row".
+    if (row < 1)
     {
-        // Row 0 is already selected after tab switch - skip
-        return;
+        throw new ArgumentOutOfRangeException(nameof(row), "grid rows start at 1");
     }
     await window.ChangeRowAsync(row, datawindowName);
 }
@@ -6149,7 +6147,7 @@ public async Task SelectRowSafeAsync(Window window, int row, string datawindowNa
 
 <!-- /tabs -->
 
-**Important:** This is different from the [row selection synchronization bug](#row-selection-synchronization-bug-list-detail) documented above. That bug is about list-to-detail data sync being one row behind. This quirk is specifically about row 0 being pre-selected after a tab switch.
+**Important:** This is different from the [row selection synchronization bug](#row-selection-synchronization-bug-list-detail) documented above. That bug is about list-to-detail data sync being one row behind. This section is about how rows are numbered.
 
 ### Key Fields Commit the Cursor (Later Fields Silently Ignored)
 
@@ -6236,8 +6234,10 @@ When setting numeric fields, send whole numbers as integer strings (`"30"`), not
 
 **v2:**
 ```json
-{"WindowId": "...", "DatawindowName": "list", "Row": 0}
+{"WindowId": "...", "DatawindowName": "list", "Row": 1}
 ```
+
+The v2 `Row` is 1-based; see [Rows are 1-based; Row 0 is invalid](#rows-are-1-based-row-0-is-invalid). The v1 body is shown as it was documented; how v1 numbers rows was not tested.
 
 ### Get Window Data / Close Window
 

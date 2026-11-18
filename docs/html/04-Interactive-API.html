@@ -795,7 +795,7 @@
 <li><a href="#session-vs-transaction-api">Session vs Transaction API</a></li>
 <li><a href="#known-issues-and-workarounds">Known Issues and Workarounds</a><ul>
 <li><a href="#row-selection-synchronization-bug-list-detail">Row Selection Synchronization Bug (List → Detail)</a></li>
-<li><a href="#row-0-auto-selection-quirk">Row 0 Auto-Selection Quirk</a></li>
+<li><a href="#rows-are-1-based-row-0-is-invalid">Rows Are 1-Based; Row 0 Is Invalid</a></li>
 <li><a href="#key-fields-commit-the-cursor-later-fields-silently-ignored">Key Fields Commit the Cursor (Later Fields Silently Ignored)</a></li>
 <li><a href="#numeric-values-send-integer-strings-for-whole-numbers">Numeric Values: Send Integer Strings for Whole Numbers</a></li>
 </ul>
@@ -4407,11 +4407,11 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <h3 id="recipe-add-a-line-note">Recipe: Add a Line Note</h3>
 <ol>
 <li>Start the session with <code>"ResponseWindowHandlingEnabled": true</code>, open the <code>PurchaseOrder</code> window, and load the PO.</li>
-<li><strong>Select the target line row</strong> in the line grid (<code>tp_17_dw_17</code>):</li>
+<li><strong>Select the target line row</strong> in the line grid (<code>tp_17_dw_17</code>). Rows are 1-based and count every line on the PO, cancelled and deleted ones included (<a href="#purchaseorder-acknowledging-a-line-in-the-window">details</a>); the first line is row 1:</li>
 </ol>
 <p><code>json
    PUT /api/ui/interactive/v2/row
-   {"WindowId": "{windowId}", "DatawindowName": "tp_17_dw_17", "Row": 0}</code></p>
+   {"WindowId": "{windowId}", "DatawindowName": "tp_17_dw_17", "Row": 1}</code></p>
 <ol>
 <li>Switch to the <strong>PO Line Notes</strong> tab (<code>tp_21_dw_21</code>, <code>PageName: "TABPAGE_21"</code>).</li>
 <li>Run the <strong>line</strong> add tool:</li>
@@ -8088,10 +8088,35 @@ Row 5 selected → Detail shows row 4 (1 behind)
 - Likely other windows with list/detail patterns</p>
 <p><strong>Note:</strong> This issue may be specific to certain P21 versions or configurations. Test thoroughly with your environment.</p>
 <p><strong>Related trap — never <code>select_row</code> on the detail form itself.</strong> A single-row detail form (e.g. <code>inv_loc_detail</code>) is <em>bound</em> to the currently-selected parent list row. Sending <code>PUT /v2/row</code> against the <strong>detail</strong> datawindow does not select within the detail — it re-selects the <em>parent</em> list (row N on the detail = row N on <code>invloclist</code>) and <strong>silently flips which record the detail is bound to</strong>, typically to the list's first row. The edit then lands on the wrong location while every call reports success. Select only the parent list row, edit the detail directly, and assert the detail shows exactly the intended record before and after the change (abort without saving on mismatch). The Transaction API's nested pattern keys by <code>location_id</code> and has no such trap. <em>(Credit: <a href="https://github.com/AWestemeier">Alex Westemeier</a>)</em></p>
-<h3 id="row-0-auto-selection-quirk">Row 0 Auto-Selection Quirk</h3>
-<p>After switching to a tab that contains a list or grid datawindow, row 0 is <strong>automatically selected</strong> by the API. Explicitly calling <code>change_row(0)</code> after switching tabs returns HTTP 422 because the row is already selected.</p>
-<p><strong>Symptom:</strong> <code>PUT /api/ui/interactive/v2/row</code> with <code>Row: 0</code> returns 422 error.</p>
-<p><strong>Workaround:</strong> Skip the <code>change_row(0)</code> call when targeting the first row. Start explicit row selection at row 1. Guard helper only — it makes no call of its own:</p>
+<h3 id="rows-are-1-based-row-0-is-invalid">Rows Are 1-Based; Row 0 Is Invalid</h3>
+<p>Grid rows are numbered from <strong>1</strong>. After a tab switch to a grid, the first row is already selected (<code>ActiveRow</code> <code>1</code>). Verified on a test tenant, 26.1.6004.0 (November 2026), on the PurchaseOrder line grid (<code>tp_17_dw_17</code>, three lines) and notes grid (<code>tp_7_dw_7</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th><code>PUT /api/ui/interactive/v2/row</code></th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Row</code> 1, 2 or 3</td>
+<td><code>Status: 1</code>; <code>ActiveRow</code> becomes that row</td>
+</tr>
+<tr>
+<td><code>Row</code> 1 when row 1 is already active</td>
+<td><code>Status: 1</code></td>
+</tr>
+<tr>
+<td><code>Row</code> 0</td>
+<td>HTTP 400 <code>{"ErrorMessage": "Invalid row"}</code></td>
+</tr>
+<tr>
+<td><code>Row</code> 4 (past the end), or <code>Row</code> 1 on an empty grid</td>
+<td>HTTP 400 <code>{"ErrorMessage": "Invalid row"}</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Earlier builds were documented answering <code>Row</code> 0 with HTTP 422. The fix is the same: never send 0, and read a grid's <code>TotalRows</code> before you select a row in it. Guard helper only — it makes no call of its own:</p>
 <blockquote>
 <p>Full runnable version of the row/tab calls it wraps: <a href="#example-linking-price-page-to-price-book">Linking Price Page to Price Book</a></p>
 </blockquote>
@@ -8102,33 +8127,26 @@ Row 5 selected → Detail shows row 4 (1 behind)
   </div>
   <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">select_row_safe</span><span class="p">(</span><span class="n">window</span><span class="p">:</span> <span class="n">Window</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Select a row, handling the row 0 auto-selection quirk.</span>
-
-<span class="sd">    Row 0 is auto-selected when switching to a tab with a grid.</span>
-<span class="sd">    Calling change_row(0) explicitly returns 422.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">row</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="c1"># Row 0 is already selected after tab switch - skip</span>
-        <span class="k">return</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Select a grid row. Rows are 1-based; Row 0 answers HTTP 400 &quot;Invalid row&quot;.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">row</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;grid rows start at 1, got </span><span class="si">{</span><span class="n">row</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_row</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="p">)</span>
 </code></pre></div>
 </div>
   <div class="tab-panel" data-lang="csharp">
 <div class="highlight"><pre><span></span><code><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="w"> </span><span class="nf">SelectRowSafeAsync</span><span class="p">(</span><span class="n">Window</span><span class="w"> </span><span class="n">window</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">row</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">datawindowName</span><span class="p">)</span>
 <span class="p">{</span>
-<span class="w">    </span><span class="c1">// Row 0 is auto-selected when switching to a tab with a grid.</span>
-<span class="w">    </span><span class="c1">// Calling ChangeRow(0) explicitly returns 422.</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">row</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">    </span><span class="c1">// Rows are 1-based; Row 0 answers HTTP 400 &quot;Invalid row&quot;.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">row</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span>
 <span class="w">    </span><span class="p">{</span>
-<span class="w">        </span><span class="c1">// Row 0 is already selected after tab switch - skip</span>
-<span class="w">        </span><span class="k">return</span><span class="p">;</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">ArgumentOutOfRangeException</span><span class="p">(</span><span class="k">nameof</span><span class="p">(</span><span class="n">row</span><span class="p">),</span><span class="w"> </span><span class="s">&quot;grid rows start at 1&quot;</span><span class="p">);</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="n">window</span><span class="p">.</span><span class="n">ChangeRowAsync</span><span class="p">(</span><span class="n">row</span><span class="p">,</span><span class="w"> </span><span class="n">datawindowName</span><span class="p">);</span>
 <span class="p">}</span>
 </code></pre></div>
 </div>
 </div>
-<p><strong>Important:</strong> This is different from the <a href="#row-selection-synchronization-bug-list-detail">row selection synchronization bug</a> documented above. That bug is about list-to-detail data sync being one row behind. This quirk is specifically about row 0 being pre-selected after a tab switch.</p>
+<p><strong>Important:</strong> This is different from the <a href="#row-selection-synchronization-bug-list-detail">row selection synchronization bug</a> documented above. That bug is about list-to-detail data sync being one row behind. This section is about how rows are numbered.</p>
 <h3 id="key-fields-commit-the-cursor-later-fields-silently-ignored">Key Fields Commit the Cursor (Later Fields Silently Ignored)</h3>
 <p>Sending a grid row's <strong>key field</strong> in a <code>change</code> request commits the row cursor — any field in the same <code>List</code> (or a later call) that follows the key field is <strong>silently ignored</strong> (the call still returns a success status). Example: on the JobContractPricing BINS grid, <code>contract_bin_id</code> is the key; if it appears before the quantity fields, the quantities never land.</p>
 <p><strong>Guidance:</strong></p>
@@ -8225,9 +8243,10 @@ Row 5 selected → Detail shows row 4 (1 behind)
 </code></pre></div>
 
 <p><strong>v2:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;list&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Row&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;list&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Row&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">}</span>
 </code></pre></div>
 
+<p>The v2 <code>Row</code> is 1-based; see <a href="#rows-are-1-based-row-0-is-invalid">Rows are 1-based; Row 0 is invalid</a>. The v1 body is shown as it was documented; how v1 numbers rows was not tested.</p>
 <h3 id="get-window-data-close-window">Get Window Data / Close Window</h3>
 <p><strong>v2:</strong> Use <code>?id=</code> query parameter:</p>
 <div class="highlight"><pre><span></span><code><span class="err">GET /api/ui/interactive/v2/data?id={windowId}</span>
@@ -8823,7 +8842,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <li><a href="#session-vs-transaction-api">Session vs Transaction API</a></li>
 <li><a href="#known-issues-and-workarounds">Known Issues and Workarounds</a><ul>
 <li><a href="#row-selection-synchronization-bug-list-detail">Row Selection Synchronization Bug (List → Detail)</a></li>
-<li><a href="#row-0-auto-selection-quirk">Row 0 Auto-Selection Quirk</a></li>
+<li><a href="#rows-are-1-based-row-0-is-invalid">Rows Are 1-Based; Row 0 Is Invalid</a></li>
 <li><a href="#key-fields-commit-the-cursor-later-fields-silently-ignored">Key Fields Commit the Cursor (Later Fields Silently Ignored)</a></li>
 <li><a href="#numeric-values-send-integer-strings-for-whole-numbers">Numeric Values: Send Integer Strings for Whole Numbers</a></li>
 </ul>
