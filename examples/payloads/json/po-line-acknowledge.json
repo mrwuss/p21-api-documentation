@@ -1,0 +1,75 @@
+{
+  "Name": "PurchaseOrder",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.tp_1_dw_1",
+          "Type": "Form",
+          "Keys": [
+            "po_no"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "po_no",
+                  "Value": "500100"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TABPAGE_17.tp_17_dw_17",
+          "Type": "List",
+          "Keys": [
+            "line_no"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "line_no",
+                  "Value": "2"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TABPAGE_18.extended_info",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "c_shipped_flag",
+                  "Value": "ON"
+                },
+                {
+                  "Name": "supplier_ship_date",
+                  "Value": "2026-12-02"
+                },
+                {
+                  "Name": "acknowledged",
+                  "Value": "ON"
+                },
+                {
+                  "Name": "acknowledged_date",
+                  "Value": "2026-11-17"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1023,6 +1023,10 @@
 <td><a href="02-OData-API.html#a-po-has-no-freight-amount-and-po_hdrack_date-is-not-used">02 § A PO has no freight amount, and <code>po_hdr.ack_date</code> is not used</a> — acknowledgement is on <code>po_line</code></td>
 </tr>
 <tr>
+<td><strong>Acknowledge a PO line</strong> or set the supplier's <strong>ship date</strong> (<em>Ack Ship Date</em>); <code>Column is disabled: supplier_ship_date</code></td>
+<td><a href="03-Transaction-API.html#purchaseorder-service-acknowledging-a-line-and-its-ship-date">03 § Acknowledging a Line and Its Ship Date</a> — set <code>c_shipped_flag</code> <code>ON</code> in the same row; a new ship date moves <code>date_due</code> · window: <a href="04-Interactive-API.html#purchaseorder-acknowledging-a-line-in-the-window">04</a></td>
+</tr>
+<tr>
 <td>"When did the supplier say this would ship?"</td>
 <td><a href="02-OData-API.html#po_linesupplier_ship_date-is-last-shipment-observed-on-direct-ship-pos-not-a-supplier-promise">02 § <code>po_line.supplier_ship_date</code></a> — <strong>not a promise on direct-ship POs</strong>; use <code>date_due</code></td>
 </tr>
