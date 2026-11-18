@@ -2375,6 +2375,25 @@ public class BookLookupCache
 
 ---
 
+## PurchaseOrder: Acknowledging a Line in the Window
+
+The same writes as the [Transaction API recipe](03-Transaction-API.md#purchaseorder-service-acknowledging-a-line-and-its-ship-date) work through the Interactive `PurchaseOrder` window, one field per `v2/change`. Verified on a test tenant, 26.1.6004.0 (November 2026), on an open PO whose first line was cancelled and deleted:
+
+1. Load the PO: `PUT v2/change` with `po_no` on `TABPAGE_1` (`tp_1_dw_1`).
+2. `PUT v2/tab` to `TABPAGE_17`, then `PUT v2/row` with `DatawindowName` `tp_17_dw_17` and the line's **row number**.
+3. `PUT v2/tab` to `TABPAGE_18`, then one `PUT v2/change` each, with `TabName` `TABPAGE_18` and **no `DatawindowName`**: `c_shipped_flag` `Y`, `supplier_ship_date`, `acknowledged` `Y`, `acknowledged_date`.
+4. `PUT v2/data` to save, and read the line back over OData.
+
+What the window adds to the Transaction API picture:
+
+- **The row number counts every line on the PO, cancelled and deleted ones included.** The grid held all three lines, so line 2 was row 2. The grid orders on `COALESCE(parent_po_line_no, line_no), line_no`, so quantity-break lines sit under their parent line: count rows in that order, or read `line_no` from the grid before selecting a row.
+- **`supplier_ship_date` before the gate** answers HTTP 400 `{"ErrorMessage": "Column is disabled: supplier_ship_date"}`. After `c_shipped_flag` `Y`, the window showed today's date in the ship date and a new `date_due` before any save.
+- **`DatawindowName` was not needed** for these `TABPAGE_18` changes. The [25.2 requirement](14-Breaking-Changes.md#p21-252) did not apply to them on this build; send it anyway if you support older builds.
+- **Clearing the gate** (`c_shipped_flag` `N`) cleared the ship date and recomputed `date_due`; `acknowledged` `N` and an empty `acknowledged_date` cleared the acknowledgement; `date_due` accepts a direct change. Saved and read back.
+- **A fully received line** answered `Column is disabled` for `acknowledged`, `acknowledged_date` and `date_due`; `c_shipped_flag` and `supplier_ship_date` were still accepted. Not saved.
+
+The `acknowledged` and `c_shipped_flag` changes can also fire site rules and notifications ([07 § the email dialog](07-Session-Pool-Troubleshooting.md)); read the save's `Messages`.
+
 ## PurchaseOrder Notepad Writes (Header vs Line)
 
 The PurchaseOrder window exposes **two separate notepad surfaces**, and they use **different tabs and different tools**. Conflating them silently writes to the wrong place with no error.

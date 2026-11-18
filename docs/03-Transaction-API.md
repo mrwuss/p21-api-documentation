@@ -5509,6 +5509,307 @@ Both programs ran on play 26.1.6004.0 against a throwaway PO, with a second thro
 
 *Verified by @mrwuss* ([#267](https://github.com/mrwuss/p21-api-documentation/issues/267)).
 
+### PurchaseOrder Service — Acknowledging a Line and Its Ship Date
+
+A supplier's acknowledgement lives on the PO **line**: `po_line.acknowledged` and `po_line.acknowledged_date` (*Acknowledged*, *Acknowledged Date*) and the supplier's ship date, `po_line.supplier_ship_date` (*Ack Ship Date*). The PO header has no acknowledgement field in the service ([why `po_hdr.ack_date` is not it](02-OData-API.md#a-po-has-no-freight-amount-and-po_hdrack_date-is-not-used)). All three are on the line detail form, `TABPAGE_18.extended_info`, and one POST writes them: select the line through `TABPAGE_17.tp_17_dw_17` keyed on `line_no`, then edit the form.
+
+```json
+{
+  "Name": "PurchaseOrder",
+  "UseCodeValues": false,
+  "Transactions": [{
+    "Status": "New",
+    "DataElements": [
+      {"Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": ["po_no"],
+       "Rows": [{"Edits": [{"Name": "po_no", "Value": "500100"}]}]},
+      {"Name": "TABPAGE_17.tp_17_dw_17", "Type": "List", "Keys": ["line_no"],
+       "Rows": [{"Edits": [{"Name": "line_no", "Value": "2"}]}]},
+      {"Name": "TABPAGE_18.extended_info", "Type": "Form", "Keys": [],
+       "Rows": [{"Edits": [
+         {"Name": "c_shipped_flag", "Value": "ON"},
+         {"Name": "supplier_ship_date", "Value": "2026-12-02"},
+         {"Name": "acknowledged", "Value": "ON"},
+         {"Name": "acknowledged_date", "Value": "2026-11-17"}]}]}
+    ]
+  }]
+}
+```
+
+Verified on a test tenant, 26.1.6004.0 (November 2026), on an open stock PO, every result read back over OData:
+
+| Payload | Result |
+|---|---|
+| `supplier_ship_date` alone, on a line with no ship date | `Failed: 1`: `Column is disabled: supplier_ship_date`; nothing written |
+| `c_shipped_flag` `ON` + `supplier_ship_date` + `acknowledged` `ON` + `acknowledged_date` | `Succeeded: 1`; all three columns written, and `date_due` moved from 2026-11-13 to 2026-12-07 |
+| `supplier_ship_date` alone, on a line that already has one | `Succeeded: 1`; ship date replaced, `date_due` moved again |
+| The full payload again, on a line already acknowledged | `Succeeded: 1`; the new dates replace the old |
+| `c_shipped_flag` `OFF` + `acknowledged` `OFF` + `acknowledged_date` empty + `date_due` | `Succeeded: 1`; ship date and acknowledged date cleared, `acknowledged` `N`, `date_due` as sent |
+
+What the table shows:
+
+- **`c_shipped_flag` (*Ack'd*) is a gate, not a column.** The window computes it from the ship date (`CASE WHEN supplier_ship_date IS NULL THEN 'N' ELSE 'Y' END`), so it is not on `po_line` and an OData `$select` of it 404s. While it is off, `supplier_ship_date` is disabled. Turning it on fills the ship date with today's date, so send the date you want in the same row; turning it off clears the ship date.
+- **A ship date moves the expected date.** Each new `supplier_ship_date` recomputed `date_due` (*Expected Date*), to three working days later on the PO tested; where the offset comes from was not traced. `date_due` is the column [docs/02 recommends](02-OData-API.md#po_linesupplier_ship_date-is-last-shipment-observed-on-direct-ship-pos-not-a-supplier-promise) as the live expected date, so after acknowledging a ship date it reflects the supplier's date, not the buyer's. Send `date_due` in the same row to keep a value of your own.
+- **Every save stamps the line.** `last_maintained_by` becomes the token's user and `date_last_modified` moves; a restore cannot put them back.
+- **A fully received line refuses** `acknowledged`, `acknowledged_date` and `date_due` (`Column is disabled`). A partly received line accepted all of them. Both were checked in the window without saving.
+
+<!-- tabs -->
+
+```python
+"""Acknowledge one PO line and set the supplier's ship date through the Transaction API."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+PO_NO = 1000123                           # po_hdr.po_no
+LINE_NO = 2                               # po_line.line_no
+ACK_DATE = "2026-11-17"                   # po_line.acknowledged_date
+SHIP_DATE = "2026-12-02"                  # po_line.supplier_ship_date ("Ack Ship Date")
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client) -> str:
+    """Transaction calls go to the UI server; the trailing slash avoids a 307."""
+    r = client.get(f"{BASE_URL}/api/ui/router/v1/?urlType=external")
+    r.raise_for_status()
+    return r.json()["Url"].rstrip("/")
+
+
+def element(name: str, typ: str, keys: list[str], edits: dict[str, str]) -> dict:
+    return {"Name": name, "Type": typ, "Keys": keys,
+            "Rows": [{"Edits": [{"Name": k, "Value": v} for k, v in edits.items()], "RelativeDateEdits": []}]}
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    client.headers.update({"Authorization": f"Bearer {token}", "Accept": "application/json"})
+    ui = get_ui_server(client)
+    line_url = f"{BASE_URL}/odataservice/odata/table/po_line"
+    line_query = {"$select": "line_no,complete,cancel_flag,delete_flag,acknowledged,acknowledged_date,"
+                             "supplier_ship_date,date_due",
+                  "$filter": f"po_no eq {PO_NO} and line_no eq {LINE_NO}"}
+
+    r = client.get(line_url, params=line_query)
+    r.raise_for_status()
+    before = r.json()["value"]
+    if not before:
+        raise SystemExit(f"PO {PO_NO} has no line {LINE_NO}")
+    if "Y" in (before[0]["complete"], before[0]["cancel_flag"], before[0]["delete_flag"]):
+        raise SystemExit(f"line {LINE_NO} is complete, cancelled or deleted: {before[0]}")
+    print("before:", before[0])
+
+    body = {"Name": "PurchaseOrder", "UseCodeValues": False, "Transactions": [{
+        "Status": "New",
+        "DataElements": [
+            element("TABPAGE_1.tp_1_dw_1", "Form", ["po_no"], {"po_no": str(PO_NO)}),
+            # Select the line by its line_no; every TABPAGE_18 edit then applies to it.
+            element("TABPAGE_17.tp_17_dw_17", "List", ["line_no"], {"line_no": str(LINE_NO)}),
+            element("TABPAGE_18.extended_info", "Form", [], {
+                # The "Ack'd" box. Without it a line with no ship date refuses
+                # supplier_ship_date: "Column is disabled: supplier_ship_date".
+                "c_shipped_flag": "ON",
+                "supplier_ship_date": SHIP_DATE,
+                "acknowledged": "ON",
+                "acknowledged_date": ACK_DATE,
+            }),
+        ],
+    }]}
+    r = client.post(f"{ui}/api/v2/transaction", json=body)
+    r.raise_for_status()
+    result = r.json()
+    print("summary:", result["Summary"], result.get("Messages"))
+    if result["Summary"]["Succeeded"] != 1:
+        raise SystemExit("not written")
+
+    # A Passed transaction is not proof: read the line back.
+    r = client.get(line_url, params=line_query)
+    r.raise_for_status()
+    after = r.json()["value"][0]
+    print("after: ", after)   # date_due moves with the ship date
+    assert after["acknowledged"] == "Y" and after["acknowledged_date"].startswith(ACK_DATE)
+    assert after["supplier_ship_date"].startswith(SHIP_DATE)
+```
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+const long PoNo = 1000123;                           // po_hdr.po_no
+const int LineNo = 2;                                // po_line.line_no
+const string AckDate = "2026-11-17";                 // po_line.acknowledged_date
+const string ShipDate = "2026-12-02";                // po_line.supplier_ship_date ("Ack Ship Date")
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(
+    new MediaTypeWithQualityHeaderValue("application/json"));
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", token);
+var ui = await GetUiServerAsync(client);
+var lineUrl = $"{BaseUrl}/odataservice/odata/table/po_line" +
+              "?$select=line_no,complete,cancel_flag,delete_flag,acknowledged,acknowledged_date,supplier_ship_date,date_due" +
+              "&$filter=" + Uri.EscapeDataString($"po_no eq {PoNo} and line_no eq {LineNo}");
+
+var before = await ReadLine();
+if (before is null)
+{
+    Console.WriteLine($"PO {PoNo} has no line {LineNo}");
+    return;
+}
+if (new[] { "complete", "cancel_flag", "delete_flag" }.Any(f => before[f]?.GetValue<string>() == "Y"))
+{
+    Console.WriteLine($"line {LineNo} is complete, cancelled or deleted: {before.ToJsonString()}");
+    return;
+}
+Console.WriteLine($"before: {before.ToJsonString()}");
+
+var body = new JsonObject
+{
+    ["Name"] = "PurchaseOrder",
+    ["UseCodeValues"] = false,
+    ["Transactions"] = new JsonArray(new JsonObject
+    {
+        ["Status"] = "New",
+        ["DataElements"] = new JsonArray(
+            Element("TABPAGE_1.tp_1_dw_1", "Form", ["po_no"], new() { ["po_no"] = PoNo.ToString() }),
+            // Select the line by its line_no; every TABPAGE_18 edit then applies to it.
+            Element("TABPAGE_17.tp_17_dw_17", "List", ["line_no"], new() { ["line_no"] = LineNo.ToString() }),
+            Element("TABPAGE_18.extended_info", "Form", [], new()
+            {
+                // The "Ack'd" box. Without it a line with no ship date refuses
+                // supplier_ship_date: "Column is disabled: supplier_ship_date".
+                ["c_shipped_flag"] = "ON",
+                ["supplier_ship_date"] = ShipDate,
+                ["acknowledged"] = "ON",
+                ["acknowledged_date"] = AckDate,
+            })),
+    }),
+};
+using var post = await client.PostAsync($"{ui}/api/v2/transaction",
+    new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json"));
+post.EnsureSuccessStatusCode();
+var result = JsonNode.Parse(await post.Content.ReadAsStringAsync())!;
+Console.WriteLine($"summary: {result["Summary"]!.ToJsonString()} {result["Messages"]?.ToJsonString()}");
+if (result["Summary"]!["Succeeded"]!.GetValue<int>() != 1)
+{
+    Console.WriteLine("not written");
+    return;
+}
+
+// A Passed transaction is not proof: read the line back.
+var after = (await ReadLine())!;
+Console.WriteLine($"after:  {after.ToJsonString()}");   // date_due moves with the ship date
+if (after["acknowledged"]?.GetValue<string>() != "Y" ||
+    !(after["acknowledged_date"]?.GetValue<string>() ?? "").StartsWith(AckDate) ||
+    !(after["supplier_ship_date"]?.GetValue<string>() ?? "").StartsWith(ShipDate))
+{
+    throw new InvalidOperationException("read-back does not match what was sent");
+}
+
+async Task<JsonNode?> ReadLine()
+{
+    using var r = await client.GetAsync(lineUrl);
+    r.EnsureSuccessStatusCode();
+    var rows = JsonNode.Parse(await r.Content.ReadAsStringAsync())!["value"]!.AsArray();
+    return rows.Count == 0 ? null : rows[0];
+}
+
+static JsonObject Element(string name, string type, string[] keys, Dictionary<string, string> edits) => new()
+{
+    ["Name"] = name,
+    ["Type"] = type,
+    ["Keys"] = new JsonArray(keys.Select(k => (JsonNode)k).ToArray()),
+    ["Rows"] = new JsonArray(new JsonObject
+    {
+        ["Edits"] = new JsonArray(edits.Select(e => (JsonNode)new JsonObject { ["Name"] = e.Key, ["Value"] = e.Value }).ToArray()),
+        ["RelativeDateEdits"] = new JsonArray(),
+    }),
+};
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction calls go to the UI server; the trailing slash avoids a 307,
+// across which HttpClient drops the Authorization header.
+static async Task<string> GetUiServerAsync(HttpClient c)
+{
+    using var r = await c.GetAsync($"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on the test tenant on 26.1.6004.0 against one line of an open PO: Python on the unacknowledged line (gate, ship date and acknowledgement written; `date_due` moved), then C# on the same line, and both again with later dates. The line was then put back with the clearing payload above. Payload file (validator-clean): [`po-line-acknowledge.json`](../examples/payloads/json/po-line-acknowledge.json). The same fields through the Interactive window: [04 § PurchaseOrder: acknowledging a line in the window](04-Interactive-API.md#purchaseorder-acknowledging-a-line-in-the-window).
+
+> **Credit:** *@mrwuss* — lead from an integration that writes acknowledgements through the window, verified on a test tenant through both APIs, November 2026 ([#295](https://github.com/mrwuss/p21-api-documentation/issues/295)).
+
 ### PurchaseOrderReceipt Service — Receiving a PO
 
 **The Transaction API can receive a PO** — verified on 26.1 (August 2026), receipt **7000100** against PO 500101, with nothing but a header:

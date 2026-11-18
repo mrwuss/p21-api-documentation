@@ -1150,7 +1150,7 @@ Each of these has hundreds of pieces still open against a `supplier_ship_date` i
 
 `shipment_date` is only ever set by the direct-ship confirmation, and only the direct-ship confirmation pushes it down to the line. On every other PO type, `supplier_ship_date` is untouched by receiving and remains a usable promise.
 
-**What to use instead.** `date_due` (labeled *Expected Date*) is not written by receiving on any PO type, and it survives the confirmation — in every row above it still carries a later, different date. Use `date_due` for the live line-level expectation. For on-time-delivery analysis, either exclude `po_type = 'D'` lines that have a receipt against them, or capture `supplier_ship_date` into your own store *before* the first confirmation, because P21 does not keep the prior value.
+**What to use instead.** `date_due` (labeled *Expected Date*) is not written by receiving on any PO type. It is rewritten when a supplier's ship date is entered: each new `supplier_ship_date` on a line recomputes `date_due` ([03 § Acknowledging a Line](03-Transaction-API.md#purchaseorder-service-acknowledging-a-line-and-its-ship-date)), and it survives the confirmation — in every row above it still carries a later, different date. Use `date_due` for the live line-level expectation. For on-time-delivery analysis, either exclude `po_type = 'D'` lines that have a receipt against them, or capture `supplier_ship_date` into your own store *before* the first confirmation, because P21 does not keep the prior value.
 
 ```http
 GET {base}/odataservice/odata/table/po_line

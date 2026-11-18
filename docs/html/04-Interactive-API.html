@@ -721,6 +721,7 @@
 <li><a href="#price-book-naming-and-lookup-strategies">Price Book Naming and Lookup Strategies</a></li>
 </ul>
 </li>
+<li><a href="#purchaseorder-acknowledging-a-line-in-the-window">PurchaseOrder: Acknowledging a Line in the Window</a></li>
 <li><a href="#purchaseorder-notepad-writes-header-vs-line">PurchaseOrder Notepad Writes (Header vs Line)</a><ul>
 <li><a href="#the-notepad-entry-popup">The Notepad Entry Popup</a></li>
 <li><a href="#recipe-add-a-header-note">Recipe: Add a Header Note</a></li>
@@ -3522,6 +3523,23 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 </div>
 </div>
 <hr />
+<h2 id="purchaseorder-acknowledging-a-line-in-the-window">PurchaseOrder: Acknowledging a Line in the Window</h2>
+<p>The same writes as the <a href="03-Transaction-API.html#purchaseorder-service-acknowledging-a-line-and-its-ship-date">Transaction API recipe</a> work through the Interactive <code>PurchaseOrder</code> window, one field per <code>v2/change</code>. Verified on a test tenant, 26.1.6004.0 (November 2026), on an open PO whose first line was cancelled and deleted:</p>
+<ol>
+<li>Load the PO: <code>PUT v2/change</code> with <code>po_no</code> on <code>TABPAGE_1</code> (<code>tp_1_dw_1</code>).</li>
+<li><code>PUT v2/tab</code> to <code>TABPAGE_17</code>, then <code>PUT v2/row</code> with <code>DatawindowName</code> <code>tp_17_dw_17</code> and the line's <strong>row number</strong>.</li>
+<li><code>PUT v2/tab</code> to <code>TABPAGE_18</code>, then one <code>PUT v2/change</code> each, with <code>TabName</code> <code>TABPAGE_18</code> and <strong>no <code>DatawindowName</code></strong>: <code>c_shipped_flag</code> <code>Y</code>, <code>supplier_ship_date</code>, <code>acknowledged</code> <code>Y</code>, <code>acknowledged_date</code>.</li>
+<li><code>PUT v2/data</code> to save, and read the line back over OData.</li>
+</ol>
+<p>What the window adds to the Transaction API picture:</p>
+<ul>
+<li><strong>The row number counts every line on the PO, cancelled and deleted ones included.</strong> The grid held all three lines, so line 2 was row 2. The grid orders on <code>COALESCE(parent_po_line_no, line_no), line_no</code>, so quantity-break lines sit under their parent line: count rows in that order, or read <code>line_no</code> from the grid before selecting a row.</li>
+<li><strong><code>supplier_ship_date</code> before the gate</strong> answers HTTP 400 <code>{"ErrorMessage": "Column is disabled: supplier_ship_date"}</code>. After <code>c_shipped_flag</code> <code>Y</code>, the window showed today's date in the ship date and a new <code>date_due</code> before any save.</li>
+<li><strong><code>DatawindowName</code> was not needed</strong> for these <code>TABPAGE_18</code> changes. The <a href="14-Breaking-Changes.html#p21-252">25.2 requirement</a> did not apply to them on this build; send it anyway if you support older builds.</li>
+<li><strong>Clearing the gate</strong> (<code>c_shipped_flag</code> <code>N</code>) cleared the ship date and recomputed <code>date_due</code>; <code>acknowledged</code> <code>N</code> and an empty <code>acknowledged_date</code> cleared the acknowledgement; <code>date_due</code> accepts a direct change. Saved and read back.</li>
+<li><strong>A fully received line</strong> answered <code>Column is disabled</code> for <code>acknowledged</code>, <code>acknowledged_date</code> and <code>date_due</code>; <code>c_shipped_flag</code> and <code>supplier_ship_date</code> were still accepted. Not saved.</li>
+</ul>
+<p>The <code>acknowledged</code> and <code>c_shipped_flag</code> changes can also fire site rules and notifications (<a href="07-Session-Pool-Troubleshooting.html">07 § the email dialog</a>); read the save's <code>Messages</code>.</p>
 <h2 id="purchaseorder-notepad-writes-header-vs-line">PurchaseOrder Notepad Writes (Header vs Line)</h2>
 <p>The PurchaseOrder window exposes <strong>two separate notepad surfaces</strong>, and they use <strong>different tabs and different tools</strong>. Conflating them silently writes to the wrong place with no error.</p>
 <div class="table-wrap"><table>
@@ -8132,6 +8150,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <li><a href="#price-book-naming-and-lookup-strategies">Price Book Naming and Lookup Strategies</a></li>
 </ul>
 </li>
+<li><a href="#purchaseorder-acknowledging-a-line-in-the-window">PurchaseOrder: Acknowledging a Line in the Window</a></li>
 <li><a href="#purchaseorder-notepad-writes-header-vs-line">PurchaseOrder Notepad Writes (Header vs Line)</a><ul>
 <li><a href="#the-notepad-entry-popup">The Notepad Entry Popup</a></li>
 <li><a href="#recipe-add-a-header-note">Recipe: Add a Header Note</a></li>
