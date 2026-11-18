@@ -533,7 +533,7 @@ The `po_hdr_po_type` `ValidValues` in the definition carry **display names only,
 
 `source_type` stores a `code_p21` number: **948** PO Entry, **949** PO Generation, **950** Process Transactions, **951** Order Entry. Don't confuse `po_type` with `oe_line.disposition`, the sales-line field where `B` really is Backorder and `S` is Special Order.
 
-**A deleted PO stays in the table.** Deleting a PO sets `po_hdr.delete_flag = 'Y'` and `po_hdr.complete = 'Y'`, and sets `cancel_flag = 'Y'` and `complete = 'Y'` on each of its `po_line` rows. Filter on `delete_flag` when you count open or historical POs. The PO's links to sales-order lines are soft-deleted too — see [02 § `oe_line_po`](02-OData-API.md#oe_line_po-holds-stale-links-join-on-both-keys-and-filter-delete_flag).
+**A deleted PO stays in the table.** Deleting a PO sets `po_hdr.delete_flag = 'Y'` and `po_hdr.complete = 'Y'`, and sets `cancel_flag = 'Y'` and `complete = 'Y'` on each of its `po_line` rows. Filter on `delete_flag` when you count open or historical POs. The PO's links to sales-order lines are soft-deleted too — see [02 § `oe_line_po`](02-OData-API.md#oe_line_po-filter-connection_type-join-on-both-keys-and-filter-delete_flag).
 
 > **Credit:** *@mrwuss* — `R` verified end to end on play 26.1.5894.1, July 2026. The other letters, `source_type` codes and the deleted-PO flags verified against production data 26.1, September 2026 ([#178](https://github.com/mrwuss/p21-api-documentation/issues/178)).
 

@@ -53,7 +53,7 @@ Open the `ProductionOrderPicking` window, load the ticket on header `TP_PRODPICK
 
 **The trap (the star of this page):** posting `row_status_flag = 'Confirm'` through a bare `POST /api/v2/transaction` produces a **shell confirm** — the ticket status flips to `1962` and `qty_confirmed` gets stamped, but **`qty_applied` stays 0 and no stock moves**. The per-bin posted quantities live in a disabled `TP_BIN` grid that only the windowed (Interactive API or desktop) confirm populates. The real confirm applies the pick and moves components to the make location's WIP bin (`inv_loc.primary_bin` at `prod_order_hdr.source_location_id`; bin `0` when no primary is set).
 
-Ticket status codes (`prod_pick_ticket_hdr.row_status_flag`): `702` Open · `1962` Confirmed · `1268` Completed. Detail rows: `704` normal, `1268` at completion.
+Ticket status codes (`prod_pick_ticket_hdr.row_status_flag`): `702` Open · `1962` Picked (set by the confirm) · `1268` Completed. Detail rows: `704` normal, `1268` at completion.
 
 ### Stage 5 — Complete the order (production receipt)
 
@@ -210,7 +210,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
             for row in de.get("Rows", []):
                 fields = {e["Name"]: e["Value"] for e in row.get("Edits", [])}
                 if "row_status_flag" in fields:
-                    # 702 = Open, 1962 = Confirmed, 1268 = Completed
+                    # 702 = Open, 1962 = Picked (set by the confirm), 1268 = Completed
                     print(f"Ticket {fields.get('prod_pick_ticket_number')} "
                           f"for prod order {fields.get('prod_order_number')}: "
                           f"status {fields.get('row_status_flag')}")
@@ -346,7 +346,7 @@ foreach (var txn in getResult.RootElement.GetProperty("Transactions").EnumerateA
                     edit.GetProperty("Value").GetString();
             }
             if (!fields.ContainsKey("row_status_flag")) continue;
-            // 702 = Open, 1962 = Confirmed, 1268 = Completed
+            // 702 = Open, 1962 = Picked (set by the confirm), 1268 = Completed
             Console.WriteLine(
                 $"Ticket {fields.GetValueOrDefault("prod_pick_ticket_number")} " +
                 $"for prod order {fields.GetValueOrDefault("prod_order_number")}: " +
@@ -410,7 +410,7 @@ static string ReadField(string payload, string field)
 - **`print_pick_ticket` emits only at the make location** — components stocked elsewhere need `m_picktickets` at the stock `location_id` (Stage 3).
 - **`m_picktickets` needs `UseCodeValues: true`** and the code `"P"`; the display label is rejected, `UseCodeValues: false` returns HTTP 500. `Status: "New"`, `Type: "Form"`, `Keys: []`.
 - **Reports go to `/api/v2/process/pdfreport`.** `/api/v2/transaction` accepts the payload, returns `Succeeded`, and emits nothing.
-- **Status codes:** `702` Open, `1962` Confirmed, `1268` Completed — a `1962` alone does not prove stock moved (see shell confirm).
+- **Status codes:** `702` Open, `1962` Picked (set by the confirm), `1268` Completed — a `1962` alone does not prove stock moved (see shell confirm).
 - **Auto-create nets against stock** — stock on hand means no production order spawns; salesrep must be valid at the sales location; order date must differ from required date (Stage 1).
 - **Confirm every ticket** — parts *and* the labor/intangibles ticket.
 - **More field-verified traps** — make location before parts location, UD fields hidden by a screen version, `"Canceled"` to cancel a ticket, `qty_to_complete` pre-filled on every line, reprints via `m_productionorders`, and the sales-line link the API cannot make: [12 § Production Order Gotchas](../12-Production-Labor-API.md#production-order-gotchas-field-verified).

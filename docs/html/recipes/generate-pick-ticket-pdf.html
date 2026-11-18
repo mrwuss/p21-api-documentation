@@ -941,7 +941,7 @@
     <span class="k">if</span> <span class="ow">not</span> <span class="n">new</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No new pick ticket on production order </span><span class="si">{</span><span class="n">PROD_ORDER</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">ticket</span> <span class="ow">in</span> <span class="n">new</span><span class="p">:</span>
-        <span class="c1"># row_status_flag: 702 = Open, 1962 = Confirmed, 1268 = Completed</span>
+        <span class="c1"># row_status_flag: 702 = Open, 1962 = Picked (set by the confirm), 1268 = Completed</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;New ticket </span><span class="si">{</span><span class="n">ticket</span><span class="p">[</span><span class="s1">&#39;prod_pick_ticket_number&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> at location &quot;</span>
               <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ticket</span><span class="p">[</span><span class="s1">&#39;location_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: status </span><span class="si">{</span><span class="n">ticket</span><span class="p">[</span><span class="s1">&#39;row_status_flag&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
@@ -1023,7 +1023,7 @@
 <span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">number</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">created</span><span class="p">)</span>
 <span class="p">{</span>
 <span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">ticket</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">after</span><span class="p">[</span><span class="n">number</span><span class="p">];</span>
-<span class="w">    </span><span class="c1">// row_status_flag: 702 = Open, 1962 = Confirmed, 1268 = Completed</span>
+<span class="w">    </span><span class="c1">// row_status_flag: 702 = Open, 1962 = Picked (set by the confirm), 1268 = Completed</span>
 <span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;New ticket {number} at location {ticket.GetProperty(&quot;</span><span class="n">location_id</span><span class="s">&quot;)}: &quot;</span><span class="w"> </span><span class="o">+</span>
 <span class="w">                      </span><span class="s">$&quot;status {ticket.GetProperty(&quot;</span><span class="n">row_status_flag</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
 <span class="p">}</span>

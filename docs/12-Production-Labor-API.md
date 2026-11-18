@@ -512,7 +512,7 @@ Confirm with the `ProductionOrderPicking` window: header `tp_prodpickticketconf`
 
 > ⚠️ **Shell-confirm warning — do NOT confirm with a bare Transaction API POST.** Posting `row_status_flag = 'Confirm'` through `/api/v2/transaction` flips the ticket status (1962) and stamps `qty_confirmed`, but leaves **`qty_applied = 0` and moves no stock** — a shell confirm. The per-bin posted quantities live in a disabled `TP_BIN` grid that only the windowed (Interactive API or desktop) confirm populates. The real confirm applies the pick and moves the picked components to the make location's WIP bin (`inv_loc.primary_bin` at `prod_order_hdr.source_location_id`; bin `0` when no primary is set).
 
-Pick ticket status codes (`prod_pick_ticket_hdr.row_status_flag`): `702` = Open, `1962` = Confirmed, `1268` = Completed. Detail rows: `704` = normal, `1268` at completion.
+Pick ticket status codes (`prod_pick_ticket_hdr.row_status_flag`): `702` = Open, `1962` = Picked (the status a confirm sets; `code_p21` names it *Picked*), `1268` = Completed. Detail rows: `704` = normal, `1268` at completion.
 
 ### Completing the Production Order (Production Receipt)
 

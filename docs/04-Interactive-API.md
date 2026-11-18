@@ -3454,7 +3454,7 @@ A sales order line sourced from another location is filled by a transfer, and th
 - **`cb_finish` returned `Status: 1`** and closed the wizard with `savesucceeded`. A report of HTTP 400 at Finish through the API was not reproduced on this build.
 - **A second order on the same route joined the same transfer.** With an open, unshipped transfer from the same source to the same destination already in place, the next wizard added its line to that transfer instead of creating a new one.
 
-**4. Read the link.** The order line links to the transfer in [`oe_line_po`](02-OData-API.md#oe_line_po-holds-stale-links-join-on-both-keys-and-filter-delete_flag) with `connection_type` `T`, and `po_no` holds the **transfer number**. `transfer_hdr` shows `from_location_id` (the source), `to_location_id` (the sales location) and `approved` `Y`.
+**4. Read the link.** The order line links to the transfer in [`oe_line_po`](02-OData-API.md#oe_line_po-filter-connection_type-join-on-both-keys-and-filter-delete_flag) with `connection_type` `T`, and `po_no` holds the **transfer number**. `transfer_hdr` shows `from_location_id` (the source), `to_location_id` (the sales location) and `approved` `Y`.
 
 **The link blocks a cancel.** `cancel_flag` `ON` on the order returns *"A PO or transfer exists for item ITEM-ID. You cannot change the Cancel Flag."* (the same refusal as a [PO link](#po-line-links-to-backorders-production-order-components-and-sales-orders)). Deleting the transfer (`Transfer` service, `TABPAGE_1.tp_1_dw_1` keyed `transfer_no`, `delete_flag` `ON`) set the transfer's `delete_flag` to `Y` and every `oe_line_po` row on it to `Y`, and the cancel then passed.
 
@@ -3805,7 +3805,7 @@ Where the links are stored:
 | Linked to | Table | Live row | Unlinked row |
 |---|---|---|---|
 | Production order component | `prod_ord_line_po` (`prod_order_number`, `line_number`, `component_number`, `po_number`, `po_line_number`, `quantity`, `connection_type` `P`) | `row_status_flag` `702` | the same row at `700` (back to `702` when you link again) |
-| Sales order line | [`oe_line_po`](02-OData-API.md#oe_line_po-holds-stale-links-join-on-both-keys-and-filter-delete_flag) (`connection_type` `P`) | `delete_flag` `N` | `delete_flag` `Y`, `quantity_on_po` `0` |
+| Sales order line | [`oe_line_po`](02-OData-API.md#oe_line_po-filter-connection_type-join-on-both-keys-and-filter-delete_flag) (`connection_type` `P`) | `delete_flag` `N` | `delete_flag` `Y`, `quantity_on_po` `0` |
 
 Verified on play 26.1.6004.0 (November 2026) on throwaway records (a build-to-stock production order whose one component had no stock, a one-line PO for that component, and a sales order line for it), each step read back over OData:
 

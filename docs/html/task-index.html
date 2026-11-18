@@ -1015,12 +1015,20 @@
 <td><a href="02-OData-API.html#po_hdr-names-two-companies-supplier_id-is-ordered-from-vendor_id-is-paid">02 § <code>po_hdr</code> names two companies</a> — ordered from <code>supplier_id</code>, paid to <code>vendor_id</code>; they differ on about one PO in six</td>
 </tr>
 <tr>
+<td>The <strong>customer's PO number</strong> on a sales order or behind a direct-ship PO</td>
+<td><a href="02-OData-API.html#oe_hdrpo_no-is-the-customers-po-number">02 § <code>oe_hdr.po_no</code> is the customer's PO number</a> — via <code>po_hdr.sales_order_number</code> or <code>oe_line_po</code> (<code>connection_type</code> <code>P</code>)</td>
+</tr>
+<tr>
+<td><strong>PO freight</strong> or a <strong>PO acknowledged date</strong></td>
+<td><a href="02-OData-API.html#a-po-has-no-freight-amount-and-po_hdrack_date-is-not-used">02 § A PO has no freight amount, and <code>po_hdr.ack_date</code> is not used</a> — acknowledgement is on <code>po_line</code></td>
+</tr>
+<tr>
 <td>"When did the supplier say this would ship?"</td>
 <td><a href="02-OData-API.html#po_linesupplier_ship_date-is-last-shipment-observed-on-direct-ship-pos-not-a-supplier-promise">02 § <code>po_line.supplier_ship_date</code></a> — <strong>not a promise on direct-ship POs</strong>; use <code>date_due</code></td>
 </tr>
 <tr>
 <td><strong>Peg a PO line to the sales order it was bought for</strong> (<code>oe_line_po</code>)</td>
-<td><a href="02-OData-API.html#oe_line_po-holds-stale-links-join-on-both-keys-and-filter-delete_flag">02 § <code>oe_line_po</code> holds stale links</a> — join on both key pairs and filter <code>delete_flag</code>; a deleted PO leaves its sales lines open with nothing on order</td>
+<td><a href="02-OData-API.html#oe_line_po-filter-connection_type-join-on-both-keys-and-filter-delete_flag">02 § <code>oe_line_po</code>: filter <code>connection_type</code></a> — join on both key pairs and filter <code>delete_flag</code>; a deleted PO leaves its sales lines open with nothing on order</td>
 </tr>
 <tr>
 <td><strong>Link a PO line to a production order component or a sales order line</strong>; <em>"This component has linked PO or Transfer lines"</em>; <em>"A PO or transfer exists for item... You cannot change the Cancel Flag"</em></td>

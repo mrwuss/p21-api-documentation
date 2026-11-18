@@ -1744,7 +1744,7 @@
 <blockquote>
 <p>⚠️ <strong>Shell-confirm warning — do NOT confirm with a bare Transaction API POST.</strong> Posting <code>row_status_flag = 'Confirm'</code> through <code>/api/v2/transaction</code> flips the ticket status (1962) and stamps <code>qty_confirmed</code>, but leaves <strong><code>qty_applied = 0</code> and moves no stock</strong> — a shell confirm. The per-bin posted quantities live in a disabled <code>TP_BIN</code> grid that only the windowed (Interactive API or desktop) confirm populates. The real confirm applies the pick and moves the picked components to the make location's WIP bin (<code>inv_loc.primary_bin</code> at <code>prod_order_hdr.source_location_id</code>; bin <code>0</code> when no primary is set).</p>
 </blockquote>
-<p>Pick ticket status codes (<code>prod_pick_ticket_hdr.row_status_flag</code>): <code>702</code> = Open, <code>1962</code> = Confirmed, <code>1268</code> = Completed. Detail rows: <code>704</code> = normal, <code>1268</code> at completion.</p>
+<p>Pick ticket status codes (<code>prod_pick_ticket_hdr.row_status_flag</code>): <code>702</code> = Open, <code>1962</code> = Picked (the status a confirm sets; <code>code_p21</code> names it <em>Picked</em>), <code>1268</code> = Completed. Detail rows: <code>704</code> = normal, <code>1268</code> at completion.</p>
 <h3 id="completing-the-production-order-production-receipt">Completing the Production Order (Production Receipt)</h3>
 <p>Complete with the <code>ProductionOrderProcessing</code> window:</p>
 <ol>

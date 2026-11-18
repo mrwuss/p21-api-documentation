@@ -246,7 +246,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     if not new:
         raise SystemExit(f"No new pick ticket on production order {PROD_ORDER}")
     for ticket in new:
-        # row_status_flag: 702 = Open, 1962 = Confirmed, 1268 = Completed
+        # row_status_flag: 702 = Open, 1962 = Picked (set by the confirm), 1268 = Completed
         print(f"New ticket {ticket['prod_pick_ticket_number']} at location "
               f"{ticket['location_id']}: status {ticket['row_status_flag']}")
 ```
@@ -328,7 +328,7 @@ if (created.Count == 0)
 foreach (var number in created)
 {
     var ticket = after[number];
-    // row_status_flag: 702 = Open, 1962 = Confirmed, 1268 = Completed
+    // row_status_flag: 702 = Open, 1962 = Picked (set by the confirm), 1268 = Completed
     Console.WriteLine($"New ticket {number} at location {ticket.GetProperty("location_id")}: " +
                       $"status {ticket.GetProperty("row_status_flag")}");
 }
