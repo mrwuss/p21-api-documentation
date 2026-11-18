@@ -4720,7 +4720,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <li><strong><code>cb_finish</code> returned <code>Status: 1</code></strong> and closed the wizard with <code>savesucceeded</code>. A report of HTTP 400 at Finish through the API was not reproduced on this build.</li>
 <li><strong>A second order on the same route joined the same transfer.</strong> With an open, unshipped transfer from the same source to the same destination already in place, the next wizard added its line to that transfer instead of creating a new one.</li>
 </ul>
-<p><strong>4. Read the link.</strong> The order line links to the transfer in <a href="02-OData-API.html#oe_line_po-holds-stale-links-join-on-both-keys-and-filter-delete_flag"><code>oe_line_po</code></a> with <code>connection_type</code> <code>T</code>, and <code>po_no</code> holds the <strong>transfer number</strong>. <code>transfer_hdr</code> shows <code>from_location_id</code> (the source), <code>to_location_id</code> (the sales location) and <code>approved</code> <code>Y</code>.</p>
+<p><strong>4. Read the link.</strong> The order line links to the transfer in <a href="02-OData-API.html#oe_line_po-filter-connection_type-join-on-both-keys-and-filter-delete_flag"><code>oe_line_po</code></a> with <code>connection_type</code> <code>T</code>, and <code>po_no</code> holds the <strong>transfer number</strong>. <code>transfer_hdr</code> shows <code>from_location_id</code> (the source), <code>to_location_id</code> (the sales location) and <code>approved</code> <code>Y</code>.</p>
 <p><strong>The link blocks a cancel.</strong> <code>cancel_flag</code> <code>ON</code> on the order returns <em>"A PO or transfer exists for item ITEM-ID. You cannot change the Cancel Flag."</em> (the same refusal as a <a href="#po-line-links-to-backorders-production-order-components-and-sales-orders">PO link</a>). Deleting the transfer (<code>Transfer</code> service, <code>TABPAGE_1.tp_1_dw_1</code> keyed <code>transfer_no</code>, <code>delete_flag</code> <code>ON</code>) set the transfer's <code>delete_flag</code> to <code>Y</code> and every <code>oe_line_po</code> row on it to <code>Y</code>, and the cancel then passed.</p>
 <blockquote>
 <p><strong>A consumer-key token may not read <code>transfer_hdr</code>.</strong> The programs below read it back with the token they wrote with; a consumer-key token whose OData allow-list leaves the table out gets HTTP 401 there (<a href="00-Authentication.html#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire">why</a>).</p>
@@ -5107,7 +5107,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 </tr>
 <tr>
 <td>Sales order line</td>
-<td><a href="02-OData-API.html#oe_line_po-holds-stale-links-join-on-both-keys-and-filter-delete_flag"><code>oe_line_po</code></a> (<code>connection_type</code> <code>P</code>)</td>
+<td><a href="02-OData-API.html#oe_line_po-filter-connection_type-join-on-both-keys-and-filter-delete_flag"><code>oe_line_po</code></a> (<code>connection_type</code> <code>P</code>)</td>
 <td><code>delete_flag</code> <code>N</code></td>
 <td><code>delete_flag</code> <code>Y</code>, <code>quantity_on_po</code> <code>0</code></td>
 </tr>

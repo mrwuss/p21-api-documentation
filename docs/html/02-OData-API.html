@@ -2162,25 +2162,254 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 </code></pre></div>
 
 <p><code>po_line</code> carries neither column (the nearest is <code>pricing_book_supplier_id</code>), so join to <code>po_hdr</code> for either. The <a href="16-Window-Field-Maps.html">window field map</a> lists <code>vendor_supplier_id</code> → <code>po_hdr.supplier_id</code>.</p>
-<h4 id="oe_line_po-holds-stale-links-join-on-both-keys-and-filter-delete_flag"><code>oe_line_po</code> holds stale links: join on both keys and filter <code>delete_flag</code></h4>
+<h4 id="oe_line_po-filter-connection_type-join-on-both-keys-and-filter-delete_flag"><code>oe_line_po</code>: filter <code>connection_type</code>, join on both keys, and filter <code>delete_flag</code></h4>
 <p><code>po_line</code> has no sales-order column. (A PO line's link to a <strong>production order component</strong> is a different table, <code>prod_ord_line_po</code>; see <a href="04-Interactive-API.html#po-line-links-to-backorders-production-order-components-and-sales-orders">04 § PO Line Links to Backorders</a>.) The link from a PO line to the sales-order line it was bought for lives in <strong><code>oe_line_po</code></strong>: <code>order_number</code>, <code>line_number</code>, <code>po_no</code>, <code>po_line_number</code>, <code>quantity_on_po</code>, <code>connection_type</code>, <code>delete_flag</code>. (On a direct-ship PO, <code>po_hdr.sales_order_number</code> also names the order.)</p>
-<p><strong>The table keeps stale rows.</strong> Some rows carry a <code>po_no</code> that matches a current PO but point at unrelated sales orders years older than it. Match on <code>po_no</code> alone and those old orders attach themselves to today's PO. To get only real links:</p>
+<p><strong><code>po_no</code> is not always a PO number.</strong> <code>connection_type</code> says what it holds. Counted on a test tenant, 26.1.6004.0 (November 2026), joining each row to <code>po_hdr</code>, <code>po_line</code>, <code>transfer_hdr</code> and <code>transfer_line</code> in SQL:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th><code>connection_type</code></th>
+<th>Rows</th>
+<th><code>po_no</code> holds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>P</code></td>
+<td>587,652</td>
+<td>A PO number (<code>po_line</code> matched on all but 5)</td>
+</tr>
+<tr>
+<td><code>Q</code></td>
+<td>141</td>
+<td>A PO number whose <code>po_hdr.po_type</code> is <code>Q</code>, a quote PO (131 of the rows deleted)</td>
+</tr>
+<tr>
+<td><code>T</code></td>
+<td>10,554</td>
+<td>A <strong>transfer number</strong>: every row matched a <code>transfer_line</code></td>
+</tr>
+<tr>
+<td><code>X</code></td>
+<td>500</td>
+<td>A <strong>transfer number</strong>: every row matched a <code>transfer_line</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>A transfer number can equal a PO number. 8,569 <code>T</code> rows and 346 <code>X</code> rows did, and in every one the PO was created after the link. Match on <code>po_no</code> alone and those years-older sales orders attach themselves to today's PO; on the test tenant, a PO created in November 2026 picked up a <code>T</code> link from December 2022 that way. To get only real links:</p>
 <ol>
+<li>Keep <strong><code>connection_type</code> <code>P</code></strong> (and <code>Q</code> if you read quote POs).</li>
 <li>Match <strong><code>(po_no, po_line_number)</code></strong> to <code>po_line.(po_no, line_no)</code>.</li>
 <li>Match <strong><code>(order_number, line_number)</code></strong> to <code>oe_line.(order_no, line_no)</code>.</li>
 <li>Drop rows with <code>delete_flag = 'Y'</code>. Treat a NULL <code>delete_flag</code> as not deleted.</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="err">GET {base}/odataservice/odata/table/oe_line_po</span>
 <span class="err">    ?$select=order_number,line_number,po_no,po_line_number,quantity_on_po,delete_flag</span>
-<span class="err">    &amp;$filter=po_no eq {po_no} and po_line_number eq {line_no}</span>
+<span class="err">    &amp;$filter=po_no eq {po_no} and po_line_number eq {line_no} and connection_type eq &#39;P&#39;</span>
 </code></pre></div>
 
 <p>Write each literal to match the column's type in <code>$metadata</code> — a quoted numeric key 404s (<a href="06-Error-Handling.html#404-incompatible-operand-types-a-quoted-numeric-key">details</a>). Then keep the rows whose <code>order_number</code> + <code>line_number</code> pair exists in <code>oe_line</code> and whose <code>delete_flag</code> is not <code>Y</code>.</p>
 <p><strong>A deleted PO leaves its sales-order lines open with nothing on order.</strong> Deleting the PO sets <code>delete_flag = 'Y'</code> on its <code>oe_line_po</code> rows, but the sales-order lines it was bought for stay open. A query that filters <code>delete_flag</code> correctly shows those lines with no PO, which is the true state: the demand is uncovered and needs a new PO. See <a href="03-Transaction-API.html#purchase-order-types-and-the-disabled-po_hdr_po_type-column">03 § Purchase Order Types</a> for the flags on the deleted PO itself.</p>
-<p><strong><code>oe_line_po</code> also holds transfer links.</strong> A sales order line sourced from another location links to its transfer with <code>connection_type</code> <code>T</code>, and <code>po_no</code> then holds the <strong>transfer number</strong> (<code>transfer_hdr.transfer_no</code>), not a PO. Filter on <code>connection_type</code> before you join to <code>po_hdr</code> (verified on play 26.1.6004.0, November 2026).</p>
+<p><strong><code>oe_line_po</code> also holds transfer links.</strong> A sales order line sourced from another location links to its transfer with <code>connection_type</code> <code>T</code>, and <code>po_no</code> then holds the <strong>transfer number</strong> (<code>transfer_hdr.transfer_no</code>), not a PO. Filter on <code>connection_type</code> before you join to <code>po_hdr</code> (verified on play 26.1.6004.0, November 2026). What distinguishes <code>X</code> from <code>T</code> was not established; both name transfer lines.</p>
 <p><code>oe_line_po</code> also returns every historical link for a PO line, not the receipt layer that is on the shelf now. Tracing current stock to the order it was bought for needs lot or receipt matching on top of this join.</p>
 <blockquote>
 <p><strong>Credit:</strong> <em>@mrwuss</em> — verified against production 26.1 reads, October 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/184">#184</a>).</p>
+</blockquote>
+<h4 id="oe_hdrpo_no-is-the-customers-po-number"><code>oe_hdr.po_no</code> is the customer's PO number</h4>
+<p>On a sales order, <code>oe_hdr.po_no</code> is the Order window's <em>PO Number</em>: the customer's purchase order, free text (<code>Char</code>). It is not a P21 PO; the <code>Order</code> service's definition labels it <em>PO Number</em> on the header (<code>oe_hdr.po_no</code>) and labels the purchasing columns <code>po_line.po_no</code> separately. A PO bought for an order reaches the customer's PO through the order:</p>
+<ul>
+<li>A direct-ship PO names its order in <code>po_hdr.sales_order_number</code>.</li>
+<li>Any PO line bought for an order line links through <a href="#oe_line_po-filter-connection_type-join-on-both-keys-and-filter-delete_flag"><code>oe_line_po</code></a> (<code>connection_type</code> <code>P</code>).</li>
+</ul>
+<p><code>po_hdr.external_po_no</code> is a different field, the buyer's free text on the PO, and need not hold the customer's PO.</p>
+<h4 id="a-po-has-no-freight-amount-and-po_hdrack_date-is-not-used">A PO has no freight amount, and <code>po_hdr.ack_date</code> is not used</h4>
+<ul>
+<li><strong>No freight field to write.</strong> The <code>PurchaseOrder</code> service definition has no field named or labeled freight, and <code>po_line</code> has no freight column. <code>po_hdr</code> holds only <code>vendor_pays_freight_flag</code> and <code>adi_supplier_freight_terms_uid</code>. A freight charge on a PO, where a site records one, is a PO line for a freight item.</li>
+<li><strong>Acknowledgement is per line.</strong> <code>po_hdr.ack_date</code> exists but is not in the <code>PurchaseOrder</code> service and is NULL on every PO on the test tenant (0 of 483,634). Read <code>po_line.acknowledged</code> and <code>po_line.acknowledged_date</code> (window labels <em>Acknowledged</em> and <em>Acknowledged Date</em>) and the supplier's ship date, <code>po_line.supplier_ship_date</code> (<em>Ack Ship Date</em>). <code>po_line.acknowledged</code> can be NULL as well as <code>N</code>.</li>
+</ul>
+<p>The program reads a PO's header, the sales orders it was bought for with each order's customer PO, and its lines' acknowledgement:</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Read the sales order a PO was bought for, the customer&#39;s PO number on it, and the PO lines&#39; acknowledgement.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;api_user&quot;</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;api_pass&quot;</span>
+<span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
+<span class="n">PO_NO</span> <span class="o">=</span> <span class="mi">1000123</span>                           <span class="c1"># po_hdr.po_no is numeric: no quotes in a filter</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;v2 token endpoint — credentials go in the body, never in headers.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">PASSWORD</span><span class="p">},</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;AccessToken&gt;([^&lt;]+)&lt;/AccessToken&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No AccessToken in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">VERIFY_SSL</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+    <span class="n">client</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">})</span>
+    <span class="n">odata</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/table&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">rows</span><span class="p">(</span><span class="n">table</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">odata</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">table</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">)</span>
+        <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span>
+
+    <span class="n">hdr</span> <span class="o">=</span> <span class="n">rows</span><span class="p">(</span><span class="s2">&quot;po_hdr&quot;</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span><span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="s2">&quot;po_no,po_type,sales_order_number,supplier_id,vendor_id&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;po_no eq </span><span class="si">{</span><span class="n">PO_NO</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;PO </span><span class="si">{</span><span class="n">PO_NO</span><span class="si">}</span><span class="s2">: po_type </span><span class="si">{</span><span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;po_type&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, supplier </span><span class="si">{</span><span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;supplier_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, vendor </span><span class="si">{</span><span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;vendor_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Order links: connection_type &#39;P&#39; only. &#39;T&#39; and &#39;X&#39; rows hold a transfer number in po_no,</span>
+    <span class="c1"># which can equal this PO&#39;s number; &#39;Q&#39; rows belong to quote POs.</span>
+    <span class="n">links</span> <span class="o">=</span> <span class="n">rows</span><span class="p">(</span><span class="s2">&quot;oe_line_po&quot;</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span>
+        <span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="s2">&quot;order_number,line_number,po_line_number,connection_type,delete_flag&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;po_no eq </span><span class="si">{</span><span class="n">PO_NO</span><span class="si">}</span><span class="s2"> and connection_type eq &#39;P&#39;&quot;</span><span class="p">})</span>
+    <span class="n">orders</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;order_number&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">links</span> <span class="k">if</span> <span class="n">x</span><span class="p">[</span><span class="s2">&quot;delete_flag&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;Y&quot;</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;sales_order_number&quot;</span><span class="p">]:</span>          <span class="c1"># a direct-ship PO also names its order on the header</span>
+        <span class="n">orders</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;sales_order_number&quot;</span><span class="p">])</span>
+    <span class="k">for</span> <span class="n">order_no</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">orders</span><span class="p">):</span>
+        <span class="c1"># oe_hdr.po_no is the Order window&#39;s &quot;PO Number&quot;: the customer&#39;s PO, not a P21 PO.</span>
+        <span class="n">order</span> <span class="o">=</span> <span class="n">rows</span><span class="p">(</span><span class="s2">&quot;oe_hdr&quot;</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span><span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="s2">&quot;order_no,customer_id,po_no&quot;</span><span class="p">,</span>
+                                  <span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;order_no eq &#39;</span><span class="si">{</span><span class="n">order_no</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">})</span>
+        <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">order</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  order </span><span class="si">{</span><span class="n">o</span><span class="p">[</span><span class="s1">&#39;order_no&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, customer </span><span class="si">{</span><span class="n">o</span><span class="p">[</span><span class="s1">&#39;customer_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, customer PO </span><span class="si">{</span><span class="n">o</span><span class="p">[</span><span class="s1">&#39;po_no&#39;</span><span class="p">]</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Acknowledgement is per line; po_hdr.ack_date is not used.</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">(</span><span class="s2">&quot;po_line&quot;</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span>
+            <span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="s2">&quot;line_no,acknowledged,acknowledged_date,supplier_ship_date,date_due&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;po_no eq </span><span class="si">{</span><span class="n">PO_NO</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;$orderby&quot;</span><span class="p">:</span> <span class="s2">&quot;line_no&quot;</span><span class="p">}):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  line </span><span class="si">{</span><span class="n">line</span><span class="p">[</span><span class="s1">&#39;line_no&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: acknowledged </span><span class="si">{</span><span class="n">line</span><span class="p">[</span><span class="s1">&#39;acknowledged&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">line</span><span class="p">[</span><span class="s1">&#39;acknowledged_date&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">,&quot;</span>
+              <span class="sa">f</span><span class="s2">&quot; ship </span><span class="si">{</span><span class="n">line</span><span class="p">[</span><span class="s1">&#39;supplier_ship_date&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, due </span><span class="si">{</span><span class="n">line</span><span class="p">[</span><span class="s1">&#39;date_due&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
+
+<span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_pass&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">PoNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1000123</span><span class="p">;</span><span class="w">                           </span><span class="c1">// po_hdr.po_no is numeric: no quotes in a filter</span>
+<span class="c1">// ---------------------------------------------------------------------------</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="n">HttpClientHandler</span><span class="p">.</span><span class="n">DangerousAcceptAnyServerCertificateValidator</span><span class="p">,</span>
+<span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromMinutes</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">MediaTypeWithQualityHeaderValue</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">odata</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/table&quot;</span><span class="p">;</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">hdr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">Rows</span><span class="p">(</span><span class="s">&quot;po_hdr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;po_no,po_type,sales_order_number,supplier_id,vendor_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;po_no eq {PoNo}&quot;</span><span class="p">))[</span><span class="mi">0</span><span class="p">];</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;PO {PoNo}: po_type {Str(hdr, &quot;</span><span class="n">po_type</span><span class="s">&quot;)}, supplier {hdr.GetProperty(&quot;</span><span class="n">supplier_id</span><span class="s">&quot;)}, vendor {hdr.GetProperty(&quot;</span><span class="n">vendor_id</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
+
+<span class="c1">// Order links: connection_type &#39;P&#39; only. &#39;T&#39; and &#39;X&#39; rows hold a transfer number in po_no,</span>
+<span class="c1">// which can equal this PO&#39;s number; &#39;Q&#39; rows belong to quote POs.</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">links</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">Rows</span><span class="p">(</span><span class="s">&quot;oe_line_po&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;order_number,line_number,po_line_number,connection_type,delete_flag&quot;</span><span class="p">,</span>
+<span class="w">                       </span><span class="s">$&quot;po_no eq {PoNo} and connection_type eq &#39;P&#39;&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">orders</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">SortedSet</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">(</span><span class="n">links</span><span class="p">.</span><span class="n">Where</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">Str</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;delete_flag&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;Y&quot;</span><span class="p">).</span><span class="n">Select</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">Str</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;order_number&quot;</span><span class="p">)));</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">soNumber</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Str</span><span class="p">(</span><span class="n">hdr</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;sales_order_number&quot;</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">soNumber</span><span class="p">.</span><span class="n">Length</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w">                    </span><span class="c1">// a direct-ship PO also names its order on the header</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">orders</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="n">soNumber</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">orderNo</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">orders</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// oe_hdr.po_no is the Order window&#39;s &quot;PO Number&quot;: the customer&#39;s PO, not a P21 PO.</span>
+<span class="w">    </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">o</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">Rows</span><span class="p">(</span><span class="s">&quot;oe_hdr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;order_no,customer_id,po_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;order_no eq &#39;{orderNo}&#39;&quot;</span><span class="p">))</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  order {Str(o, &quot;</span><span class="n">order_no</span><span class="s">&quot;)}, customer {o.GetProperty(&quot;</span><span class="n">customer_id</span><span class="s">&quot;)}, customer PO &#39;{Str(o, &quot;</span><span class="n">po_no</span><span class="s">&quot;)}&#39;&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// Acknowledgement is per line; po_hdr.ack_date is not used.</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">line</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">Rows</span><span class="p">(</span><span class="s">&quot;po_line&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;line_no,acknowledged,acknowledged_date,supplier_ship_date,date_due&quot;</span><span class="p">,</span>
+<span class="w">                                </span><span class="s">$&quot;po_no eq {PoNo}&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;line_no&quot;</span><span class="p">))</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  line {line.GetProperty(&quot;</span><span class="n">line_no</span><span class="s">&quot;)}: acknowledged {Str(line, &quot;</span><span class="n">acknowledged</span><span class="s">&quot;)} {Str(line, &quot;</span><span class="n">acknowledged_date</span><span class="s">&quot;)},&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">                      </span><span class="s">$&quot; ship {Str(line, &quot;</span><span class="n">supplier_ship_date</span><span class="s">&quot;)}, due {Str(line, &quot;</span><span class="n">date_due</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">JsonElement</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">Rows</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">table</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="k">select</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">filter</span><span class="p">,</span><span class="w"> </span><span class="kt">string?</span><span class="w"> </span><span class="n">orderBy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{odata}/{table}?$select={select}&amp;$filter={Uri.EscapeDataString(filter)}&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">              </span><span class="p">(</span><span class="n">orderBy</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="k">null</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s">$&quot;&amp;$orderby={orderBy}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="n">url</span><span class="p">);</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">d</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;value&quot;</span><span class="p">).</span><span class="n">EnumerateArray</span><span class="p">().</span><span class="n">Select</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">x</span><span class="p">.</span><span class="n">Clone</span><span class="p">()).</span><span class="n">ToList</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">Str</span><span class="p">(</span><span class="n">JsonElement</span><span class="w"> </span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">name</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span>
+<span class="w">    </span><span class="n">e</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">v</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">v</span><span class="p">.</span><span class="n">ValueKind</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">JsonValueKind</span><span class="p">.</span><span class="n">String</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">v</span><span class="p">.</span><span class="n">GetString</span><span class="p">()</span><span class="o">!</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">;</span>
+
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">c</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Username</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/api/security/token/v2&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;AccessToken&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Some middleware answers the token endpoint in XML even when asked for JSON.</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">f</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">p</span><span class="p">).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="n">f</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">v</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span>
+<span class="w">        </span><span class="n">ex</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">JsonException</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="n">KeyNotFoundException</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">Text</span><span class="p">.</span><span class="n">RegularExpressions</span><span class="p">.</span><span class="n">Regex</span><span class="p">.</span><span class="n">Match</span><span class="p">(</span>
+<span class="w">        </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;&lt;{f}&gt;([^&lt;]+)&lt;/{f}&gt;&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">m</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;No {f} in response: {p[..Math.Min(200, p.Length)]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">Groups</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<p>Both programs ran on a test tenant on 26.1.6004.0 against two direct-ship POs. One of them shares its number with a 2022 transfer link (<code>connection_type</code> <code>T</code>) to an unrelated order; the <code>connection_type</code> filter left it out, and each program printed only the PO's own order.</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — leads from an integration, verified on a test tenant, November 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/292">#292</a>).</p>
 </blockquote>
 <h4 id="kit-and-assembly-lines-parent-cost-ignores-rebates-and-component-lines-carry-cogs-too">Kit and assembly lines: parent cost ignores rebates, and component lines carry COGS too</h4>
 <p>Two traps make kit (assembly) margin wrong when you read <code>oe_line</code> or <code>invoice_line</code> naively.</p>

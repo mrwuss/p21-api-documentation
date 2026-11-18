@@ -1185,31 +1185,238 @@ GET {base}/odataservice/odata/table/po_hdr
 
 `po_line` carries neither column (the nearest is `pricing_book_supplier_id`), so join to `po_hdr` for either. The [window field map](16-Window-Field-Maps.md) lists `vendor_supplier_id` → `po_hdr.supplier_id`.
 
-#### `oe_line_po` holds stale links: join on both keys and filter `delete_flag`
+#### `oe_line_po`: filter `connection_type`, join on both keys, and filter `delete_flag`
 
 `po_line` has no sales-order column. (A PO line's link to a **production order component** is a different table, `prod_ord_line_po`; see [04 § PO Line Links to Backorders](04-Interactive-API.md#po-line-links-to-backorders-production-order-components-and-sales-orders).) The link from a PO line to the sales-order line it was bought for lives in **`oe_line_po`**: `order_number`, `line_number`, `po_no`, `po_line_number`, `quantity_on_po`, `connection_type`, `delete_flag`. (On a direct-ship PO, `po_hdr.sales_order_number` also names the order.)
 
-**The table keeps stale rows.** Some rows carry a `po_no` that matches a current PO but point at unrelated sales orders years older than it. Match on `po_no` alone and those old orders attach themselves to today's PO. To get only real links:
+**`po_no` is not always a PO number.** `connection_type` says what it holds. Counted on a test tenant, 26.1.6004.0 (November 2026), joining each row to `po_hdr`, `po_line`, `transfer_hdr` and `transfer_line` in SQL:
 
-1. Match **`(po_no, po_line_number)`** to `po_line.(po_no, line_no)`.
-2. Match **`(order_number, line_number)`** to `oe_line.(order_no, line_no)`.
-3. Drop rows with `delete_flag = 'Y'`. Treat a NULL `delete_flag` as not deleted.
+| `connection_type` | Rows | `po_no` holds |
+|---|---|---|
+| `P` | 587,652 | A PO number (`po_line` matched on all but 5) |
+| `Q` | 141 | A PO number whose `po_hdr.po_type` is `Q`, a quote PO (131 of the rows deleted) |
+| `T` | 10,554 | A **transfer number**: every row matched a `transfer_line` |
+| `X` | 500 | A **transfer number**: every row matched a `transfer_line` |
+
+A transfer number can equal a PO number. 8,569 `T` rows and 346 `X` rows did, and in every one the PO was created after the link. Match on `po_no` alone and those years-older sales orders attach themselves to today's PO; on the test tenant, a PO created in November 2026 picked up a `T` link from December 2022 that way. To get only real links:
+
+1. Keep **`connection_type` `P`** (and `Q` if you read quote POs).
+2. Match **`(po_no, po_line_number)`** to `po_line.(po_no, line_no)`.
+3. Match **`(order_number, line_number)`** to `oe_line.(order_no, line_no)`.
+4. Drop rows with `delete_flag = 'Y'`. Treat a NULL `delete_flag` as not deleted.
 
 ```http
 GET {base}/odataservice/odata/table/oe_line_po
     ?$select=order_number,line_number,po_no,po_line_number,quantity_on_po,delete_flag
-    &$filter=po_no eq {po_no} and po_line_number eq {line_no}
+    &$filter=po_no eq {po_no} and po_line_number eq {line_no} and connection_type eq 'P'
 ```
 
 Write each literal to match the column's type in `$metadata` — a quoted numeric key 404s ([details](06-Error-Handling.md#404-incompatible-operand-types-a-quoted-numeric-key)). Then keep the rows whose `order_number` + `line_number` pair exists in `oe_line` and whose `delete_flag` is not `Y`.
 
 **A deleted PO leaves its sales-order lines open with nothing on order.** Deleting the PO sets `delete_flag = 'Y'` on its `oe_line_po` rows, but the sales-order lines it was bought for stay open. A query that filters `delete_flag` correctly shows those lines with no PO, which is the true state: the demand is uncovered and needs a new PO. See [03 § Purchase Order Types](03-Transaction-API.md#purchase-order-types-and-the-disabled-po_hdr_po_type-column) for the flags on the deleted PO itself.
 
-**`oe_line_po` also holds transfer links.** A sales order line sourced from another location links to its transfer with `connection_type` `T`, and `po_no` then holds the **transfer number** (`transfer_hdr.transfer_no`), not a PO. Filter on `connection_type` before you join to `po_hdr` (verified on play 26.1.6004.0, November 2026).
+**`oe_line_po` also holds transfer links.** A sales order line sourced from another location links to its transfer with `connection_type` `T`, and `po_no` then holds the **transfer number** (`transfer_hdr.transfer_no`), not a PO. Filter on `connection_type` before you join to `po_hdr` (verified on play 26.1.6004.0, November 2026). What distinguishes `X` from `T` was not established; both name transfer lines.
 
 `oe_line_po` also returns every historical link for a PO line, not the receipt layer that is on the shelf now. Tracing current stock to the order it was bought for needs lot or receipt matching on top of this join.
 
 > **Credit:** *@mrwuss* — verified against production 26.1 reads, October 2026 ([#184](https://github.com/mrwuss/p21-api-documentation/issues/184)).
+
+#### `oe_hdr.po_no` is the customer's PO number
+
+On a sales order, `oe_hdr.po_no` is the Order window's *PO Number*: the customer's purchase order, free text (`Char`). It is not a P21 PO; the `Order` service's definition labels it *PO Number* on the header (`oe_hdr.po_no`) and labels the purchasing columns `po_line.po_no` separately. A PO bought for an order reaches the customer's PO through the order:
+
+- A direct-ship PO names its order in `po_hdr.sales_order_number`.
+- Any PO line bought for an order line links through [`oe_line_po`](#oe_line_po-filter-connection_type-join-on-both-keys-and-filter-delete_flag) (`connection_type` `P`).
+
+`po_hdr.external_po_no` is a different field, the buyer's free text on the PO, and need not hold the customer's PO.
+
+#### A PO has no freight amount, and `po_hdr.ack_date` is not used
+
+- **No freight field to write.** The `PurchaseOrder` service definition has no field named or labeled freight, and `po_line` has no freight column. `po_hdr` holds only `vendor_pays_freight_flag` and `adi_supplier_freight_terms_uid`. A freight charge on a PO, where a site records one, is a PO line for a freight item.
+- **Acknowledgement is per line.** `po_hdr.ack_date` exists but is not in the `PurchaseOrder` service and is NULL on every PO on the test tenant (0 of 483,634). Read `po_line.acknowledged` and `po_line.acknowledged_date` (window labels *Acknowledged* and *Acknowledged Date*) and the supplier's ship date, `po_line.supplier_ship_date` (*Ack Ship Date*). `po_line.acknowledged` can be NULL as well as `N`.
+
+The program reads a PO's header, the sales orders it was bought for with each order's customer PO, and its lines' acknowledgement:
+
+<!-- tabs -->
+
+```python
+"""Read the sales order a PO was bought for, the customer's PO number on it, and the PO lines' acknowledgement."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+PO_NO = 1000123                           # po_hdr.po_no is numeric: no quotes in a filter
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    client.headers.update({"Authorization": f"Bearer {token}", "Accept": "application/json"})
+    odata = f"{BASE_URL}/odataservice/odata/table"
+
+    def rows(table: str, **params: str) -> list[dict]:
+        r = client.get(f"{odata}/{table}", params=params)
+        r.raise_for_status()
+        return r.json()["value"]
+
+    hdr = rows("po_hdr", **{"$select": "po_no,po_type,sales_order_number,supplier_id,vendor_id",
+                            "$filter": f"po_no eq {PO_NO}"})[0]
+    print(f"PO {PO_NO}: po_type {hdr['po_type']}, supplier {hdr['supplier_id']}, vendor {hdr['vendor_id']}")
+
+    # Order links: connection_type 'P' only. 'T' and 'X' rows hold a transfer number in po_no,
+    # which can equal this PO's number; 'Q' rows belong to quote POs.
+    links = rows("oe_line_po", **{
+        "$select": "order_number,line_number,po_line_number,connection_type,delete_flag",
+        "$filter": f"po_no eq {PO_NO} and connection_type eq 'P'"})
+    orders = {x["order_number"] for x in links if x["delete_flag"] != "Y"}
+    if hdr["sales_order_number"]:          # a direct-ship PO also names its order on the header
+        orders.add(hdr["sales_order_number"])
+    for order_no in sorted(orders):
+        # oe_hdr.po_no is the Order window's "PO Number": the customer's PO, not a P21 PO.
+        order = rows("oe_hdr", **{"$select": "order_no,customer_id,po_no",
+                                  "$filter": f"order_no eq '{order_no}'"})
+        for o in order:
+            print(f"  order {o['order_no']}, customer {o['customer_id']}, customer PO {o['po_no']!r}")
+
+    # Acknowledgement is per line; po_hdr.ack_date is not used.
+    for line in rows("po_line", **{
+            "$select": "line_no,acknowledged,acknowledged_date,supplier_ship_date,date_due",
+            "$filter": f"po_no eq {PO_NO}", "$orderby": "line_no"}):
+        print(f"  line {line['line_no']}: acknowledged {line['acknowledged']} {line['acknowledged_date']},"
+              f" ship {line['supplier_ship_date']}, due {line['date_due']}")
+```
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+const long PoNo = 1000123;                           // po_hdr.po_no is numeric: no quotes in a filter
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(
+    new MediaTypeWithQualityHeaderValue("application/json"));
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", token);
+var odata = $"{BaseUrl}/odataservice/odata/table";
+
+var hdr = (await Rows("po_hdr", "po_no,po_type,sales_order_number,supplier_id,vendor_id", $"po_no eq {PoNo}"))[0];
+Console.WriteLine($"PO {PoNo}: po_type {Str(hdr, "po_type")}, supplier {hdr.GetProperty("supplier_id")}, vendor {hdr.GetProperty("vendor_id")}");
+
+// Order links: connection_type 'P' only. 'T' and 'X' rows hold a transfer number in po_no,
+// which can equal this PO's number; 'Q' rows belong to quote POs.
+var links = await Rows("oe_line_po", "order_number,line_number,po_line_number,connection_type,delete_flag",
+                       $"po_no eq {PoNo} and connection_type eq 'P'");
+var orders = new SortedSet<string>(links.Where(x => Str(x, "delete_flag") != "Y").Select(x => Str(x, "order_number")));
+var soNumber = Str(hdr, "sales_order_number");
+if (soNumber.Length > 0)                    // a direct-ship PO also names its order on the header
+{
+    orders.Add(soNumber);
+}
+foreach (var orderNo in orders)
+{
+    // oe_hdr.po_no is the Order window's "PO Number": the customer's PO, not a P21 PO.
+    foreach (var o in await Rows("oe_hdr", "order_no,customer_id,po_no", $"order_no eq '{orderNo}'"))
+    {
+        Console.WriteLine($"  order {Str(o, "order_no")}, customer {o.GetProperty("customer_id")}, customer PO '{Str(o, "po_no")}'");
+    }
+}
+
+// Acknowledgement is per line; po_hdr.ack_date is not used.
+foreach (var line in await Rows("po_line", "line_no,acknowledged,acknowledged_date,supplier_ship_date,date_due",
+                                $"po_no eq {PoNo}", "line_no"))
+{
+    Console.WriteLine($"  line {line.GetProperty("line_no")}: acknowledged {Str(line, "acknowledged")} {Str(line, "acknowledged_date")}," +
+                      $" ship {Str(line, "supplier_ship_date")}, due {Str(line, "date_due")}");
+}
+
+async Task<List<JsonElement>> Rows(string table, string select, string filter, string? orderBy = null)
+{
+    var url = $"{odata}/{table}?$select={select}&$filter={Uri.EscapeDataString(filter)}" +
+              (orderBy is null ? "" : $"&$orderby={orderBy}");
+    using var r = await client.GetAsync(url);
+    r.EnsureSuccessStatusCode();
+    using var d = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+    return d.RootElement.GetProperty("value").EnumerateArray().Select(x => x.Clone()).ToList();
+}
+
+static string Str(JsonElement e, string name) =>
+    e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString()! : "";
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers the token endpoint in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on a test tenant on 26.1.6004.0 against two direct-ship POs. One of them shares its number with a 2022 transfer link (`connection_type` `T`) to an unrelated order; the `connection_type` filter left it out, and each program printed only the PO's own order.
+
+> **Credit:** *@mrwuss* — leads from an integration, verified on a test tenant, November 2026 ([#292](https://github.com/mrwuss/p21-api-documentation/issues/292)).
 
 #### Kit and assembly lines: parent cost ignores rebates, and component lines carry COGS too
 
