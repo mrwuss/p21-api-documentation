@@ -661,6 +661,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-11-18">2026-11-18</a></li>
 <li><a href="#2026-11-18-v1310">2026-11-18 — v1.31.0</a></li>
 <li><a href="#2026-11-16">2026-11-16</a></li>
 <li><a href="#2026-11-13">2026-11-13</a></li>
@@ -772,6 +773,10 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-11-18">2026-11-18</h2>
+<ul>
+<li><strong>fix:</strong> <strong><a href="03-Transaction-API.html#m_invoices-reprint_flag-the-api-print-flag-and-the-ship-date-range"><code>m_invoices</code>: <code>reprint_flag</code>, the API print flag and the ship date range</a></strong>, verified on a test tenant, 26.1.6004.0: <code>reprint_flag</code> <code>ON</code> renders an invoice and never changes its print status; <code>OFF</code> is a first print that sets <code>printed</code>/<code>print_flag</code> and the print dates; <code>allow_api_to_print_and_reprint_invoice</code> matters only for <code>ON</code> on an unprinted invoice (<code>Y</code> renders it, <code>N</code> or omitted refuses it). The date pair is the ship date range; a rebill credit memo needs <code>include_rebill_credits</code> <code>ON</code>. Python and C# programs (both run). <strong>Report refusals are HTTP 400 with a message on 26.1.6004.0</strong>, not an empty 500: a <code>reprint_flag</code> mismatch on <a href="03-Transaction-API.html#reprint_flag-must-match-the-pos-po_hdrprinted"><code>m_reprintpurchaseorders</code></a> or <code>m_invoices</code> and a missing record return <em>No records to print for this range.</em>, a wrong <code>company_id</code> <em>The company "…" could not be retrieved.</em>; updated in docs/03, docs/06, the PDF recipe, the payload notes and the PO examples' comments. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/310">#310</a>. — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-11-18-v1310">2026-11-18 — v1.31.0</h2>
 <p>This release also includes the 2026-11-16, 2026-11-13, 2026-11-12 and 2026-11-11 entries below.</p>
 <ul>
@@ -1807,6 +1812,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-11-18">2026-11-18</a></li>
 <li><a href="#2026-11-18-v1310">2026-11-18 — v1.31.0</a></li>
 <li><a href="#2026-11-16">2026-11-16</a></li>
 <li><a href="#2026-11-13">2026-11-13</a></li>

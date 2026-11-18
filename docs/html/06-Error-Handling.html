@@ -2183,7 +2183,7 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 <td>Use <code>POST /api/v2/process/pdfreport</code>, not <code>/transaction</code> — <a href="03-Transaction-API.html#pdf-report-generation">details</a></td>
 </tr>
 <tr>
-<td><code>m_reprintpurchaseorders</code> returns an empty 500 on every retry</td>
+<td><code>m_reprintpurchaseorders</code> returns HTTP 400 <em>No records to print for this range.</em> (26.1.6004.0) or an empty 500 (earlier builds) on every retry</td>
 <td>Transaction</td>
 <td><code>reprint_flag</code> must equal the PO's <code>po_hdr.printed</code> — read it first — <a href="03-Transaction-API.html#reprint_flag-must-match-the-pos-po_hdrprinted">details</a></td>
 </tr>

@@ -1806,11 +1806,11 @@
 <td><a href="recipes/generate-pick-ticket-pdf.html">recipe: generate-pick-ticket-pdf</a> · <a href="03-Transaction-API.html#pdf-report-generation">03 § PDF Report Generation</a></td>
 </tr>
 <tr>
-<td><strong>Invoice PDF</strong> (<code>m_invoices</code>) returns an empty HTTP 500</td>
-<td><a href="03-Transaction-API.html#m_invoices-needs-the-api-print-flag-and-a-date-range-that-covers-the-invoice">03 § <code>m_invoices</code> needs the API print flag</a></td>
+<td><strong>Invoice PDF</strong> (<code>m_invoices</code>): reprint without marking the invoice printed, HTTP 400 <em>No records to print</em>, or an empty 500</td>
+<td><a href="03-Transaction-API.html#m_invoices-reprint_flag-the-api-print-flag-and-the-ship-date-range">03 § <code>m_invoices</code>: <code>reprint_flag</code>, the API print flag and the ship date range</a> — <code>ON</code> never changes the print status; <code>OFF</code> is a first print; the API flag only matters for <code>ON</code> on an unprinted invoice</td>
 </tr>
 <tr>
-<td><strong>Print or reprint a PO PDF</strong> — empty 500 on every attempt</td>
+<td><strong>Print or reprint a PO PDF</strong> — HTTP 400 <em>No records to print</em> (or an empty 500 on older builds) on every attempt</td>
 <td><a href="03-Transaction-API.html#reprint_flag-must-match-the-pos-po_hdrprinted">03 § <code>reprint_flag</code> must match the PO's <code>po_hdr.printed</code></a> — read <code>printed</code> over OData and send it; never hardcode <code>Y</code></td>
 </tr>
 <tr>

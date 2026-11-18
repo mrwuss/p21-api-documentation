@@ -9864,57 +9864,296 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <blockquote>
 <p><strong><code>UseCodeValues</code> requirements vary per report service.</strong> <code>m_reprintpurchaseorders</code> works with <code>UseCodeValues: false</code> (as above), but a production-order <code>m_picktickets</code> run <strong>requires <code>UseCodeValues: true</code> with code values</strong> — e.g. <code>create_pick_ticket_type</code> must be the code <code>"P"</code>; the display label <code>"Production Order"</code> is rejected, and <code>UseCodeValues: false</code> returns HTTP 500. A sales-order run of the same service is the reverse: the label <code>"Sales Order"</code> with <code>UseCodeValues: false</code> works, and <code>true</code> with <code>"S"</code> or <code>"O"</code> returned an empty HTTP 500 (play 26.1.5950.0, 2026-10-17). When a report errors on seemingly-correct criteria, try the other setting: <code>UseCodeValues: true</code> with the code values from the service's definition (<code>ValidValues</code>), or <code>false</code> with the labels.</p>
 </blockquote>
-<h4 id="m_invoices-needs-the-api-print-flag-and-a-date-range-that-covers-the-invoice"><code>m_invoices</code> needs the API print flag, and a date range that covers the invoice</h4>
-<p>The invoice print window has a criteria field just for API callers, <code>allow_api_to_print_and_reprint_invoice</code>, whose default is <code>N</code>. Without <code>Y</code> the call is an <strong>empty HTTP 500</strong>. With it, an invoice inside the window's default date range prints from three fields (<code>invoice_no</code>, <code>reprint_flag</code> and the flag). The example also sends the date pair, which a recent invoice needs:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;m_invoices&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
-<span class="w">        </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
-<span class="w">            </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
-<span class="w">            </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
-<span class="w">            </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span>
-<span class="w">            </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;invoice_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2001234&quot;</span><span class="p">},</span>
-<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;reprint_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ON&quot;</span><span class="p">},</span>
-<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;allow_api_to_print_and_reprint_invoice&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Y&quot;</span><span class="p">},</span>
-<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;dt_beg_date2&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;01/01/2000&quot;</span><span class="p">},</span>
-<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;dt_end_date2&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;12/31/2030&quot;</span><span class="p">}</span>
-<span class="w">            </span><span class="p">]}]</span>
-<span class="w">        </span><span class="p">}]</span>
-<span class="w">    </span><span class="p">}]</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<p>The date pair matters for recent invoices. The window defaults <code>dt_end_date2</code> to a date that can be days old (<code>GET /api/v2/defaults/m_invoices</code> returned 2026-10-23 on 2026-10-29), so an invoice dated after it is outside the run. That also fails as an empty HTTP 500, not as an empty result. Send <code>dt_beg_date2</code> and <code>dt_end_date2</code> wide enough to cover the invoice date.</p>
+<h4 id="m_invoices-reprint_flag-the-api-print-flag-and-the-ship-date-range"><code>m_invoices</code>: <code>reprint_flag</code>, the API print flag and the ship date range</h4>
+<p>The invoice print window runs in two modes, chosen by <code>reprint_flag</code>, and has a criteria field just for API callers, <code>allow_api_to_print_and_reprint_invoice</code> (default <code>N</code>). Verified on a test tenant, 26.1.6004.0 (November 2026), with <code>invoice_hdr</code> read back over OData after every call:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>Criteria sent</th>
-<th>Invoice dated inside the default range</th>
-<th>Invoice dated after it</th>
+<th>Invoice (<code>invoice_hdr.printed</code>)</th>
+<th><code>reprint_flag</code></th>
+<th><code>allow_api_to_print_and_reprint_invoice</code></th>
+<th>Result</th>
+<th>Print status after</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>invoice_no</code>, <code>reprint_flag</code></td>
-<td>empty 500</td>
-<td>empty 500</td>
-</tr>
-<tr>
-<td>+ <code>allow_api_to_print_and_reprint_invoice</code> <code>Y</code></td>
-<td>PDF (<code>IN… INVOICE.pdf</code>, about 139 KB)</td>
-<td>empty 500</td>
-</tr>
-<tr>
-<td>+ a wide <code>dt_beg_date2</code> / <code>dt_end_date2</code></td>
-<td>—</td>
+<td><code>Y</code></td>
+<td><code>ON</code></td>
+<td><code>Y</code>, <code>N</code> or omitted</td>
 <td>PDF</td>
+<td>Unchanged</td>
+</tr>
+<tr>
+<td><code>Y</code></td>
+<td><code>OFF</code></td>
+<td><code>Y</code></td>
+<td>HTTP 400, <em>No records to print for this range.</em></td>
+<td>Unchanged</td>
+</tr>
+<tr>
+<td><code>N</code></td>
+<td><code>ON</code></td>
+<td><code>Y</code></td>
+<td>PDF</td>
+<td>Unchanged: the invoice stays unprinted</td>
+</tr>
+<tr>
+<td><code>N</code></td>
+<td><code>ON</code></td>
+<td><code>N</code> or omitted</td>
+<td>HTTP 400, <em>No records to print for this range.</em></td>
+<td>Unchanged</td>
+</tr>
+<tr>
+<td><code>N</code></td>
+<td><code>OFF</code></td>
+<td><code>Y</code> or omitted</td>
+<td>PDF</td>
+<td><strong>Printed</strong>: <code>printed</code> and <code>print_flag</code> <code>N</code> → <code>Y</code>; <code>printed_date</code> and <code>print_date</code> set to the time of the call</td>
 </tr>
 </tbody>
 </table></div>
-<p><em>(Verified on play 26.1.5950.0, 2026-10-29, with two invoices. Community lead: P21WWUG forum, which reported <code>[]</code> rather than a 500 for the date case on an older build.)</em></p>
+<ul>
+<li><strong><code>ON</code> is reprint mode and never changes the print status.</strong> With the API flag <code>Y</code> it also renders an invoice that has not printed, which gives you a copy without marking it printed. The PDF carries no reprint marking.</li>
+<li><strong><code>OFF</code> is a first print.</strong> It renders only never-printed invoices and marks them printed. <code>date_last_modified</code> and <code>last_maintained_by</code> did not change.</li>
+<li><strong>The API flag matters only for <code>ON</code> on an unprinted invoice.</strong> On 26.1.5950.0 (2026-10-29) a call without it was recorded as an empty HTTP 500; the print state of those invoices was not recorded, so whether that was the same rule is not known.</li>
+<li><strong><code>dt_beg_date2</code> / <code>dt_end_date2</code> are the window's <em>Ship Date</em> range</strong>, and the invoice's <code>ship_date</code> must fall inside it even when you name one invoice. A range that ended 12 days before the ship date was the same HTTP 400. Without the pair the window's default range applies: on 2026-11-18 <code>GET /api/v2/defaults/m_invoices</code> ended it at the end of that day, but on 2026-10-29 it ended six days earlier, which refused every newer invoice. Send a wide pair; ISO (<code>1900-01-01T00:00:00</code>) and <code>MM/DD/YYYY</code> were both accepted.</li>
+<li><strong>A credit memo for a rebill</strong> (<code>invoice_hdr.source_type_cd</code> <code>2638</code>) is the same HTTP 400 unless the request sends <code>include_rebill_credits</code> <code>ON</code>, whose default is <code>OFF</code>.</li>
+<li><strong>A missing invoice is the same HTTP 400.</strong> The refusal is <code>{"ErrorMessage": "Unexpected results generating document request from criteria. --&gt; Messages returned during document request processing: &lt;No records to print for this range. ..."}</code>. Read the invoice over OData first, so the refusal means only a mismatch.</li>
+</ul>
+<p>The program below saves an invoice as a PDF in reprint mode and reads the print status back:</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Save an invoice as a PDF without changing its print status, and prove it by reading it back.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">base64</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;api_user&quot;</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;api_pass&quot;</span>
+<span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
+<span class="n">COMPANY_ID</span> <span class="o">=</span> <span class="s2">&quot;ACME&quot;</span>
+<span class="n">INVOICE_NO</span> <span class="o">=</span> <span class="s2">&quot;2001234&quot;</span>                    <span class="c1"># invoice_hdr.invoice_no (text: quote it in OData)</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="n">STATUS</span> <span class="o">=</span> <span class="s2">&quot;invoice_no,printed,print_flag,printed_date,print_date&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;v2 token endpoint — credentials go in the body, never in headers.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">PASSWORD</span><span class="p">},</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;AccessToken&gt;([^&lt;]+)&lt;/AccessToken&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No AccessToken in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">print_status</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/table/invoice_hdr&quot;</span><span class="p">,</span>
+                   <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;invoice_no eq &#39;</span><span class="si">{</span><span class="n">INVOICE_NO</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="n">STATUS</span><span class="p">})</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">rows</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;invoice </span><span class="si">{</span><span class="n">INVOICE_NO</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">VERIFY_SSL</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+    <span class="n">client</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">})</span>
+    <span class="n">ui</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/ui/router/v1/?urlType=external&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;Url&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+
+    <span class="n">before</span> <span class="o">=</span> <span class="n">print_status</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+    <span class="n">edits</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;company_id&quot;</span><span class="p">:</span> <span class="n">COMPANY_ID</span><span class="p">,</span>
+        <span class="s2">&quot;invoice_no&quot;</span><span class="p">:</span> <span class="n">INVOICE_NO</span><span class="p">,</span>
+        <span class="s2">&quot;invoice_no2&quot;</span><span class="p">:</span> <span class="n">INVOICE_NO</span><span class="p">,</span>
+        <span class="s2">&quot;dt_beg_date2&quot;</span><span class="p">:</span> <span class="s2">&quot;1900-01-01T00:00:00&quot;</span><span class="p">,</span>   <span class="c1"># the window&#39;s ship date range: cover the invoice</span>
+        <span class="s2">&quot;dt_end_date2&quot;</span><span class="p">:</span> <span class="s2">&quot;2099-12-31T23:59:59&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;print_qty&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;reprint_flag&quot;</span><span class="p">:</span> <span class="s2">&quot;ON&quot;</span><span class="p">,</span>                     <span class="c1"># reprint mode: never changes the print status</span>
+        <span class="c1"># Y also renders an invoice that has not printed yet; N refuses it with HTTP 400.</span>
+        <span class="s2">&quot;allow_api_to_print_and_reprint_invoice&quot;</span><span class="p">:</span> <span class="s2">&quot;Y&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">body</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;m_invoices&quot;</span><span class="p">,</span> <span class="s2">&quot;UseCodeValues&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;Transactions&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;Status&quot;</span><span class="p">:</span> <span class="s2">&quot;New&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;DataElements&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span> <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+                          <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="n">k</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">v</span><span class="p">}</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">edits</span><span class="o">.</span><span class="n">items</span><span class="p">()]}]}]}]}</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui</span><span class="si">}</span><span class="s2">/api/v2/process/pdfreport&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">body</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">content</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ErrorMessage&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;HTTP </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;ErrorMessage&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="n">doc</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">doc</span><span class="p">[</span><span class="s2">&quot;ResponseStatus&quot;</span><span class="p">][</span><span class="s2">&quot;StatusCode&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;Success&quot;</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DocumentData&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;no PDF: </span><span class="si">{</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;ResponseStatus&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Message&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;invoice_</span><span class="si">{</span><span class="n">INVOICE_NO</span><span class="si">}</span><span class="s2">.pdf&quot;</span>          <span class="c1"># FileName holds a document counter, not the invoice number</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s2">&quot;DocumentData&quot;</span><span class="p">]))</span>
+
+    <span class="n">after</span> <span class="o">=</span> <span class="n">print_status</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;saved </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">; printed was </span><span class="si">{</span><span class="n">before</span><span class="p">[</span><span class="s1">&#39;printed&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, is </span><span class="si">{</span><span class="n">after</span><span class="p">[</span><span class="s1">&#39;printed&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">; &quot;</span>
+          <span class="sa">f</span><span class="s2">&quot;print status unchanged: </span><span class="si">{</span><span class="n">after</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">before</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json.Nodes</span><span class="p">;</span>
+
+<span class="c1">// Save an invoice as a PDF without changing its print status, and prove it by reading it back.</span>
+<span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_pass&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">InvoiceNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;2001234&quot;</span><span class="p">;</span><span class="w">                  </span><span class="c1">// invoice_hdr.invoice_no (text: quote it in OData)</span>
+<span class="c1">// ---------------------------------------------------------------------------</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="n">HttpClientHandler</span><span class="p">.</span><span class="n">DangerousAcceptAnyServerCertificateValidator</span><span class="p">,</span>
+<span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromMinutes</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">MediaTypeWithQualityHeaderValue</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="c1">// Trailing slash: without it the router 307s and HttpClient drops the Authorization header.</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">router</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonNode</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetStringAsync</span><span class="p">(</span><span class="s">$&quot;{BaseUrl}/api/ui/router/v1/?urlType=external&quot;</span><span class="p">))</span><span class="o">!</span><span class="p">;</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">ui</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">router</span><span class="p">[</span><span class="s">&quot;Url&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">GetValue</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">().</span><span class="n">TrimEnd</span><span class="p">(</span><span class="sc">&#39;/&#39;</span><span class="p">);</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">before</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">PrintStatusAsync</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">edits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Value</span><span class="p">)[]</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="p">(</span><span class="s">&quot;company_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">CompanyId</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="s">&quot;invoice_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">InvoiceNo</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="s">&quot;invoice_no2&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">InvoiceNo</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="s">&quot;dt_beg_date2&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;1900-01-01T00:00:00&quot;</span><span class="p">),</span><span class="w">   </span><span class="c1">// the window&#39;s ship date range: cover the invoice</span>
+<span class="w">    </span><span class="p">(</span><span class="s">&quot;dt_end_date2&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;2099-12-31T23:59:59&quot;</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="s">&quot;print_qty&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;1&quot;</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="s">&quot;reprint_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ON&quot;</span><span class="p">),</span><span class="w">                     </span><span class="c1">// reprint mode: never changes the print status</span>
+<span class="w">    </span><span class="c1">// Y also renders an invoice that has not printed yet; N refuses it with HTTP 400.</span>
+<span class="w">    </span><span class="p">(</span><span class="s">&quot;allow_api_to_print_and_reprint_invoice&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Y&quot;</span><span class="p">),</span>
+<span class="p">};</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;m_invoices&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">UseCodeValues</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span><span class="p">,</span>
+<span class="w">    </span><span class="n">Transactions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">new</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">Status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="n">DataElements</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">new</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="n">Keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">(),</span>
+<span class="w">                    </span><span class="n">Type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">Rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Edits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">edits</span><span class="p">.</span><span class="n">Select</span><span class="p">(</span><span class="n">e</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">Value</span><span class="w"> </span><span class="p">}).</span><span class="n">ToArray</span><span class="p">()</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                </span><span class="p">},</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span><span class="s">$&quot;{ui}/api/v2/process/pdfreport&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="n">body</span><span class="p">),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">text</span><span class="p">.</span><span class="n">Length</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">JsonNode</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">text</span><span class="p">)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="k">null</span><span class="p">;</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">result</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">JsonObject</span><span class="w"> </span><span class="n">err</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">err</span><span class="p">[</span><span class="s">&quot;ErrorMessage&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;HTTP {(int)r.StatusCode}: {err[&quot;</span><span class="n">ErrorMessage</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">doc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span><span class="o">!</span><span class="p">.</span><span class="n">AsArray</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">!</span><span class="p">;</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">doc</span><span class="p">[</span><span class="s">&quot;DocumentData&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">GetValue</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s">&quot;ResponseStatus&quot;</span><span class="p">]</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;StatusCode&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">GetValue</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">()</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;Success&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;no PDF: {doc[&quot;</span><span class="n">ResponseStatus</span><span class="s">&quot;]?[&quot;</span><span class="n">Message</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;invoice_{InvoiceNo}.pdf&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// FileName holds a document counter, not the invoice number</span>
+<span class="k">await</span><span class="w"> </span><span class="n">File</span><span class="p">.</span><span class="n">WriteAllBytesAsync</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="n">Convert</span><span class="p">.</span><span class="n">FromBase64String</span><span class="p">(</span><span class="n">data</span><span class="p">));</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">after</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">PrintStatusAsync</span><span class="p">();</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;saved {path}; printed was {before[&quot;</span><span class="n">printed</span><span class="s">&quot;]}, is {after[&quot;</span><span class="n">printed</span><span class="s">&quot;]}; &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">                  </span><span class="s">$&quot;print status unchanged: {JsonNode.DeepEquals(before, after)}&quot;</span><span class="p">);</span>
+
+<span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JsonNode</span><span class="o">&gt;</span><span class="w"> </span><span class="n">PrintStatusAsync</span><span class="p">()</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">filter</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Uri</span><span class="p">.</span><span class="n">EscapeDataString</span><span class="p">(</span><span class="s">$&quot;invoice_no eq &#39;{InvoiceNo}&#39;&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">json</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetStringAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/table/invoice_hdr?$filter={filter}&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">        </span><span class="s">&quot;&amp;$select=invoice_no,printed,print_flag,printed_date,print_date&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonNode</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">json</span><span class="p">)</span><span class="o">!</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">AsArray</span><span class="p">();</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rows</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span><span class="s">$&quot;invoice {InvoiceNo} not found&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">c</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Username</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/api/security/token/v2&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;AccessToken&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Some middleware answers the token endpoint in XML even when asked for JSON.</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">f</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">p</span><span class="p">).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="n">f</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">v</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span>
+<span class="w">        </span><span class="n">ex</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">JsonException</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="n">KeyNotFoundException</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">Text</span><span class="p">.</span><span class="n">RegularExpressions</span><span class="p">.</span><span class="n">Regex</span><span class="p">.</span><span class="n">Match</span><span class="p">(</span>
+<span class="w">        </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;&lt;{f}&gt;([^&lt;]+)&lt;/{f}&gt;&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">m</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;No {f} in response: {p[..Math.Min(200, p.Length)]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">Groups</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<p>Both programs ran on the test tenant on 26.1.6004.0 against a printed invoice and an unprinted one: each saved the PDF and reported the print status unchanged (<code>printed</code> stayed <code>Y</code> and <code>N</code>).</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — verified on a test tenant, November 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/310">#310</a>). The 26.1.5950.0 observations are from a run with two invoices on 2026-10-29; the lead came from the P21WWUG forum, which reported <code>[]</code> rather than a 500 for the date case on an older build.</p>
+</blockquote>
 <h4 id="reprint_flag-must-match-the-pos-po_hdrprinted"><code>reprint_flag</code> must match the PO's <code>po_hdr.printed</code></h4>
 <p><code>m_reprintpurchaseorders</code> is the <strong>Print Purchase Orders</strong> window in both of its modes. The <code>reprint_flag</code> criterion is not a "reprint please" switch. It selects which population of POs the run considers, and that population is fixed by each PO's own print history:</p>
 <div class="table-wrap"><table>
@@ -9929,26 +10168,26 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <tr>
 <td><code>N</code></td>
 <td><code>po_hdr.printed = 'N'</code> (never printed)</td>
-<td>Empty HTTP 500</td>
+<td>HTTP 400, <em>No records to print for this range.</em></td>
 </tr>
 <tr>
 <td><code>Y</code></td>
 <td><code>po_hdr.printed = 'Y'</code> (printed at least once)</td>
-<td>Empty HTTP 500</td>
+<td>HTTP 400, <em>No records to print for this range.</em></td>
 </tr>
 </tbody>
 </table></div>
-<p>A mismatch fails <strong>deterministically</strong>: every attempt returns the same empty-bodied 500, which looks identical to the <a href="#an-empty-5xx-has-several-causes-and-is-usually-transient">transient report-engine fault</a> below. A payload that hardcodes <code>reprint_flag: "Y"</code> therefore fails on every PO that nobody has printed yet, and retrying does not help.</p>
+<p>A mismatch fails <strong>deterministically</strong>. On 26.1.6004.0 it is HTTP 400 with an <code>ErrorMessage</code> containing <em>No records to print for this range.</em>, the same answer as a PO that doesn't exist. On 26.1.5950.0 and earlier it was an empty-bodied 500, which looks identical to the <a href="#an-empty-5xx-has-several-causes-and-is-usually-transient">transient report-engine fault</a> below. A payload that hardcodes <code>reprint_flag: "Y"</code> therefore fails on every PO that nobody has printed yet, and retrying does not help.</p>
 <p>To print any PO reliably:</p>
 <ol>
 <li>Read the header over OData: <code>GET /odataservice/odata/table/po_hdr?$filter=po_no eq 500100&amp;$select=po_no,printed</code> (<code>po_no</code> is numeric, so do not quote it).</li>
 <li>Send <code>reprint_flag</code> equal to that <code>printed</code> value.</li>
-<li>On an empty 500, re-read <code>printed</code> before you retry. Another user or process can print the PO between your read and your call, which flips the flag you need.</li>
+<li>On a refusal, re-read <code>printed</code> before you retry. Another user or process can print the PO between your read and your call, which flips the flag you need.</li>
 </ol>
 <p>A first print (<code>N</code>) on an approved PO marks it printed: <code>po_hdr.printed</code> changes to <code>'Y'</code>, so the next run for that PO needs <code>Y</code>. The report payload never requests <em>Transmit Document Links</em>, and no transmission was observed during verification.</p>
 <p>The definition lists <code>ValidValues</code> <code>ON</code>/<code>OFF</code> for <code>reprint_flag</code>; the verified calls sent <code>Y</code>/<code>N</code> with <code>UseCodeValues: false</code>.</p>
 <blockquote>
-<p><strong>Credit:</strong> <em>@mrwuss</em> — verified on play 26.1, September 2026, across seven POs: every never-printed PO failed with <code>Y</code> on repeated attempts and succeeded with <code>N</code> (<a href="https://github.com/mrwuss/p21-api-documentation/issues/162">#162</a>). Re-run on play 26.1.5950.0, 2026-10-10, with the <a href="#example-generate-and-save-a-po-reprint">examples below</a> and their repo files: each language printed a never-printed PO (<code>N</code>), the read-back showed <code>printed</code> flipped to <code>Y</code>, and a second run on the same PO (<code>Y</code>) returned the reprint. Sending <code>N</code> for a printed PO returned the empty-bodied 500 on both attempts.</p>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — verified on play 26.1, September 2026, across seven POs: every never-printed PO failed with <code>Y</code> on repeated attempts and succeeded with <code>N</code> (<a href="https://github.com/mrwuss/p21-api-documentation/issues/162">#162</a>). Re-run on play 26.1.5950.0, 2026-10-10, with the <a href="#example-generate-and-save-a-po-reprint">examples below</a> and their repo files: each language printed a never-printed PO (<code>N</code>), the read-back showed <code>printed</code> flipped to <code>Y</code>, and a second run on the same PO (<code>Y</code>) returned the reprint. Sending <code>N</code> for a printed PO returned the empty-bodied 500 on both attempts. Re-run on a test tenant, 26.1.6004.0, November 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/310">#310</a>): <code>Y</code> on a never-printed PO and <code>N</code> on a printed one each returned HTTP 400 <em>No records to print for this range.</em> on both attempts and changed nothing; <code>N</code> then printed the never-printed PO, after which <code>Y</code> returned its reprint.</p>
 </blockquote>
 <h4 id="an-empty-5xx-has-several-causes-and-is-usually-transient">An empty 5xx has several causes — and is usually transient</h4>
 <p>This endpoint runs at production volume: one integration generates PO PDFs for supplier emails all day, logging <strong>154 successes against 3 empty 500s and 1 dropped connection in a single afternoon</strong> — and every affected PO succeeded moments later on retry.</p>
@@ -9967,11 +10206,11 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 </tr>
 <tr>
 <td><strong>Bad criteria</strong> — e.g. a <code>company_id</code> that doesn't exist</td>
-<td>Deterministic: every attempt fails. Verified on Play 26.1 — a wrong <code>company_id</code> returns an empty 500, not a useful message.</td>
+<td>Deterministic: every attempt fails. On 26.1.6004.0 a wrong <code>company_id</code> is HTTP 400 <em>The company "…" could not be retrieved.</em>; earlier 26.1 builds returned an empty 500.</td>
 </tr>
 <tr>
 <td><strong><code>reprint_flag</code> doesn't match the PO's print history</strong> (<code>m_reprintpurchaseorders</code>) — <code>Y</code> on a PO with <code>po_hdr.printed = 'N'</code>, or <code>N</code> on one with <code>'Y'</code></td>
-<td>Deterministic for that PO. Read <code>po_hdr.printed</code> and send it as <code>reprint_flag</code>; re-read it before each retry, because it can change between attempts — see <a href="#reprint_flag-must-match-the-pos-po_hdrprinted"><code>reprint_flag</code> must match the PO's <code>po_hdr.printed</code></a>.</td>
+<td>Deterministic for that PO. An empty 500 on 26.1.5950.0 and earlier; HTTP 400 <em>No records to print for this range.</em> on 26.1.6004.0. Read <code>po_hdr.printed</code> and send it as <code>reprint_flag</code>; re-read it before each retry, because it can change between attempts — see <a href="#reprint_flag-must-match-the-pos-po_hdrprinted"><code>reprint_flag</code> must match the PO's <code>po_hdr.printed</code></a>.</td>
 </tr>
 <tr>
 <td><strong>The record isn't printable</strong>, or report generation isn't available in that environment</td>
@@ -9980,7 +10219,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 </tbody>
 </table></div>
 <p><strong>Retry idempotent report calls.</strong> Generating a PDF reads data and emits a document; running it twice costs latency, not correctness. The production integration uses <strong>3 attempts with a 0.5 s × attempt backoff</strong>, which covers the observed fault rate without masking a real outage.</p>
-<p><strong>Do the existence check yourself, first.</strong> A missing record and a transient fault both surface as an unhelpful 5xx, so read the record over OData before calling the report. That turns "not found" into a clear error of your own and leaves the 5xx meaning only "the report engine faulted".</p>
+<p><strong>Do the existence check yourself, first.</strong> On 26.1.6004.0 a missing record is HTTP 400 <em>No records to print for this range.</em>, the same answer as a <code>reprint_flag</code> mismatch; on earlier builds it and a transient fault both surfaced as an unhelpful 5xx. Read the record over OData before calling the report. That turns "not found" into a clear error of your own and leaves the 5xx meaning only "the report engine faulted".</p>
 <p><strong>Classify the error envelope <em>before</em> the status code.</strong> Unlike <code>/transaction</code>, which reports failure through <code>Summary</code>/<code>Messages</code>, this endpoint returns P21's <code>ErrorType</code>/<code>ErrorMessage</code> envelope — and it can arrive on a <strong>200 as well as a 4xx/5xx</strong>. Parse the body and check for <code>ErrorMessage</code> first; if you branch on <code>response.status_code</code> alone you will mask the one message that explains the failure (for example <code>No records to print for this range.</code>).</p>
 <h3 id="response">Response</h3>
 <p>The response is a <strong>JSON array</strong> (even for a single document). Each element contains document metadata and the base64-encoded PDF content. Decode the <code>DocumentData</code> field and write the bytes to a <code>.pdf</code> file.</p>
@@ -10088,7 +10327,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">get_printed_flag</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;reprint_flag must equal po_hdr.printed, or the report returns an empty 500.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;reprint_flag must equal po_hdr.printed, or the report refuses the PO.&quot;&quot;&quot;</span>
     <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
         <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/table/po_hdr&quot;</span><span class="p">,</span>
         <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;po_no eq </span><span class="si">{</span><span class="n">PO_NO</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="s2">&quot;po_no,printed&quot;</span><span class="p">},</span>  <span class="c1"># numeric: no quotes</span>
@@ -10287,7 +10526,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;Url&quot;</span><span class="p">).</span><span class="n">TrimEnd</span><span class="p">(</span><span class="sc">&#39;/&#39;</span><span class="p">);</span>
 <span class="p">}</span>
 
-<span class="c1">// reprint_flag must equal po_hdr.printed, or the report returns an empty 500.</span>
+<span class="c1">// reprint_flag must equal po_hdr.printed, or the report refuses the PO.</span>
 <span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetPrintedFlagAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">client</span><span class="p">)</span>
 <span class="p">{</span>
 <span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">filter</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Uri</span><span class="p">.</span><span class="n">EscapeDataString</span><span class="p">(</span><span class="s">$&quot;po_no eq {PoNo}&quot;</span><span class="p">);</span><span class="w">   </span><span class="c1">// numeric: no quotes</span>
