@@ -1087,6 +1087,14 @@
 <td><a href="04-Interactive-API.html#sales-order-notepad-writes-header-vs-line">04 § Sales Order Notepad Writes</a> · <a href="04-Interactive-API.html#purchaseorder-notepad-writes-header-vs-line">04 § PurchaseOrder Notepad Writes</a> — Interactive only; <code>/transaction</code> refuses (<a href="03-Transaction-API.html#limitations">why</a>)</td>
 </tr>
 <tr>
+<td>A retried note write made a <strong>duplicate note</strong>, a stored note doesn't match the text sent, <code>Invalid row</code> selecting a note, or a note on a <strong>completed PO</strong> reports <code>Status: 2</code></td>
+<td><a href="04-Interactive-API.html#purchaseorder-notes-repeat-adds-line-endings-the-grid-and-completed-pos">04 § PurchaseOrder Notes: Repeat Adds, Line Endings, the Grid and Completed POs</a> — check before you add; CRLF; newest first, deleted left out; completed POs refuse notes</td>
+</tr>
+<tr>
+<td><strong>Which table holds a kind of note</strong> (item notes are in <code>note</code>, not <code>item_notepad</code>)</td>
+<td><a href="02-OData-API.html#where-notes-live">02 § Where notes live</a></td>
+</tr>
+<tr>
 <td>Write a <strong>note on an inventory return</strong> (return to a supplier), header or line · the save fails or lies after the return ships</td>
 <td><a href="04-Interactive-API.html#inventory-return-notes-and-the-lock-after-shipping">04 § Inventory Return Notes, and the Lock After Shipping</a> — Interactive only, and only at <code>971</code>/<code>972</code>/<code>973</code>; at <code>974</code>/<code>975</code> <code>PUT /v2/data</code> is <code>Status: 2</code> with no message and <strong><code>Quick.Save</code> reports <code>savesucceeded</code> and writes nothing</strong> · runnable: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/inventory_return_note.py"><code>inventory_return_note.py</code></a></td>
 </tr>

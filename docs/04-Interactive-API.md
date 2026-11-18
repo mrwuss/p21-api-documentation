@@ -4454,6 +4454,295 @@ Both programs ran on play 26.1.6004.0 against a second set of throwaway records:
 
 *Verified by @mrwuss* ([#269](https://github.com/mrwuss/p21-api-documentation/issues/269)).
 
+## PurchaseOrder Notes: Repeat Adds, Line Endings, the Grid and Completed POs
+
+Five behaviors of the [PurchaseOrder notepad](#purchaseorder-notepad-writes-header-vs-line) that a caller has to handle. Verified on a test tenant, 26.1.6004.0 (November 2026), on header notes (`po_hdr_notepad`, PO Notes tab `TABPAGE_7`, grid `tp_7_dw_7`), every result read back over OData:
+
+- **Adding a note is not idempotent.** Two adds with a byte-identical `topic` and `note` made two notes, each with its own `note_id`. P21 checks neither field for duplicates, so a retry after a timeout or an unclear answer adds the note again. Read the record's live notes first and add only when the same topic and text are not there, as the program below does.
+- **Line breaks are stored as CRLF.** A `note` sent with `\n` came back from OData with `\r\n`. Normalize line endings before you compare a stored note with the text you sent.
+- **The grid lists the newest note first and leaves deleted notes out.** With two notes on the PO, row 1 was the newer `note_id`. After that note was deleted, the grid held one row, and `PUT /v2/row` with `Row` `2` answered HTTP 400 `{"ErrorMessage": "Invalid row"}`. Find the row by reading the grid's own `note_id` column, never by counting the notes OData returns.
+- **Deleting is a soft delete.** Select the row, run `cb_edit` (`Status: 3`, the Notepad Entry popup opens on that note), set `delete_flag` `Y` on the popup's `_dw_hdr`, run `cb_ok`, and save. The row stays in `po_hdr_notepad` with `delete_flag` `Y`.
+- **A completed PO refuses notes.** On a PO with `po_hdr.complete` `Y`, the add tool, the popup and `cb_ok` all worked, and the save answered `{"Status": 2, "Messages": []}`, with no message and no note written. The Transaction API's message for the same refusal on a header edit is *"Save is not enabled."* ([03 § Editing a Completed PO](03-Transaction-API.md#purchaseorder-service-editing-a-completed-po)).
+
+A note read immediately after the save, about 0.3 s later, was already on OData in both attempts. An integration has seen a new note missing for about a third of a second, so a read-back that retries once or twice costs little. Which table each kind of note lives in: [02 § Where notes live](02-OData-API.md#where-notes-live).
+
+<!-- tabs -->
+
+```python
+"""Add a PO header note only if the same live note is not already there: P21 accepts duplicates."""
+import re
+import time
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+PO_NO = "1000123"                         # an open PO (a completed PO refuses notes)
+TOPIC = "SUPPLIER CONFIRMED"              # po_hdr_notepad.topic, 30 characters at most
+NOTE_TEXT = "Ship date confirmed by phone.\nTracking to follow."
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def same_text(a: str, b: str) -> bool:
+    """P21 stores line breaks as CRLF, so compare with line endings normalized."""
+    return a.replace("\r\n", "\n").strip() == b.replace("\r\n", "\n").strip()
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    client.headers.update({"Authorization": f"Bearer {token}", "Accept": "application/json"})
+    ui = client.get(f"{BASE_URL}/api/ui/router/v1/?urlType=external").json()["Url"].rstrip("/")
+    api = f"{ui}/api/ui/interactive"
+
+    def live_notes() -> list[dict]:
+        r = client.get(f"{BASE_URL}/odataservice/odata/table/po_hdr_notepad", params={
+            "$select": "note_id,topic,note",
+            "$filter": f"po_no eq {PO_NO} and delete_flag eq 'N'"})
+        r.raise_for_status()
+        return r.json()["value"]
+
+    # 1. A second identical add makes a second note, so look first.
+    existing = [n for n in live_notes() if n["topic"] == TOPIC and same_text(n["note"] or "", NOTE_TEXT)]
+    if existing:
+        print(f"already there: note {existing[0]['note_id']}; nothing added")
+        raise SystemExit(0)
+
+    def call(method: str, path: str, body: object = None) -> dict:
+        r = client.request(method, f"{api}{path}", json=body)
+        r.raise_for_status()
+        return r.json()
+
+    def popup_id(result: dict) -> str:
+        for event in result.get("Events") or []:
+            if event.get("Name") == "windowopened":
+                for kv in event.get("Data") or []:
+                    if str(kv.get("Key", "")).lower() == "windowid":
+                        return kv["Value"]
+        raise RuntimeError(f"no popup opened: {result}")
+
+    # 2. Add it through the PurchaseOrder window's Notepad Entry popup.
+    call("POST", "/sessions", {"ResponseWindowHandlingEnabled": True})
+    wid = None
+    try:
+        opened = call("POST", "/v2/window", {"ServiceName": "PurchaseOrder"})
+        wid = opened.get("WindowId") or opened.get("Id")
+        loaded = call("PUT", "/v2/change", {"WindowId": wid, "List": [
+            {"TabName": "TABPAGE_1", "DatawindowName": "tp_1_dw_1", "FieldName": "po_no", "Value": PO_NO}]})
+        if loaded.get("Status") != 1:
+            raise RuntimeError(f"load {PO_NO}: {loaded}")
+        call("PUT", "/v2/tab", {"WindowId": wid, "PageName": "TABPAGE_7"})
+        popup = popup_id(call("POST", "/v2/tools", {"WindowId": wid, "ToolName": "cb_add", "ToolText": "Add Note"}))
+        call("PUT", "/v2/change", {"WindowId": popup, "List": [
+            {"TabName": None, "DatawindowName": "_dw_hdr", "FieldName": "topic", "Value": TOPIC},
+            {"TabName": None, "DatawindowName": "_dw_hdr", "FieldName": "note", "Value": NOTE_TEXT}]})
+        call("POST", "/v2/tools", {"WindowId": popup, "ToolName": "cb_select_all", "ToolText": "Select All"})
+        call("POST", "/v2/tools", {"WindowId": popup, "ToolName": "cb_ok", "ToolText": "OK"})
+        saved = call("PUT", "/v2/data", wid)
+        # A completed PO answers Status 2 with no message and writes nothing.
+        if saved.get("Status") != 1:
+            raise RuntimeError(f"save refused: {saved}")
+    finally:
+        if wid:
+            call("DELETE", f"/v2/window?id={wid}")
+        client.delete(f"{api}/sessions")
+
+    # 3. Read it back; a new note can take a moment to appear on OData.
+    for _ in range(3):
+        added = [n for n in live_notes() if n["topic"] == TOPIC and same_text(n["note"] or "", NOTE_TEXT)]
+        if added:
+            break
+        time.sleep(0.5)
+    else:
+        raise RuntimeError("saved, but the note is not on OData")
+    print(f"added note {added[0]['note_id']}; stored text {added[0]['note']!r}")
+```
+
+```csharp
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
+// Add a PO header note only if the same live note is not already there: P21 accepts duplicates.
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+const string PoNo = "1000123";                       // an open PO (a completed PO refuses notes)
+const string Topic = "SUPPLIER CONFIRMED";           // po_hdr_notepad.topic, 30 characters at most
+const string NoteText = "Ship date confirmed by phone.\nTracking to follow.";
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(
+    new MediaTypeWithQualityHeaderValue("application/json"));
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", token);
+var router = JsonNode.Parse(await client.GetStringAsync($"{BaseUrl}/api/ui/router/v1/?urlType=external"))!;
+var api = $"{router["Url"]!.GetValue<string>().TrimEnd('/')}/api/ui/interactive";
+
+// 1. A second identical add makes a second note, so look first.
+var existing = (await LiveNotes()).FirstOrDefault(Matches);
+if (existing is not null)
+{
+    Console.WriteLine($"already there: note {existing["note_id"]}; nothing added");
+    return;
+}
+
+// 2. Add it through the PurchaseOrder window's Notepad Entry popup.
+await Call(HttpMethod.Post, "/sessions", new { ResponseWindowHandlingEnabled = true });
+string? wid = null;
+try
+{
+    var opened = await Call(HttpMethod.Post, "/v2/window", new { ServiceName = "PurchaseOrder" });
+    wid = (opened["WindowId"] ?? opened["Id"])!.GetValue<string>();
+    var loaded = await Call(HttpMethod.Put, "/v2/change", new { WindowId = wid, List = new[] {
+        new { TabName = "TABPAGE_1", DatawindowName = "tp_1_dw_1", FieldName = "po_no", Value = PoNo } } });
+    if (loaded["Status"]?.GetValue<int>() != 1)
+    {
+        throw new InvalidOperationException($"load {PoNo}: {loaded.ToJsonString()}");
+    }
+    await Call(HttpMethod.Put, "/v2/tab", new { WindowId = wid, PageName = "TABPAGE_7" });
+    var popup = PopupId(await Call(HttpMethod.Post, "/v2/tools", new { WindowId = wid, ToolName = "cb_add", ToolText = "Add Note" }));
+    await Call(HttpMethod.Put, "/v2/change", new { WindowId = popup, List = new[] {
+        new { TabName = (string?)null, DatawindowName = "_dw_hdr", FieldName = "topic", Value = Topic },
+        new { TabName = (string?)null, DatawindowName = "_dw_hdr", FieldName = "note", Value = NoteText } } });
+    await Call(HttpMethod.Post, "/v2/tools", new { WindowId = popup, ToolName = "cb_select_all", ToolText = "Select All" });
+    await Call(HttpMethod.Post, "/v2/tools", new { WindowId = popup, ToolName = "cb_ok", ToolText = "OK" });
+    var saved = await Call(HttpMethod.Put, "/v2/data", wid);
+    // A completed PO answers Status 2 with no message and writes nothing.
+    if (saved["Status"]?.GetValue<int>() != 1)
+    {
+        throw new InvalidOperationException($"save refused: {saved.ToJsonString()}");
+    }
+}
+finally
+{
+    if (wid is not null)
+    {
+        await Call(HttpMethod.Delete, $"/v2/window?id={wid}");
+    }
+    await client.DeleteAsync($"{api}/sessions");
+}
+
+// 3. Read it back; a new note can take a moment to appear on OData.
+JsonNode? added = null;
+for (var attempt = 0; attempt < 3 && added is null; attempt++)
+{
+    added = (await LiveNotes()).FirstOrDefault(Matches);
+    if (added is null)
+    {
+        await Task.Delay(500);
+    }
+}
+if (added is null)
+{
+    throw new InvalidOperationException("saved, but the note is not on OData");
+}
+Console.WriteLine($"added note {added["note_id"]}; stored text {JsonSerializer.Serialize(added["note"]!.GetValue<string>())}");
+
+bool Matches(JsonNode? n) =>
+    n is not null && n["topic"]?.GetValue<string>() == Topic && SameText(n["note"]?.GetValue<string>() ?? "", NoteText);
+
+// P21 stores line breaks as CRLF, so compare with line endings normalized.
+static bool SameText(string a, string b) =>
+    a.Replace("\r\n", "\n").Trim() == b.Replace("\r\n", "\n").Trim();
+
+async Task<JsonArray> LiveNotes()
+{
+    var url = $"{BaseUrl}/odataservice/odata/table/po_hdr_notepad?$select=note_id,topic,note&$filter=" +
+              Uri.EscapeDataString($"po_no eq {PoNo} and delete_flag eq 'N'");
+    return JsonNode.Parse(await client.GetStringAsync(url))!["value"]!.AsArray();
+}
+
+async Task<JsonNode> Call(HttpMethod method, string path, object? body = null)
+{
+    using var request = new HttpRequestMessage(method, $"{api}{path}");
+    if (body is not null)
+    {
+        request.Content = JsonContent.Create(body, body.GetType());
+    }
+    using var r = await client.SendAsync(request);
+    r.EnsureSuccessStatusCode();
+    return JsonNode.Parse(await r.Content.ReadAsStringAsync())!;
+}
+
+static string PopupId(JsonNode result) =>
+    result["Events"]?.AsArray()
+        .Where(e => e?["Name"]?.GetValue<string>() == "windowopened")
+        .SelectMany(e => e!["Data"]!.AsArray())
+        .FirstOrDefault(kv => kv?["Key"]?.GetValue<string>().Equals("windowid", StringComparison.OrdinalIgnoreCase) == true)?["Value"]?.GetValue<string>()
+    ?? throw new InvalidOperationException($"no popup opened: {result.ToJsonString()}");
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers the token endpoint in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on a test tenant on 26.1.6004.0 against an open PO: each added its note when it was absent, and each reported *already there* for a note the other had added. The test notes were then soft-deleted through `cb_edit`.
+
+> **Credit:** *@mrwuss* — leads from an integration, verified on a test tenant, November 2026 ([#299](https://github.com/mrwuss/p21-api-documentation/issues/299)).
+
 ## Sales Order Notepad Writes (Header vs Line)
 
 The **Order window has the same two notepad surfaces** as PurchaseOrder, drivable with the same Notepad Entry popup mechanics ([above](#the-notepad-entry-popup)) — verified end-to-end on 26.1 (August 2026), both notes confirmed in the database. This matters doubly because the Transaction API's note surface on `Order` is **entirely closed** ([03 § Limitations](03-Transaction-API.md#limitations)): this is the working path.

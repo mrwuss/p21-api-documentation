@@ -1785,6 +1785,29 @@ static string ReadField(string payload, string field)
 
 > **`address` columns keep their `mail_`/`phys_` prefix on OData** — `mail_address1`, `mail_address2`, `mail_city`, `mail_state`, `mail_postal_code`, `mail_country` for the mailing address; `phys_address1`, `phys_address2`, `phys_city`, `phys_state`, `phys_postal_code`, `phys_country` for the physical one. A `$select` without the prefix (`address1`, `city`, `postal_code`, …) 404s: `Could not find a property named 'address1' on type 'dbo.address'.` Verified live, 26.1 (September 2026); confirmed against `definitions/Address.json`'s `DbColumnName` mapping (`address.mail_address1`, etc.). The [Entity API's Address Fields](05-Entity-API.md#address-fields-27-fields) table documents the same columns under their PascalCase names (`MailAddress1`, `PhysAddress1`) if you're on that surface instead.
 
+### Where notes live
+
+P21 keeps notes in one table per kind of record, plus a shared `note` table. Row counts on a test tenant restored from production, 26.1.6004.0 (November 2026), read in SQL:
+
+| Table | Notes on | Rows |
+|---|---|---|
+| `oe_hdr_notepad` / `oe_line_notepad` | Sales order header / line | 134,044 / 680,546 |
+| `po_hdr_notepad` / `po_line_notepad` | PO header / line | 35,146 / 91,143 |
+| `invoice_hdr_notepad` | Invoice header (`invoice_line_notepad` is empty here) | 23,265 |
+| `inventory_return_hdr_notepad` / `inventory_return_line_notepad` | Inventory return header / line | 10,784 / 2,633 |
+| `customer_notepad` / `supplier_notepad` / `vendor_notepad` | Customer / supplier / vendor | 2,862 / 1,001 / 161 |
+| `transfer_hdr_notepad` / `transfer_line_notepad` | Transfer header / line | 1,479 / 1,321 |
+| `job_price_hdr_notepad` | Job price contract | 754 |
+| `cust_part_no_notepad` | Customer part number | 89 |
+| `inventory_receipt_notepad` | Inventory receipt | 45 |
+| `process_x_transaction_note` | Process-to-transaction notes | 26 |
+| `gl_notepad`, `stage_notepad` | GL, stage | 1 each |
+| `note`, `note_type_cd` `1807` *Item Note* | Item (`document_uid` = `inv_mast_uid`) | 74,977 |
+| `note`, `note_type_cd` `2758` *Production Order Note* | Production order header | 19,051 |
+| `note`, `note_type_cd` `2759` *Production Order Line Note* | Production order line | 127 |
+
+The tenant has eleven more `*_notepad` tables that hold no rows: `b2b_temp_item`, `invoice_line`, `item`, `job_control_hdr`, `job_site`, `process`, `salesrep`, `service_item`, `ship_to`, `transfer_backorders`, `work_order`. **Item notes are in `note`, not in `item_notepad`**, which is empty. `note` is keyed by `note_uid`, links to its record through `document_uid`, and marks a live note with `row_status_flag` `704` (*Active*) and a deleted one with `700` (*Delete*), where the `*_notepad` tables use `delete_flag` `Y`. Writing them: PO notes in [04 § PurchaseOrder Notes](04-Interactive-API.md#purchaseorder-notes-repeat-adds-line-endings-the-grid-and-completed-pos), sales order notes in [04 § Sales Order Notepad Writes](04-Interactive-API.md#sales-order-notepad-writes-header-vs-line), item, customer and supplier notes through [03 § Commands Endpoint](03-Transaction-API.md#commands-endpoint).
+
 ---
 
 ## Enterprise/Global Search Views (`p21_view_es_*`)
