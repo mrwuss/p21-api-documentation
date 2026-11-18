@@ -1459,9 +1459,7 @@ As with `oe_line_po` above, write `{invoice_no}` to match the column's type in `
 | `1577` | Labor | 5 |
 | `1719` | Part | 2 |
 
-A revenue or margin report that sums every line counts freight and tax as sales; filter on the type. On the header, `invoice_hdr.source_type_cd` `2871` (*Completed Production Order Adjustment*) marks the cost-only invoices P21 posts when cost reaches a production order after it was invoiced ([12 § Cost Model](12-Production-Labor-API.md#cost-model-know-this-before-trusting-cogs)).
-
-On `oe_pick_ticket`, no ticket carried an `invoice_no` without a `ship_date` (0 of 850,343); 40 had a `ship_date` and no invoice yet.
+A revenue or margin report that sums every line counts freight (`928`, `929`) and tax (`930`, `1136`) as sales; leave those types out. `981` and `982` are component lines of kits and assemblies, which carry cost of their own ([below](#kit-and-assembly-lines-parent-cost-ignores-rebates-and-component-lines-carry-cogs-too)). What type `0` covers was not broken down. On the header, `invoice_hdr.source_type_cd` `2871` (*Completed Production Order Adjustment*) marks the cost-only invoices P21 posts when cost reaches a production order after it was invoiced ([12 § Cost Model](12-Production-Labor-API.md#cost-model-know-this-before-trusting-cogs)).
 
 #### `inv_adj_line.cost` is 0 on lines valued at moving average
 

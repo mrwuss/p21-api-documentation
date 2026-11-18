@@ -512,7 +512,7 @@ Confirm with the `ProductionOrderPicking` window: header `tp_prodpickticketconf`
 
 > ⚠️ **Shell-confirm warning — do NOT confirm with a bare Transaction API POST.** Posting `row_status_flag = 'Confirm'` through `/api/v2/transaction` flips the ticket status (1962) and stamps `qty_confirmed`, but leaves **`qty_applied = 0` and moves no stock** — a shell confirm. The per-bin posted quantities live in a disabled `TP_BIN` grid that only the windowed (Interactive API or desktop) confirm populates. The real confirm applies the pick and moves the picked components to the make location's WIP bin (`inv_loc.primary_bin` at `prod_order_hdr.source_location_id`; bin `0` when no primary is set).
 
-Pick ticket status codes (`prod_pick_ticket_hdr.row_status_flag`): `702` = Open, `1962` = Picked (the status a confirm sets; `code_p21` names it *Picked*), `976` = Canceled, `1268` = Completed. Detail rows: `704` = normal, `1268` at completion. Picked tickets belong almost only to open orders: on a test tenant restored from production, 655 tickets at `1962` belonged to open orders and 1 to a completed order. Production and sales-order pick ticket numbers (`prod_pick_ticket_number`, `oe_pick_ticket.pick_ticket_no`) did not overlap there.
+Pick ticket status codes (`prod_pick_ticket_hdr.row_status_flag`): `702` = Open, `1962` = Picked (the status a confirm sets; `code_p21` names it *Picked*), `976` = Canceled, `1268` = Completed. Detail rows: `704` = normal, `1268` at completion. Picked tickets belong almost only to open orders: on a test tenant restored from production, 655 tickets at `1962` belonged to open orders and 1 to a completed order. Production and sales-order pick ticket numbers (`prod_pick_ticket_number`, `oe_pick_ticket.pick_ticket_no`) did not overlap there. On sales-order tickets, an `invoice_no` implies a `ship_date`: no `oe_pick_ticket` row carried an invoice without one (0 of 850,343), while 40 had a ship date and no invoice yet.
 
 ### Completing the Production Order (Production Receipt)
 
@@ -560,7 +560,7 @@ The `InventoryAdjustment` service posts on-hand adjustments with no invoice: hea
 | All completed orders | 745,960 | 0 on 94,610; differs from `inventory_cost` on 337,432 | non-zero on 45,316 of the components whose `unit_cost` is 0 |
 | 2026 orders with a `PROP` consumption row in `inv_tran` | 30,801 | equals that row's `unit_cost_amt` on 9,659 | equals it on **30,746** |
 
-`inventory_cost` is the per-unit cost on the component's `PROP` consumption row in `inv_tran` (`document_no` = the order, `quantity` negative), so `qty_used` × `inventory_cost` is what completion relieved. `unit_cost` can be 0 or out of date for the same component. The other 13,882 components of 2026 had no `PROP` row to compare with.
+`inventory_cost` matched the per-unit cost on the component's `PROP` consumption row in `inv_tran` (`document_no` = the order, `quantity` negative) on all but 55 of the components that have one, so `qty_used` × `inventory_cost` is the best figure for what completion relieved; for an exact amount, read the `inv_tran` row. `unit_cost` can be 0 or out of date for the same component. The other 13,882 components of 2026 had no `PROP` row to compare with.
 
 <!-- tabs -->
 
