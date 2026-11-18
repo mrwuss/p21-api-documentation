@@ -18,7 +18,7 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
-## 2026-11-18
+## 2026-11-18 — v1.31.2
 
 - **docs:** Integration leads from [#307](https://github.com/mrwuss/p21-api-documentation/issues/307), verified on a test tenant, 26.1.6004.0. **[401 with `WWW-Authenticate: Negotiate, NTLM`](06-Error-Handling.md#401-with-www-authenticate-negotiate-ntlm-the-base-url-is-not-the-p21-api)**: a Windows-authenticated web site answers every P21 path that way, while P21's own 401 is JSON with no challenge; a credential-free probe tells them apart (Python and C#, both run against each). docs/06's *Invalid Credentials* body corrected to the shape P21 returns. **[`created_by` is `Admin`](11-Inventory-REST-API.md#who-a-create-is-recorded-as-created_by-is-admin)** on five of the six tables an Inventory REST item create writes; **[Assembly create defaults](03-Transaction-API.md#assembly-defaults-on-create-print-flags-and-the-creating-user)** (`print_compnts_on_pick_ticket` `ON`, the token's user in both audit columns), read by one Python and C# program (both run). A [PO on a deleted supplier](03-Transaction-API.md#purchaseorder-service-creating-a-po) is refused with *Supplier information was not successfully retrieved*. Not reproduced: a hanging token grant (180 grants, each under 0.05 s). Closes [#307](https://github.com/mrwuss/p21-api-documentation/issues/307). — *@mrwuss*
 

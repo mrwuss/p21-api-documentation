@@ -661,7 +661,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
-<li><a href="#2026-11-18">2026-11-18</a></li>
+<li><a href="#2026-11-18-v1312">2026-11-18 — v1.31.2</a></li>
 <li><a href="#2026-11-18-v1311">2026-11-18 — v1.31.1</a></li>
 <li><a href="#2026-11-18-v1310">2026-11-18 — v1.31.0</a></li>
 <li><a href="#2026-11-16">2026-11-16</a></li>
@@ -774,7 +774,7 @@
 </ul>
 </blockquote>
 <hr />
-<h2 id="2026-11-18">2026-11-18</h2>
+<h2 id="2026-11-18-v1312">2026-11-18 — v1.31.2</h2>
 <ul>
 <li><strong>docs:</strong> Integration leads from <a href="https://github.com/mrwuss/p21-api-documentation/issues/307">#307</a>, verified on a test tenant, 26.1.6004.0. <strong><a href="06-Error-Handling.html#401-with-www-authenticate-negotiate-ntlm-the-base-url-is-not-the-p21-api">401 with <code>WWW-Authenticate: Negotiate, NTLM</code></a></strong>: a Windows-authenticated web site answers every P21 path that way, while P21's own 401 is JSON with no challenge; a credential-free probe tells them apart (Python and C#, both run against each). docs/06's <em>Invalid Credentials</em> body corrected to the shape P21 returns. <strong><a href="11-Inventory-REST-API.html#who-a-create-is-recorded-as-created_by-is-admin"><code>created_by</code> is <code>Admin</code></a></strong> on five of the six tables an Inventory REST item create writes; <strong><a href="03-Transaction-API.html#assembly-defaults-on-create-print-flags-and-the-creating-user">Assembly create defaults</a></strong> (<code>print_compnts_on_pick_ticket</code> <code>ON</code>, the token's user in both audit columns), read by one Python and C# program (both run). A <a href="03-Transaction-API.html#purchaseorder-service-creating-a-po">PO on a deleted supplier</a> is refused with <em>Supplier information was not successfully retrieved</em>. Not reproduced: a hanging token grant (180 grants, each under 0.05 s). Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/307">#307</a>. — <em>@mrwuss</em></li>
 </ul>
@@ -1817,7 +1817,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
-<li><a href="#2026-11-18">2026-11-18</a></li>
+<li><a href="#2026-11-18-v1312">2026-11-18 — v1.31.2</a></li>
 <li><a href="#2026-11-18-v1311">2026-11-18 — v1.31.1</a></li>
 <li><a href="#2026-11-18-v1310">2026-11-18 — v1.31.0</a></li>
 <li><a href="#2026-11-16">2026-11-16</a></li>
