@@ -1424,7 +1424,7 @@ void CheckTokenExpiry(string token)
 | "Blocked" status | Interactive | Handle response window |
 | 422 "Window ID not provided" | Interactive | Use `?id=` not `?windowId=` (except tools) |
 | 404 on table | OData | Verify table name |
-| `users` returns 401 (consumer key) or 200 with an empty `value` (password grant) | OData | Withheld from every token by design; no OData workaround — [details](02-OData-API.md#one-table-is-withheld-from-every-token-users) |
+| `users` returns 401 (consumer key) or 200 with an empty `value` (password grant) | OData | Read the `p21_view_users` view with `$select` (it carries password columns); `table/users` is withheld from consumer keys and, on a tenant with a second `users` table in another schema, binds to the wrong table — [details](02-OData-API.md#read-p21-users-from-p21_view_users-not-tableusers) |
 | 404 `Edm.Decimal` / `Edm.String` operand types | OData | Numeric key column — drop the quotes: `customer_id eq 100198` — [details](#404-incompatible-operand-types-a-quoted-numeric-key) |
 | `Invalid column name: delete_flag` on a grid | Transaction | That grid may delete another way — check `ValidValues` for `row_status_flag` — [details](03-Transaction-API.md#customer-service-removing-a-salesrep-grid-row) |
 | `Save is not enabled.` on a header edit | Transaction | The window will not save as it stands (for example a completed PO) — add a blank lines-grid row — [details](03-Transaction-API.md#purchaseorder-service-editing-a-completed-po) |

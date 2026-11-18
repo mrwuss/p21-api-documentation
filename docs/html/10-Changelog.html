@@ -661,6 +661,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-11-18">2026-11-18</a></li>
 <li><a href="#2026-11-16">2026-11-16</a></li>
 <li><a href="#2026-11-13">2026-11-13</a></li>
 <li><a href="#2026-11-12">2026-11-12</a></li>
@@ -771,6 +772,10 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-11-18">2026-11-18</h2>
+<ul>
+<li><strong>fix:</strong> <strong><a href="02-OData-API.html#read-p21-users-from-p21_view_users-not-tableusers">Read P21 users from <code>p21_view_users</code>, not <code>table/users</code></a></strong>, verified on a test tenant and read-only on production, both 26.1.6004.0: <code>view/p21_view_users</code> returns the user rows to a password grant; the view carries 158 columns, four of them passwords, so always send <code>$select</code>. <code>table/users</code> reads nothing because a second <code>users</code> table in another schema takes the entity set: the service document lists <code>users</code> twice, every <code>$select</code> 404s on <code>type '.'</code>, and a plain read returns an empty list. Consumer keys are still refused <code>table/users</code>, and get 401 on the view unless their allow-list names it (naming it not tested). The <code>/$count</code> path segment 404s on every collection tried; send <code>$count=true</code>. The section replaces <em>One table is withheld from every token</em>, which said there was no OData workaround. Python and C# programs (both run). Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/286">#286</a>. — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-11-16">2026-11-16</h2>
 <ul>
 <li><strong>docs:</strong> <strong><a href="recipes/create-product-group.html">Create a product group</a></strong>, a new recipe verified on play 26.1.6004.0 with an OData read-back after every POST: <code>ProductGroup</code> is one <code>FORM.form</code> keyed <code>company_id</code> + <code>product_group_id</code>, with the description and the asset, revenue and COS accounts required. <code>include_in_size_analysis_flag</code> is <code>Column is disabled</code> on a new group and an existing one, and a new group stores <code>N</code>; an account the company lacks is refused by name; <code>delete_flag</code> <code>ON</code> soft-deletes; and a <code>New</code> on an ID that already exists reports <code>Succeeded: 1</code> and overwrites that group, so the programs check the ID over OData first and refuse. Python and C# programs (both run), a payload file, and <code>definitions/ProductGroup.json</code>. The definitions fetch list and README now name all 48 services in the manifest. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/287">#287</a>. — <em>@mrwuss</em></li>
@@ -912,7 +917,7 @@
 <p>Closed the five open issues that already carried verified results.</p>
 <ul>
 <li><strong>fix:</strong> <strong><a href="03-Transaction-API.html#reprint_flag-must-match-the-pos-po_hdrprinted"><code>m_reprintpurchaseorders</code>: <code>reprint_flag</code> must match the PO's <code>po_hdr.printed</code></a></strong> — the examples hardcoded <code>"Y"</code>, which deterministically 500s on a PO that was never printed. The Python and C# examples now read <code>printed</code> first and send it; the empty-500 cause table has the new row. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/162">#162</a> — <em>@mrwuss</em></li>
-<li><strong>docs:</strong> <strong><a href="02-OData-API.html#one-table-is-withheld-from-every-token-users">The OData <code>users</code> table is withheld from every token</a></strong> — consumer keys get a 401 and password grants get an empty 200, including the caller's own row; adding it to a key's scope has no effect. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/164">#164</a> — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong><a href="02-OData-API.html#read-p21-users-from-p21_view_users-not-tableusers">The OData <code>users</code> table is withheld from every token</a></strong> — consumer keys get a 401 and password grants get an empty 200, including the caller's own row; adding it to a key's scope has no effect. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/164">#164</a> — <em>@mrwuss</em></li>
 <li><strong>docs:</strong> <strong><a href="03-Transaction-API.html#shipping-service-deleting-a-pick-ticket">The Shipping service can't delete orphaned pick tickets</a></strong> — tickets on a closed order or under a deleted assembly parent fail with the documented errors. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/165">#165</a> — <em>@mrwuss</em></li>
 <li><strong>docs:</strong> <strong><a href="03-Transaction-API.html#changing-a-locations-product-group-re-syncs-its-gl-accounts">Changing a location's product group re-syncs its GL accounts</a></strong> — through the <code>Item</code> service, even when both groups carry identical defaults, overwriting branch-specific location accounts; the accounts tab is disabled, so snapshot before and restore after. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/166">#166</a> — <em>@mrwuss</em></li>
 <li><strong>feat:</strong> <strong><a href="03-Transaction-API.html#item-merge-and-customer-merge-m_itemmerge-m_customermerge">Item Merge and Customer Merge through the Transaction API</a></strong> — payloads, errors, what history moves, and the chained-merge trap where an already-merged source or target silently merges a different record. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/168">#168</a> — <em>@mrwuss</em></li>
@@ -1792,6 +1797,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-11-18">2026-11-18</a></li>
 <li><a href="#2026-11-16">2026-11-16</a></li>
 <li><a href="#2026-11-13">2026-11-13</a></li>
 <li><a href="#2026-11-12">2026-11-12</a></li>

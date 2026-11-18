@@ -671,7 +671,7 @@
 <li><a href="#discovering-whats-exposed-metadata">Discovering What's Exposed ($metadata)</a></li>
 <li><a href="#the-tableview-split-and-the-404-it-produces">The table/view split, and the 404 it produces</a></li>
 <li><a href="#one-object-name-is-unreachable-regardless-of-surface-bin">One object name is unreachable regardless of surface: bin</a></li>
-<li><a href="#one-table-is-withheld-from-every-token-users">One table is withheld from every token: users</a></li>
+<li><a href="#read-p21-users-from-p21_view_users-not-tableusers">Read P21 users from p21_view_users, not table/users</a></li>
 <li><a href="#read-after-write-consistency">Read-after-write consistency</a></li>
 </ul>
 </li>
@@ -1008,39 +1008,211 @@
 <p><code>GET /odataservice/odata/table/bin</code> and <code>GET /odataservice/odata/view/bin</code> <strong>both 404</strong> — with a raw IIS "404 - File or directory not found" HTML page, not the normal OData JSON 404 body every other missing-object case in this section produces. Verified live on 26.1.5950.0, every casing tried (<code>bin</code>, <code>Bin</code>), both surfaces, with and without a <code>$select</code>/<code>$filter</code>.</p>
 <p>The table itself is real — <code>bin.$Key</code> appears in <code>table/$metadata</code>, and its data is reachable indirectly through <code>inv_loc.primary_bin</code> and the <code>bin_ud</code> extension table (which resolves fine; only the bare name <code>bin</code> fails). The most likely explanation is a routing collision: <code>bin</code> is also IIS's own reserved name for a website's compiled-assemblies folder, and something in the URL rewrite chain in front of the OData service appears to intercept a path segment named exactly <code>bin</code> before it reaches the OData handler — which would explain why the failure looks like a static-file 404 rather than an application-level one. Not confirmed against IIS configuration directly; recorded as an observed, reproducible symptom.</p>
 <p><strong>Read <code>bin</code> data through a join instead.</strong> <code>inv_loc.primary_bin</code> and <code>inv_loc.location_id</code> cover the common case (an item's primary bin at a location); for other bin attributes, <code>bin_ud</code> (its user-defined-field extension table) is reachable normally and may carry what you need.</p>
-<h3 id="one-table-is-withheld-from-every-token-users">One table is withheld from every token: <code>users</code></h3>
-<p>The <code>users</code> table (P21 user accounts) cannot be read through OData by any token. The two authentication methods fail in different shapes, and one of them looks like success:</p>
+<h3 id="read-p21-users-from-p21_view_users-not-tableusers">Read P21 users from <code>p21_view_users</code>, not <code>table/users</code></h3>
+<p>Read P21 user accounts from the <code>p21_view_users</code> view on the <code>view</code> surface, and <strong>always send <code>$select</code></strong>. The view carries every column of the <code>users</code> table, 158 of them, including four password columns: <code>password</code>, <code>order_validation_password</code>, <code>bypass_check_verify_password</code> and <code>docstar_server_password</code>. A read without <code>$select</code> returns all four.</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET /odataservice/odata/view/p21_view_users?$select=id,name,email_address,role_uid,delete_flag&amp;$filter=delete_flag eq &#39;N&#39;&amp;$top=500</span>
+</code></pre></div>
+
+<p>What each path returns, verified on a test tenant and read-only on production, both on 26.1.6004.0 (November 2026):</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>Token</th>
-<th><code>table/users?$top=1</code></th>
-<th><code>table/users/$count</code></th>
+<th>Request</th>
+<th>Password grant</th>
+<th>Consumer key</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Consumer key, with or without a username</td>
+<td><code>table/users?$top=1</code></td>
+<td><strong>200</strong> with <code>{"value":[]}</code></td>
 <td><strong>401</strong> <code>You are not authorized to access API. Please contact administrator to get access.</code></td>
+</tr>
+<tr>
+<td><code>table/users?$select=id&amp;$top=1</code></td>
+<td><strong>404</strong> <code>Could not find a property named 'id' on type '.'.</code></td>
 <td>401</td>
 </tr>
 <tr>
-<td>Password grant</td>
-<td><strong>200</strong> with <code>{"value":[]}</code></td>
-<td>404 <code>Value cannot be null</code></td>
+<td><code>view/p21_view_users?$select=id,name&amp;$top=2</code></td>
+<td><strong>200</strong>, two rows</td>
+<td>401 when the key's allow-list does not name the view</td>
+</tr>
+<tr>
+<td><code>view/p21_view_users?$select=id&amp;$filter=delete_flag eq 'N'&amp;$count=true</code></td>
+<td>200, every active user and <code>@odata.count</code></td>
+<td>401, as above</td>
 </tr>
 </tbody>
 </table></div>
-<p>What the tests ruled out:</p>
+<p><strong>Why <code>table/users</code> reads nothing: two tables share the name.</strong> OData exposes the base tables of every database schema under the bare table name, with no schema prefix. On the tenants tested, <code>dbo</code> and five other schemas hold tables, and one of those schemas, added by the site, holds a second table named <code>users</code>. The service document then lists <code>users</code> twice, <code>$metadata</code> holds both types (<code>dbo.users</code>, 158 columns, and the other schema's 13-column <code>users</code>), and the container binds the <code>users</code> entity set to the other schema's type. Every <code>$select</code> and <code>$filter</code> on <code>users</code> then fails against a type named <code>'.'</code>, the other table's own columns included, and a read without <code>$select</code> returns an empty list. A table in the same schema whose name is not taken twice reads normally by its bare name. No scope or permission setting repairs a name collision.</p>
+<p>Check the service document (<code>GET /odataservice/odata/table</code>) for a name listed twice before you trust an empty read. Any table whose name exists in two schemas breaks the same way; read it through a <code>dbo</code> view instead.</p>
+<p>What is and is not settled:</p>
 <ul>
-<li><strong>Scope.</strong> The consumer key's decoded <code>aud</code> claim listed <code>users</code> as an exact entry in its <a href="00-Authentication.html#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire">OData allow-list</a>, and the token was minted immediately before the calls. Every other table in the same list returned 200 with the same token.</li>
-<li><strong>Columns.</strong> Under a consumer key, <code>$select=id,name</code> returns the same 401, so the block is on the table, not on sensitive columns.</li>
-<li><strong>Filters.</strong> Under a password grant, <code>$filter</code> on the caller's own <code>id</code> still returns an empty <code>value</code>. A control read of <code>table/customer?$top=1</code> with the same token returns a real row, and the table is not empty in SQL.</li>
+<li><strong>Consumer keys are refused <code>table/users</code> even when the allow-list names it.</strong> The key's decoded <code>aud</code> claim listed <code>users</code> as an exact entry, and the token was minted immediately before the call; every other table in the list returned 200 with the same token. A P21 system administrator confirmed that withholding <code>users</code> from consumer keys is intended behavior.</li>
+<li><strong>A consumer key reads <code>p21_view_users</code> only if its allow-list names the view</strong>, like any other object (<a href="00-Authentication.html#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire">API Scopes</a>). The key tested did not name it and got 401. Whether naming the view opens it was not tested.</li>
+<li><strong>A tenant whose database holds only <code>dbo.users</code> was not available.</strong> The earlier reading that the empty password-grant read is a deliberate withholding was made on these same tenants, so it does not tell the two causes apart. On a tenant with a second <code>users</code> table, the collision alone explains the empty read.</li>
+<li><strong><code>/$count</code> is not evidence either way.</strong> <code>table/users/$count</code> answers 404 <code>Value cannot be null. (Parameter 'elementType')</code>, and so does <code>table/customer/$count</code>; see <a href="#count-get-count">$count</a>.</li>
 </ul>
-<p>A P21 system administrator confirmed that withholding <code>users</code> from consumer keys is intended behavior: adding <code>users</code> to a key's scope has no effect by design. The password-grant result shows the restriction covers that method too. Epicor has not published a list of tables withheld this way.</p>
-<p><strong>Treat an empty <code>value</code> on <code>users</code> as "withheld", not "no rows".</strong> A client that checks only the status code reports a password-grant read as a success that found nothing. There is no supported OData workaround. Whether a custom view that selects from <code>users</code> is also withheld is untested.</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;List active P21 users through the p21_view_users view, naming every column (the view carries password columns).&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;api_user&quot;</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;api_pass&quot;</span>
+<span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
+<span class="n">PAGE</span> <span class="o">=</span> <span class="mi">500</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="c1"># Name every column you read. Without $select the view returns all 158 columns,</span>
+<span class="c1"># password, order_validation_password, bypass_check_verify_password and</span>
+<span class="c1"># docstar_server_password among them.</span>
+<span class="n">COLUMNS</span> <span class="o">=</span> <span class="s2">&quot;id,name,email_address,role_uid,default_location_id,delete_flag&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;v2 token endpoint — credentials go in the body, never in headers.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">PASSWORD</span><span class="p">},</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;AccessToken&gt;([^&lt;]+)&lt;/AccessToken&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No AccessToken in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">VERIFY_SSL</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+    <span class="n">client</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">})</span>
+    <span class="n">users</span><span class="p">,</span> <span class="n">skip</span> <span class="o">=</span> <span class="p">[],</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="c1"># The view is on the view surface; table/users reads nothing useful (see above).</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/view/p21_view_users&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="n">COLUMNS</span><span class="p">,</span>
+            <span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="s2">&quot;delete_flag eq &#39;N&#39;&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;$orderby&quot;</span><span class="p">:</span> <span class="s2">&quot;id&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;$top&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">PAGE</span><span class="p">),</span> <span class="s2">&quot;$skip&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">skip</span><span class="p">),</span>
+        <span class="p">})</span>
+        <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span>
+        <span class="n">users</span> <span class="o">+=</span> <span class="n">rows</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">PAGE</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="n">skip</span> <span class="o">+=</span> <span class="n">PAGE</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">users</span><span class="p">)</span><span class="si">}</span><span class="s2"> active users&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">users</span><span class="p">[:</span><span class="mi">10</span><span class="p">]:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">u</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">&lt;20</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">u</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">:</span><span class="s2">&lt;30</span><span class="si">}</span><span class="s2"> role_uid=</span><span class="si">{</span><span class="n">u</span><span class="p">[</span><span class="s1">&#39;role_uid&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
+
+<span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_pass&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">Page</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">500</span><span class="p">;</span>
+<span class="c1">// ---------------------------------------------------------------------------</span>
+
+<span class="c1">// Name every column you read. Without $select the view returns all 158 columns,</span>
+<span class="c1">// password, order_validation_password, bypass_check_verify_password and</span>
+<span class="c1">// docstar_server_password among them.</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Columns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;id,name,email_address,role_uid,default_location_id,delete_flag&quot;</span><span class="p">;</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="n">HttpClientHandler</span><span class="p">.</span><span class="n">DangerousAcceptAnyServerCertificateValidator</span><span class="p">,</span>
+<span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromMinutes</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">MediaTypeWithQualityHeaderValue</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">users</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">JsonElement</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">skip</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="p">;</span><span class="w"> </span><span class="n">skip</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">Page</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// The view is on the view surface; table/users reads nothing useful (see above).</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/view/p21_view_users&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">              </span><span class="s">$&quot;?$select={Columns}&amp;$orderby=id&amp;$top={Page}&amp;$skip={skip}&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">              </span><span class="s">&quot;&amp;$filter=&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">Uri</span><span class="p">.</span><span class="n">EscapeDataString</span><span class="p">(</span><span class="s">&quot;delete_flag eq &#39;N&#39;&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="n">url</span><span class="p">);</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">d</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;value&quot;</span><span class="p">).</span><span class="n">EnumerateArray</span><span class="p">().</span><span class="n">Select</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">x</span><span class="p">.</span><span class="n">Clone</span><span class="p">()).</span><span class="n">ToList</span><span class="p">();</span>
+<span class="w">    </span><span class="n">users</span><span class="p">.</span><span class="n">AddRange</span><span class="p">(</span><span class="n">rows</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rows</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">Page</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">break</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;{users.Count} active users&quot;</span><span class="p">);</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">u</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">users</span><span class="p">.</span><span class="n">Take</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">u</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;name&quot;</span><span class="p">).</span><span class="n">ValueKind</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">JsonValueKind</span><span class="p">.</span><span class="n">Null</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">u</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;name&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  {u.GetProperty(&quot;</span><span class="n">id</span><span class="s">&quot;).GetString(),-20} {name,-30} role_uid={u.GetProperty(&quot;</span><span class="n">role_uid</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">c</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Username</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/api/security/token/v2&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;AccessToken&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Some middleware answers the token endpoint in XML even when asked for JSON.</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">f</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">p</span><span class="p">).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="n">f</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">v</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span>
+<span class="w">        </span><span class="n">ex</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">JsonException</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="n">KeyNotFoundException</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">Text</span><span class="p">.</span><span class="n">RegularExpressions</span><span class="p">.</span><span class="n">Regex</span><span class="p">.</span><span class="n">Match</span><span class="p">(</span>
+<span class="w">        </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;&lt;{f}&gt;([^&lt;]+)&lt;/{f}&gt;&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">m</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;No {f} in response: {p[..Math.Min(200, p.Length)]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">Groups</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<p>Both programs ran on the test tenant on 26.1.6004.0 and listed the same active users, with a page of 500 and again with a page of 50 (several pages).</p>
 <blockquote>
-<p><strong>Credit:</strong> <em>@mrwuss</em> — verified on production and play 26.1, September 2026, with both authentication methods; a second integrator reported the same consumer-key 401 on another play middleware host and on live (<a href="https://github.com/mrwuss/p21-api-documentation/issues/164">#164</a>). An earlier reading that a password grant <em>could</em> read <code>users</code> came from a status-code-only check and is withdrawn.</p>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — <code>users</code> withheld from consumer keys verified on production and a test tenant on 26.1, September 2026, with a second integrator reporting the same consumer-key 401 on another play middleware host and on live (<a href="https://github.com/mrwuss/p21-api-documentation/issues/164">#164</a>). The name collision and the <code>p21_view_users</code> path verified on both tenants on 26.1.6004.0, November 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/286">#286</a>).</p>
 </blockquote>
 <hr />
 <h3 id="read-after-write-consistency">Read-after-write consistency</h3>
@@ -1147,6 +1319,7 @@
 <div class="highlight"><pre><span></span><code><span class="err">/odata/table/supplier?$count=true</span>
 </code></pre></div>
 
+<p>Send <code>$count=true</code> as a query option. The <code>/$count</code> path segment answers HTTP 404 <code>Value cannot be null. (Parameter 'elementType')</code> on each collection tried, on both surfaces (<code>table/customer/$count</code>, <code>view/p21_view_oe_hdr/$count</code>; test tenant, 26.1.6004.0, November 2026).</p>
 <hr />
 <h2 id="filter-expressions">Filter Expressions</h2>
 <h3 id="comparison-operators">Comparison Operators</h3>
@@ -3793,7 +3966,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <li><a href="#discovering-whats-exposed-metadata">Discovering What's Exposed ($metadata)</a></li>
 <li><a href="#the-tableview-split-and-the-404-it-produces">The table/view split, and the 404 it produces</a></li>
 <li><a href="#one-object-name-is-unreachable-regardless-of-surface-bin">One object name is unreachable regardless of surface: bin</a></li>
-<li><a href="#one-table-is-withheld-from-every-token-users">One table is withheld from every token: users</a></li>
+<li><a href="#read-p21-users-from-p21_view_users-not-tableusers">Read P21 users from p21_view_users, not table/users</a></li>
 <li><a href="#read-after-write-consistency">Read-after-write consistency</a></li>
 </ul>
 </li>
