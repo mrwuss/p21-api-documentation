@@ -661,7 +661,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
-<li><a href="#2026-11-18">2026-11-18</a></li>
+<li><a href="#2026-11-18-v1310">2026-11-18 — v1.31.0</a></li>
 <li><a href="#2026-11-16">2026-11-16</a></li>
 <li><a href="#2026-11-13">2026-11-13</a></li>
 <li><a href="#2026-11-12">2026-11-12</a></li>
@@ -772,7 +772,8 @@
 </ul>
 </blockquote>
 <hr />
-<h2 id="2026-11-18">2026-11-18</h2>
+<h2 id="2026-11-18-v1310">2026-11-18 — v1.31.0</h2>
+<p>This release also includes the 2026-11-16, 2026-11-13, 2026-11-12 and 2026-11-11 entries below.</p>
 <ul>
 <li><strong>docs:</strong> <strong><a href="03-Transaction-API.html#row-edit-fields">A production order's comment can be overwritten but not cleared</a></strong>, verified on a test tenant, 26.1.6004.0: through the <code>ProductionOrder</code> service a blank (<code>""</code>, <code>" "</code> or <code>null</code>) <code>prod_order_hdr_comment</code> answers <code>Succeeded: 1</code> and keeps the old text, and the Interactive window's change to <code>""</code> keeps it too. Added to the <em>What a blank stores</em> table with the payload. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/305">#305</a>. — <em>@mrwuss</em></li>
 <li><strong>docs:</strong> <strong><a href="12-Production-Labor-API.html#component-cost-read-inventory_cost-not-unit_cost">Component cost: read <code>inventory_cost</code>, not <code>unit_cost</code></a></strong>, measured read-only on a test tenant, 26.1.6004.0: on completed production orders <code>inventory_cost</code> equals the component's <code>PROP</code> consumption cost in <code>inv_tran</code> on 30,746 of 30,801 components, <code>unit_cost</code> on 9,659, and <code>unit_cost</code> is 0 on 94,610. Python and C# programs (both run). Also: post-completion cost invoices carry <code>invoice_hdr.source_type_cd</code> <code>2871</code>; <strong><a href="02-OData-API.html#invoice_lineinvoice_line_type-and-invoice_hdrsource_type_cd"><code>invoice_line.invoice_line_type</code></a></strong> codes decoded; pick ticket status <code>976</code> Canceled, where <code>1962</code> Picked tickets sit, and that a sales-order pick ticket with an invoice has a ship date. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/303">#303</a>. — <em>@mrwuss</em></li>
@@ -1806,7 +1807,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
-<li><a href="#2026-11-18">2026-11-18</a></li>
+<li><a href="#2026-11-18-v1310">2026-11-18 — v1.31.0</a></li>
 <li><a href="#2026-11-16">2026-11-16</a></li>
 <li><a href="#2026-11-13">2026-11-13</a></li>
 <li><a href="#2026-11-12">2026-11-12</a></li>
