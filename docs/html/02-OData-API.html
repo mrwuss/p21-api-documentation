@@ -748,6 +748,7 @@
 <li><a href="#page-size-guidance">Page Size Guidance</a><ul>
 <li><a href="#choosing-a-page-size">Choosing a Page Size</a></li>
 <li><a href="#real-world-impact">Real-World Impact</a></li>
+<li><a href="#deep-pages-page-on-the-key-not-skip">Deep pages: page on the key, not $skip</a></li>
 </ul>
 </li>
 <li><a href="#performance-tips">Performance Tips</a><ul>
@@ -1050,7 +1051,7 @@
 <p>What is and is not settled:</p>
 <ul>
 <li><strong>Consumer keys are refused <code>table/users</code> even when the allow-list names it.</strong> The key's decoded <code>aud</code> claim listed <code>users</code> as an exact entry, and the token was minted immediately before the call; every other table in the list returned 200 with the same token. A P21 system administrator confirmed that withholding <code>users</code> from consumer keys is intended behavior.</li>
-<li><strong>A consumer key reads <code>p21_view_users</code> only if its allow-list names the view</strong>, like any other object (<a href="00-Authentication.html#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire">API Scopes</a>). The key tested did not name it and got 401. Whether naming the view opens it was not tested.</li>
+<li><strong>A consumer key reads a view only if its allow-list names it</strong> (<a href="00-Authentication.html#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire">API Scopes</a>). The key tested did not name <code>p21_view_users</code> and got 401; a site view named in the same key's list reads with 200. Whether naming <code>p21_view_users</code> itself opens it was not tested.</li>
 <li><strong>A tenant whose database holds only <code>dbo.users</code> was not available.</strong> The earlier reading that the empty password-grant read is a deliberate withholding was made on these same tenants, so it does not tell the two causes apart. On a tenant with a second <code>users</code> table, the collision alone explains the empty read.</li>
 <li><strong><code>/$count</code> is not evidence either way.</strong> <code>table/users/$count</code> answers 404 <code>Value cannot be null. (Parameter 'elementType')</code>, and so does <code>table/customer/$count</code>; see <a href="#count-get-count">$count</a>.</li>
 </ul>
@@ -1295,6 +1296,225 @@
 <blockquote>
 <p><strong>Credit:</strong> <a href="https://github.com/BPowell76">Brian Powell Jr</a> — reported the date-time format gap (<a href="https://github.com/mrwuss/p21-api-documentation/pull/256">#256</a>).</p>
 </blockquote>
+<h4 id="date-time-offsets-what-p21-returns-and-what-a-filter-compares">Date-time offsets: what P21 returns and what a filter compares</h4>
+<p>P21 stores dates and times as the database server's local wall-clock time, with no time zone. OData adds an offset on the way out and removes one on the way in, and the two directions do not agree. Verified read-only on a test tenant and production, 26.1.6004.0, in November 2026, against <code>oe_hdr.date_created</code> (<code>Edm.DateTimeOffset</code>) on a server in US Central time, with the stored values read in SQL:</p>
+<ul>
+<li><strong>Every value comes back with the server's offset at the time of the request.</strong> In November a value stored <code>2017-07-20 12:36:12</code> comes back <code>2017-07-20T12:36:12-06:00</code>, although daylight time (<code>-05:00</code>) was in force that day. A January value comes back with <code>-06:00</code>, which is right for its date.</li>
+<li><strong>A literal with an explicit offset is converted to server-local time with daylight saving applied.</strong> So the July value, sent back exactly as it was returned, does not match its own row: <code>12:36:12-06:00</code> is 13:36 Central daylight time. <code>12:36:12-05:00</code> and <code>17:36:12+00:00</code> match it.</li>
+<li><strong>A <code>Z</code> literal is compared as wall-clock time, not as UTC.</strong> <code>2017-07-20T12:36:12Z</code> matches the July row, and <code>2026-01-15T10:02:02.41Z</code> matches a January row stored at 10:02:02.41. A client that converts to UTC and sends <code>Z</code> misses by five or six hours. Do not build on this; send an explicit offset.</li>
+</ul>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Literal sent for the July row (stored 12:36:12)</th>
+<th>Matches</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>2017-07-20T12:36:12-06:00</code> (as returned)</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>2017-07-20T12:36:12-05:00</code></td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>2017-07-20T17:36:12+00:00</code></td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>2017-07-20T12:36:12Z</code></td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>2017-07-20T12:36:12+00:00</code></td>
+<td>no</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>To filter on a value you read, drop the returned offset and attach the offset in force on that date in the server's time zone.</strong> Treat a returned value as wall-clock time, and convert it to UTC, if you need to, with the server's time-zone rules, not with the offset in the response. Values whose date is in the same daylight-saving period as the request round-trip unchanged; the others are off by one hour. A delta sync that stores a returned stamp and filters <code>ge</code> on it is exposed when the stamp and the next run fall on opposite sides of a clock change (<a href="#separator-insensitive-item-lookup-keep-folded-ids-and-sync-on-date_last_modified">below</a>).</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Turn a date-time OData returned into a filter literal that matches it, in summer and winter alike.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">zoneinfo</span><span class="w"> </span><span class="kn">import</span> <span class="n">ZoneInfo</span>   <span class="c1"># on Windows: pip install tzdata</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;api_user&quot;</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;api_pass&quot;</span>
+<span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
+<span class="n">SERVER_TZ</span> <span class="o">=</span> <span class="n">ZoneInfo</span><span class="p">(</span><span class="s2">&quot;America/Chicago&quot;</span><span class="p">)</span>   <span class="c1"># the time zone of P21&#39;s database server</span>
+<span class="n">DAYS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;2025-07-15&quot;</span><span class="p">,</span> <span class="s2">&quot;2026-01-15&quot;</span><span class="p">]</span>       <span class="c1"># one day in daylight time, one in standard time</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;v2 token endpoint — credentials go in the body, never in headers.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">PASSWORD</span><span class="p">},</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;AccessToken&gt;([^&lt;]+)&lt;/AccessToken&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No AccessToken in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">wall_clock</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">datetime</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The stored local time: OData appends today&#39;s server offset, so drop it.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tzinfo</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">literal</span><span class="p">(</span><span class="n">wall</span><span class="p">:</span> <span class="n">datetime</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A filter literal carrying the offset in force on that date, as the filter expects.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">wall</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tzinfo</span><span class="o">=</span><span class="n">SERVER_TZ</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">VERIFY_SSL</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+    <span class="n">client</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">})</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/table/oe_hdr&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">matches</span><span class="p">(</span><span class="n">order_no</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">lit</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="s2">&quot;order_no&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;order_no eq &#39;</span><span class="si">{</span><span class="n">order_no</span><span class="si">}</span><span class="s2">&#39; and date_created eq </span><span class="si">{</span><span class="n">lit</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="p">})</span>
+        <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;value&quot;</span><span class="p">])</span>
+
+    <span class="k">for</span> <span class="n">day</span> <span class="ow">in</span> <span class="n">DAYS</span><span class="p">:</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">literal</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="n">day</span><span class="p">))</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="s2">&quot;order_no,date_created&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;date_created ge </span><span class="si">{</span><span class="n">start</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;$orderby&quot;</span><span class="p">:</span> <span class="s2">&quot;date_created&quot;</span><span class="p">,</span> <span class="s2">&quot;$top&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span>
+        <span class="p">})</span>
+        <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;value&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">returned</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;date_created&quot;</span><span class="p">]</span>
+        <span class="n">fixed</span> <span class="o">=</span> <span class="n">literal</span><span class="p">(</span><span class="n">wall_clock</span><span class="p">(</span><span class="n">returned</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;order </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;order_no&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: returned </span><span class="si">{</span><span class="n">returned</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  filter on the value as returned: </span><span class="si">{</span><span class="n">matches</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;order_no&#39;</span><span class="p">],</span><span class="w"> </span><span class="n">returned</span><span class="p">)</span><span class="si">}</span><span class="s2"> row(s)&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  filter on </span><span class="si">{</span><span class="n">fixed</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">matches</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;order_no&#39;</span><span class="p">],</span><span class="w"> </span><span class="n">fixed</span><span class="p">)</span><span class="si">}</span><span class="s2"> row(s)&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Globalization</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
+
+<span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_pass&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ServerTz</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;America/Chicago&quot;</span><span class="p">;</span><span class="w">           </span><span class="c1">// the time zone of P21&#39;s database server</span>
+<span class="kt">string</span><span class="p">[]</span><span class="w"> </span><span class="n">days</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;2025-07-15&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;2026-01-15&quot;</span><span class="p">];</span><span class="w">        </span><span class="c1">// one day in daylight time, one in standard time</span>
+<span class="c1">// ---------------------------------------------------------------------------</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">zone</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeZoneInfo</span><span class="p">.</span><span class="n">FindSystemTimeZoneById</span><span class="p">(</span><span class="n">ServerTz</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="n">HttpClientHandler</span><span class="p">.</span><span class="n">DangerousAcceptAnyServerCertificateValidator</span><span class="p">,</span>
+<span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromMinutes</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">MediaTypeWithQualityHeaderValue</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/table/oe_hdr&quot;</span><span class="p">;</span>
+
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">day</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">days</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">start</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Literal</span><span class="p">(</span><span class="n">DateTime</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">day</span><span class="p">,</span><span class="w"> </span><span class="n">CultureInfo</span><span class="p">.</span><span class="n">InvariantCulture</span><span class="p">));</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">GetRows</span><span class="p">(</span><span class="s">$&quot;?$select=order_no,date_created&amp;$orderby=date_created&amp;$top=1&amp;$filter=&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">                             </span><span class="n">Uri</span><span class="p">.</span><span class="n">EscapeDataString</span><span class="p">(</span><span class="s">$&quot;date_created ge {start}&quot;</span><span class="p">)))[</span><span class="mi">0</span><span class="p">];</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">orderNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">row</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;order_no&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">returned</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">row</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;date_created&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">()</span><span class="o">!</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">fixedLiteral</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Literal</span><span class="p">(</span><span class="n">WallClock</span><span class="p">(</span><span class="n">returned</span><span class="p">));</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;order {orderNo}: returned {returned}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  filter on the value as returned: {await Matches(orderNo!, returned)} row(s)&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  filter on {fixedLiteral}: {await Matches(orderNo!, fixedLiteral)} row(s)&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">Matches</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">orderNo</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">literal</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span>
+<span class="w">    </span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">GetRows</span><span class="p">(</span><span class="s">&quot;?$select=order_no&amp;$filter=&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">                   </span><span class="n">Uri</span><span class="p">.</span><span class="n">EscapeDataString</span><span class="p">(</span><span class="s">$&quot;order_no eq &#39;{orderNo}&#39; and date_created eq {literal}&quot;</span><span class="p">))).</span><span class="n">Count</span><span class="p">;</span>
+
+<span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">JsonElement</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">GetRows</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">query</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="n">url</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">query</span><span class="p">);</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">d</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;value&quot;</span><span class="p">).</span><span class="n">EnumerateArray</span><span class="p">().</span><span class="n">Select</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">x</span><span class="p">.</span><span class="n">Clone</span><span class="p">()).</span><span class="n">ToList</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="c1">// The stored local time: OData appends today&#39;s server offset, so drop it.</span>
+<span class="k">static</span><span class="w"> </span><span class="n">DateTime</span><span class="w"> </span><span class="nf">WallClock</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="k">value</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span>
+<span class="w">    </span><span class="n">DateTimeOffset</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">value</span><span class="p">,</span><span class="w"> </span><span class="n">CultureInfo</span><span class="p">.</span><span class="n">InvariantCulture</span><span class="p">).</span><span class="n">DateTime</span><span class="p">;</span>
+
+<span class="c1">// A filter literal carrying the offset in force on that date, as the filter expects.</span>
+<span class="kt">string</span><span class="w"> </span><span class="nf">Literal</span><span class="p">(</span><span class="n">DateTime</span><span class="w"> </span><span class="n">wall</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">DateTimeOffset</span><span class="p">(</span><span class="n">wall</span><span class="p">,</span><span class="w"> </span><span class="n">zone</span><span class="p">.</span><span class="n">GetUtcOffset</span><span class="p">(</span><span class="n">wall</span><span class="p">)).</span><span class="n">ToString</span><span class="p">(</span><span class="s">&quot;yyyy-MM-ddTHH:mm:ss.FFFFFFFzzz&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">CultureInfo</span><span class="p">.</span><span class="n">InvariantCulture</span><span class="p">);</span>
+
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">c</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Username</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/api/security/token/v2&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;AccessToken&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Some middleware answers the token endpoint in XML even when asked for JSON.</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">f</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">p</span><span class="p">).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="n">f</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">v</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span>
+<span class="w">        </span><span class="n">ex</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">JsonException</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="n">KeyNotFoundException</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">Text</span><span class="p">.</span><span class="n">RegularExpressions</span><span class="p">.</span><span class="n">Regex</span><span class="p">.</span><span class="n">Match</span><span class="p">(</span>
+<span class="w">        </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;&lt;{f}&gt;([^&lt;]+)&lt;/{f}&gt;&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">m</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;No {f} in response: {p[..Math.Min(200, p.Length)]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">Groups</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<p>Both programs ran on the test tenant on 26.1.6004.0 (Python with <code>tzdata</code> installed): for a July 2025 order the value as returned matched 0 rows and the corrected literal matched 1; for a January 2026 order both matched 1.</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — lead from an integration's clock proof, verified on a test tenant and production, November 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/291">#291</a>).</p>
+</blockquote>
 <h3 id="orderby-sort-results">$orderby - Sort Results</h3>
 <p>Sort by one or more fields:</p>
 <div class="highlight"><pre><span></span><code><span class="err">/odata/table/supplier?$orderby=supplier_name asc</span>
@@ -1313,6 +1533,7 @@
 <blockquote>
 <p><strong>No <code>@odata.nextLink</code>:</strong> P21's OData responses do <strong>not</strong> include a continuation link. Paging is entirely client-driven with <code>$skip</code>/<code>$top</code> — loop until a page comes back with fewer rows than <code>$top</code> (or track <code>@odata.count</code>). See the <a href="#pagination-helper">Pagination Helper</a>.</p>
 <p><strong>The service will not save you from yourself here.</strong> Re-confirmed on 26.1.5940.0: a <code>$select</code> with no <code>$top</code> against <code>p21_view_oe_hdr</code> returned <strong>806,503 rows in a single response</strong> — no truncation, no continuation link, no server-side cap. An unbounded query is not a page-one query; it is the whole table, materialized in your process. <strong>Always send <code>$top</code>.</strong></p>
+<p><strong>A deep <code>$skip</code> page can cost more than the whole read.</strong> On a view that computes its rows, each page re-reads every row before its offset, and past about 30 s P21 answers HTTP 404 <code>Execution Timeout Expired.</code> For a full read of a large object, page on the key instead; see <a href="#deep-pages-page-on-the-key-not-skip">Deep pages: page on the key, not <code>$skip</code></a>.</p>
 </blockquote>
 <h3 id="count-get-count">$count - Get Count</h3>
 <p>Include total count in response:</p>
@@ -3354,6 +3575,231 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 </tbody>
 </table></div>
 <p>The 10x improvement comes entirely from eliminating round-trip overhead.</p>
+<h3 id="deep-pages-page-on-the-key-not-skip">Deep pages: page on the key, not <code>$skip</code></h3>
+<p>P21 stops an OData SQL command at <strong>30 seconds</strong> and answers <strong>HTTP 404</strong>, the same status as a missing object or a wrong column name, with this body text:</p>
+<div class="highlight"><pre><span></span><code>Execution Timeout Expired.  The timeout period elapsed prior to completion of the operation or the server is not responding.
+</code></pre></div>
+
+<p>Retrying repeats the same cost. A <code>$skip</code> page is where this usually starts: the server re-reads every row before the offset, so on an object whose rows are expensive to produce, each page is slower than the one before. Measured on a test tenant, 26.1.6004.0 (November 2026), 5,000-row pages with <code>$orderby</code> on the key:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Object</th>
+<th>Rows</th>
+<th><code>$skip=0</code></th>
+<th>Deeper pages</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A site view that joins and computes per item</td>
+<td>335,227</td>
+<td>1.9 s</td>
+<td><code>$skip=50000</code> 17.8 s; <code>$skip=100000</code>, <code>200000</code> and <code>320000</code> each <strong>404 at 30.3 s</strong></td>
+</tr>
+<tr>
+<td><code>view/p21_view_po_line</code></td>
+<td>1,071,130</td>
+<td>0.4 s</td>
+<td><code>$skip=500000</code> 1.9 s</td>
+</tr>
+<tr>
+<td><code>table/oe_line</code></td>
+<td>2,997,761</td>
+<td>0.3 s</td>
+<td><code>$skip=2000000</code> 0.5 s</td>
+</tr>
+<tr>
+<td><code>view/p21_view_inv_loc</code></td>
+<td>603,116</td>
+<td>0.3 s</td>
+<td><code>$skip=200000</code> 0.3 s</td>
+</tr>
+</tbody>
+</table></div>
+<p>Base tables and simple views ordered on an indexed key stay nearly flat; a view that joins or aggregates does not. An integration reading such a view in production failed the same way about 60,000 rows in.</p>
+<p><strong>Page on the key instead.</strong> Order on a unique key, and start each page after the last key the previous page returned:</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET /odataservice/odata/view/p21_view_po_line?$select=po_line_uid,po_no,line_no&amp;$orderby=po_line_uid&amp;$top=5000</span>
+<span class="err">GET /odataservice/odata/view/p21_view_po_line?$select=po_line_uid,po_no,line_no&amp;$orderby=po_line_uid&amp;$top=5000&amp;$filter=po_line_uid gt 1234567</span>
+</code></pre></div>
+
+<p>Every page then costs about the same. The site view above read end to end in 68 pages, the slowest 2.1 s. For a key of two columns, order on both and filter <code>a gt x or (a eq x and b gt y)</code>: <code>view/p21_view_inv_loc</code> on <code>inv_mast_uid,location_id</code> in 20,000-row pages read 603,116 rows, each exactly once, slowest page 1.1 s.</p>
+<p>Notes:</p>
+<ul>
+<li><strong>The key must be unique and every page must <code>$orderby</code> it.</strong> Without a stable order, <code>$skip</code> paging over a view can repeat or drop rows; a key filter on a column with duplicates drops the rows that share the last value.</li>
+<li><strong>A 404 is ambiguous.</strong> Read the body before you treat a 404 as "not found": <code>Execution Timeout Expired</code> means the query ran too long, not that the object is missing.</li>
+<li><strong>A narrower <code>$filter</code> is the other fix.</strong> Key paging removes the re-read; it does not make one expensive page cheap.</li>
+</ul>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Read a whole table or view a page at a time on its key, so every page costs the same however deep it is.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;api_user&quot;</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;api_pass&quot;</span>
+<span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
+<span class="n">COLLECTION</span> <span class="o">=</span> <span class="s2">&quot;view/p21_view_po_line&quot;</span>      <span class="c1"># table/... or view/...</span>
+<span class="n">KEY</span> <span class="o">=</span> <span class="s2">&quot;po_line_uid&quot;</span>                       <span class="c1"># a unique, numeric column</span>
+<span class="n">COLUMNS</span> <span class="o">=</span> <span class="s2">&quot;po_line_uid,po_no,line_no,item_id,qty_ordered&quot;</span>
+<span class="n">PAGE</span> <span class="o">=</span> <span class="mi">5000</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;v2 token endpoint — credentials go in the body, never in headers.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">PASSWORD</span><span class="p">},</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;AccessToken&gt;([^&lt;]+)&lt;/AccessToken&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No AccessToken in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">VERIFY_SSL</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+    <span class="n">client</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">})</span>
+    <span class="n">last</span><span class="p">,</span> <span class="n">rows_read</span><span class="p">,</span> <span class="n">pages</span><span class="p">,</span> <span class="n">slowest</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.0</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="n">COLUMNS</span><span class="p">,</span> <span class="s2">&quot;$orderby&quot;</span><span class="p">:</span> <span class="n">KEY</span><span class="p">,</span> <span class="s2">&quot;$top&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">PAGE</span><span class="p">)}</span>
+        <span class="k">if</span> <span class="n">last</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># The next page starts after the last key seen: no $skip, so no re-read.</span>
+            <span class="n">params</span><span class="p">[</span><span class="s2">&quot;$filter&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">KEY</span><span class="si">}</span><span class="s2"> gt </span><span class="si">{</span><span class="n">last</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">started</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/</span><span class="si">{</span><span class="n">COLLECTION</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">404</span> <span class="ow">and</span> <span class="s2">&quot;Execution Timeout Expired&quot;</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;P21 stopped the query at its 30 s SQL limit; narrow $filter or shrink PAGE&quot;</span><span class="p">)</span>
+        <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">slowest</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">slowest</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">started</span><span class="p">)</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span>
+        <span class="n">pages</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">rows_read</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+        <span class="c1"># ... process rows here ...</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">PAGE</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="n">last</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">KEY</span><span class="p">]</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">rows_read</span><span class="si">}</span><span class="s2"> rows in </span><span class="si">{</span><span class="n">pages</span><span class="si">}</span><span class="s2"> pages; slowest page </span><span class="si">{</span><span class="n">slowest</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> s&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Diagnostics</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
+
+<span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_pass&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Collection</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;view/p21_view_po_line&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// table/... or view/...</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;po_line_uid&quot;</span><span class="p">;</span><span class="w">                    </span><span class="c1">// a unique, numeric column</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Columns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;po_line_uid,po_no,line_no,item_id,qty_ordered&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">Page</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5000</span><span class="p">;</span>
+<span class="c1">// ---------------------------------------------------------------------------</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="n">HttpClientHandler</span><span class="p">.</span><span class="n">DangerousAcceptAnyServerCertificateValidator</span><span class="p">,</span>
+<span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromMinutes</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">MediaTypeWithQualityHeaderValue</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+
+<span class="kt">decimal?</span><span class="w"> </span><span class="n">last</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">null</span><span class="p">;</span>
+<span class="kt">long</span><span class="w"> </span><span class="n">rowsRead</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">pages</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">slowest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">Zero</span><span class="p">;</span>
+<span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="k">true</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/{Collection}?$select={Columns}&amp;$orderby={Key}&amp;$top={Page}&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">last</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// The next page starts after the last key seen: no $skip, so no re-read.</span>
+<span class="w">        </span><span class="n">url</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="s">&quot;&amp;$filter=&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">Uri</span><span class="p">.</span><span class="n">EscapeDataString</span><span class="p">(</span><span class="s">$&quot;{Key} gt {last}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">watch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Stopwatch</span><span class="p">.</span><span class="n">StartNew</span><span class="p">();</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="n">url</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">();</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="n">r</span><span class="p">.</span><span class="n">StatusCode</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">404</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">body</span><span class="p">.</span><span class="n">Contains</span><span class="p">(</span><span class="s">&quot;Execution Timeout Expired&quot;</span><span class="p">))</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span>
+<span class="w">            </span><span class="s">&quot;P21 stopped the query at its 30 s SQL limit; narrow $filter or shrink Page&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="n">slowest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">watch</span><span class="p">.</span><span class="n">Elapsed</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">slowest</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">watch</span><span class="p">.</span><span class="n">Elapsed</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">slowest</span><span class="p">;</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">body</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">d</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;value&quot;</span><span class="p">).</span><span class="n">EnumerateArray</span><span class="p">().</span><span class="n">ToList</span><span class="p">();</span>
+<span class="w">    </span><span class="n">pages</span><span class="o">++</span><span class="p">;</span>
+<span class="w">    </span><span class="n">rowsRead</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">rows</span><span class="p">.</span><span class="n">Count</span><span class="p">;</span>
+<span class="w">    </span><span class="c1">// ... process rows here ...</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rows</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">Page</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">break</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">last</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">rows</span><span class="p">[</span><span class="o">^</span><span class="mi">1</span><span class="p">].</span><span class="n">GetProperty</span><span class="p">(</span><span class="n">Key</span><span class="p">).</span><span class="n">GetDecimal</span><span class="p">();</span>
+<span class="p">}</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;{rowsRead} rows in {pages} pages; slowest page {slowest.TotalSeconds:F1} s&quot;</span><span class="p">);</span>
+
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">c</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Username</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/api/security/token/v2&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;AccessToken&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Some middleware answers the token endpoint in XML even when asked for JSON.</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">f</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">p</span><span class="p">).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="n">f</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">v</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span>
+<span class="w">        </span><span class="n">ex</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">JsonException</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="n">KeyNotFoundException</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">Text</span><span class="p">.</span><span class="n">RegularExpressions</span><span class="p">.</span><span class="n">Regex</span><span class="p">.</span><span class="n">Match</span><span class="p">(</span>
+<span class="w">        </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;&lt;{f}&gt;([^&lt;]+)&lt;/{f}&gt;&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">m</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;No {f} in response: {p[..Math.Min(200, p.Length)]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">Groups</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<p>Both programs ran on the test tenant on 26.1.6004.0: each read <code>p21_view_po_line</code> in 215 pages (1,071,130 rows, slowest page 1.3 s), and, with the collection and key changed, the 335,227-row site view in 68 pages (slowest 2.5 s in Python, 4.7 s in C#).</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — from an integration's production load failures, reproduced and measured on a test tenant, November 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/290">#290</a>).</p>
+</blockquote>
 <hr />
 <h2 id="performance-tips">Performance Tips</h2>
 <ul>
@@ -3496,6 +3942,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <p>So a sync reads every item stamped since its last run, folds each ID and applies it: an active item adds or keeps its folded key, a soft-deleted one comes out. Notes:</p>
 <ul>
 <li><strong>Filter <code>ge</code> the stored stamp, not <code>gt</code>, and dedupe on <code>inv_mast_uid</code>.</strong> Several rows can carry the same stamp, and a <code>gt</code> from the last row seen can skip a row saved in the same instant. The date-time literal needs a <code>T</code> and a UTC offset, unquoted (<a href="#filter-filter-results">details</a>).</li>
+<li><strong>Rebuild the stored stamp's offset before you filter on it.</strong> OData returns every value with the offset of the moment you read it, and converts a filter literal with the offset in force on the literal's own date. A stamp read on one side of a clock change and filtered on the other is off by an hour, and a <code>ge</code> filter then skips that hour. Store the stamp as wall-clock time and attach the offset for its date, or step back an hour and let the dedupe absorb the overlap (<a href="#date-time-offsets-what-p21-returns-and-what-a-filter-compares">details</a>).</li>
 <li><strong>Several item IDs can fold to one key.</strong> Keep a list per key, and remove only the item that was deleted.</li>
 <li><strong>A save that changes nothing still moves the stamp</strong>, so expect some rows with nothing new.</li>
 <li>Writes through other routes (the Inventory REST API, item merges, pricing and costing windows) were not tested; check the stamp moves for any route your integration depends on.</li>
@@ -3928,7 +4375,9 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <p>This is a way to add more tracking numbers to a shipment than the Transaction API's shipping columns allow. It writes the table directly, with none of the window's validation, and the Clippership import decides what happens to a row. Test it on a test tenant first. <em>(Verified on play 26.1.5950.0, 2026-10-29, with one row marked <code>processed_flag</code> <code>Y</code> and <code>delete_flag</code> <code>Y</code>, then deleted. Community lead: Eric Davis, <a href="https://forums.p21ww.org/Topic234562.aspx">P21WWUG topic</a>.)</em></p>
 <hr />
 <h2 id="odata-schema-refresh">OData Schema Refresh</h2>
-<p>The OData service automatically picks up changes to existing table/view schemas (e.g., column type changes). However, when <strong>new tables or views</strong> are added to the database, the OData service must be manually refreshed:</p>
+<p>When <strong>new tables or views</strong> are added to the database, or <strong>a column is added to an existing view</strong>, the OData service must be refreshed by hand before it serves them. Until then, a <code>$select</code> of the new column answers HTTP 404 <code>Could not find a property named '&lt;column&gt;' ...</code>, so a release that reads the column before the refresh fails every read of that view. This was observed on a test tenant on 26.1.6004.0 (November 2026) by an integration that added a column to its own view; reproducing it needs rights to change a view, which the read-only checks here did not have. After their refresh, a full comparison of a test and a production tenant against SQL found every table, view and column served, except the only three <code>timestamp</code> (rowversion) columns in the database (<code>fulltext_timestamp</code> on <code>inv_mast</code> and two views of it), which OData does not expose.</p>
+<p>A new view is reached by a <strong>consumer key</strong> only when the key's <a href="00-Authentication.html#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire">OData allow-list</a> names it, so add it to the key's scope as well, on each tenant. A site view named in a key's list reads with 200 through that key (test tenant and production, 26.1.6004.0).</p>
+<p>To refresh:</p>
 <ol>
 <li>Log in to the <strong>SOA Middleware</strong> home page (<code>https://{hostname}/api/admin</code>) — this requires the P21 user's <strong>Access to SOA Admin Page</strong> application-security setting to be <strong>Yes</strong>; see <a href="00-Authentication.html#application-security-settings-that-affect-api-access">Authentication § Application Security settings that affect API access</a></li>
 <li>Go to <strong>Administration</strong> from the menu</li>
@@ -4043,6 +4492,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <li><a href="#page-size-guidance">Page Size Guidance</a><ul>
 <li><a href="#choosing-a-page-size">Choosing a Page Size</a></li>
 <li><a href="#real-world-impact">Real-World Impact</a></li>
+<li><a href="#deep-pages-page-on-the-key-not-skip">Deep pages: page on the key, not $skip</a></li>
 </ul>
 </li>
 <li><a href="#performance-tips">Performance Tips</a><ul>

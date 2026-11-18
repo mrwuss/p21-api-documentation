@@ -204,7 +204,7 @@ Check the service document (`GET /odataservice/odata/table`) for a name listed t
 What is and is not settled:
 
 - **Consumer keys are refused `table/users` even when the allow-list names it.** The key's decoded `aud` claim listed `users` as an exact entry, and the token was minted immediately before the call; every other table in the list returned 200 with the same token. A P21 system administrator confirmed that withholding `users` from consumer keys is intended behavior.
-- **A consumer key reads `p21_view_users` only if its allow-list names the view**, like any other object ([API Scopes](00-Authentication.md#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire)). The key tested did not name it and got 401. Whether naming the view opens it was not tested.
+- **A consumer key reads a view only if its allow-list names it** ([API Scopes](00-Authentication.md#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire)). The key tested did not name `p21_view_users` and got 401; a site view named in the same key's list reads with 200. Whether naming `p21_view_users` itself opens it was not tested.
 - **A tenant whose database holds only `dbo.users` was not available.** The earlier reading that the empty password-grant read is a deliberate withholding was made on these same tenants, so it does not tell the two causes apart. On a tenant with a second `users` table, the collision alone explains the empty read.
 - **`/$count` is not evidence either way.** `table/users/$count` answers 404 `Value cannot be null. (Parameter 'elementType')`, and so does `table/customer/$count`; see [$count](#count-get-count).
 
@@ -452,6 +452,203 @@ To filter on a date **and time**, write an unquoted ISO 8601 literal with a `T` 
 
 > **Credit:** [Brian Powell Jr](https://github.com/BPowell76) — reported the date-time format gap ([#256](https://github.com/mrwuss/p21-api-documentation/pull/256)).
 
+#### Date-time offsets: what P21 returns and what a filter compares
+
+P21 stores dates and times as the database server's local wall-clock time, with no time zone. OData adds an offset on the way out and removes one on the way in, and the two directions do not agree. Verified read-only on a test tenant and production, 26.1.6004.0, in November 2026, against `oe_hdr.date_created` (`Edm.DateTimeOffset`) on a server in US Central time, with the stored values read in SQL:
+
+- **Every value comes back with the server's offset at the time of the request.** In November a value stored `2017-07-20 12:36:12` comes back `2017-07-20T12:36:12-06:00`, although daylight time (`-05:00`) was in force that day. A January value comes back with `-06:00`, which is right for its date.
+- **A literal with an explicit offset is converted to server-local time with daylight saving applied.** So the July value, sent back exactly as it was returned, does not match its own row: `12:36:12-06:00` is 13:36 Central daylight time. `12:36:12-05:00` and `17:36:12+00:00` match it.
+- **A `Z` literal is compared as wall-clock time, not as UTC.** `2017-07-20T12:36:12Z` matches the July row, and `2026-01-15T10:02:02.41Z` matches a January row stored at 10:02:02.41. A client that converts to UTC and sends `Z` misses by five or six hours. Do not build on this; send an explicit offset.
+
+| Literal sent for the July row (stored 12:36:12) | Matches |
+|---|---|
+| `2017-07-20T12:36:12-06:00` (as returned) | no |
+| `2017-07-20T12:36:12-05:00` | yes |
+| `2017-07-20T17:36:12+00:00` | yes |
+| `2017-07-20T12:36:12Z` | yes |
+| `2017-07-20T12:36:12+00:00` | no |
+
+**To filter on a value you read, drop the returned offset and attach the offset in force on that date in the server's time zone.** Treat a returned value as wall-clock time, and convert it to UTC, if you need to, with the server's time-zone rules, not with the offset in the response. Values whose date is in the same daylight-saving period as the request round-trip unchanged; the others are off by one hour. A delta sync that stores a returned stamp and filters `ge` on it is exposed when the stamp and the next run fall on opposite sides of a clock change ([below](#separator-insensitive-item-lookup-keep-folded-ids-and-sync-on-date_last_modified)).
+
+<!-- tabs -->
+
+```python
+"""Turn a date-time OData returned into a filter literal that matches it, in summer and winter alike."""
+import re
+from datetime import datetime
+from zoneinfo import ZoneInfo   # on Windows: pip install tzdata
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+SERVER_TZ = ZoneInfo("America/Chicago")   # the time zone of P21's database server
+DAYS = ["2025-07-15", "2026-01-15"]       # one day in daylight time, one in standard time
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def wall_clock(value: str) -> datetime:
+    """The stored local time: OData appends today's server offset, so drop it."""
+    return datetime.fromisoformat(value).replace(tzinfo=None)
+
+
+def literal(wall: datetime) -> str:
+    """A filter literal carrying the offset in force on that date, as the filter expects."""
+    return wall.replace(tzinfo=SERVER_TZ).isoformat()
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    client.headers.update({"Authorization": f"Bearer {token}", "Accept": "application/json"})
+    url = f"{BASE_URL}/odataservice/odata/table/oe_hdr"
+
+    def matches(order_no: str, lit: str) -> int:
+        r = client.get(url, params={
+            "$select": "order_no",
+            "$filter": f"order_no eq '{order_no}' and date_created eq {lit}",
+        })
+        r.raise_for_status()
+        return len(r.json()["value"])
+
+    for day in DAYS:
+        start = literal(datetime.fromisoformat(day))
+        r = client.get(url, params={
+            "$select": "order_no,date_created",
+            "$filter": f"date_created ge {start}",
+            "$orderby": "date_created", "$top": "1",
+        })
+        r.raise_for_status()
+        row = r.json()["value"][0]
+        returned = row["date_created"]
+        fixed = literal(wall_clock(returned))
+        print(f"order {row['order_no']}: returned {returned}")
+        print(f"  filter on the value as returned: {matches(row['order_no'], returned)} row(s)")
+        print(f"  filter on {fixed}: {matches(row['order_no'], fixed)} row(s)")
+```
+
+```csharp
+using System.Globalization;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+const string ServerTz = "America/Chicago";           // the time zone of P21's database server
+string[] days = ["2025-07-15", "2026-01-15"];        // one day in daylight time, one in standard time
+// ---------------------------------------------------------------------------
+
+var zone = TimeZoneInfo.FindSystemTimeZoneById(ServerTz);
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(
+    new MediaTypeWithQualityHeaderValue("application/json"));
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", token);
+var url = $"{BaseUrl}/odataservice/odata/table/oe_hdr";
+
+foreach (var day in days)
+{
+    var start = Literal(DateTime.Parse(day, CultureInfo.InvariantCulture));
+    var row = (await GetRows($"?$select=order_no,date_created&$orderby=date_created&$top=1&$filter=" +
+                             Uri.EscapeDataString($"date_created ge {start}")))[0];
+    var orderNo = row.GetProperty("order_no").GetString();
+    var returned = row.GetProperty("date_created").GetString()!;
+    var fixedLiteral = Literal(WallClock(returned));
+    Console.WriteLine($"order {orderNo}: returned {returned}");
+    Console.WriteLine($"  filter on the value as returned: {await Matches(orderNo!, returned)} row(s)");
+    Console.WriteLine($"  filter on {fixedLiteral}: {await Matches(orderNo!, fixedLiteral)} row(s)");
+}
+
+async Task<int> Matches(string orderNo, string literal) =>
+    (await GetRows("?$select=order_no&$filter=" +
+                   Uri.EscapeDataString($"order_no eq '{orderNo}' and date_created eq {literal}"))).Count;
+
+async Task<List<JsonElement>> GetRows(string query)
+{
+    using var r = await client.GetAsync(url + query);
+    r.EnsureSuccessStatusCode();
+    using var d = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+    return d.RootElement.GetProperty("value").EnumerateArray().Select(x => x.Clone()).ToList();
+}
+
+// The stored local time: OData appends today's server offset, so drop it.
+static DateTime WallClock(string value) =>
+    DateTimeOffset.Parse(value, CultureInfo.InvariantCulture).DateTime;
+
+// A filter literal carrying the offset in force on that date, as the filter expects.
+string Literal(DateTime wall) =>
+    new DateTimeOffset(wall, zone.GetUtcOffset(wall)).ToString("yyyy-MM-ddTHH:mm:ss.FFFFFFFzzz", CultureInfo.InvariantCulture);
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers the token endpoint in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on the test tenant on 26.1.6004.0 (Python with `tzdata` installed): for a July 2025 order the value as returned matched 0 rows and the corrected literal matched 1; for a January 2026 order both matched 1.
+
+> **Credit:** *@mrwuss* — lead from an integration's clock proof, verified on a test tenant and production, November 2026 ([#291](https://github.com/mrwuss/p21-api-documentation/issues/291)).
+
 ### $orderby - Sort Results
 
 Sort by one or more fields:
@@ -479,6 +676,8 @@ Skip N records (combine with $top for paging):
 > **No `@odata.nextLink`:** P21's OData responses do **not** include a continuation link. Paging is entirely client-driven with `$skip`/`$top` — loop until a page comes back with fewer rows than `$top` (or track `@odata.count`). See the [Pagination Helper](#pagination-helper).
 >
 > **The service will not save you from yourself here.** Re-confirmed on 26.1.5940.0: a `$select` with no `$top` against `p21_view_oe_hdr` returned **806,503 rows in a single response** — no truncation, no continuation link, no server-side cap. An unbounded query is not a page-one query; it is the whole table, materialized in your process. **Always send `$top`.**
+>
+> **A deep `$skip` page can cost more than the whole read.** On a view that computes its rows, each page re-reads every row before its offset, and past about 30 s P21 answers HTTP 404 `Execution Timeout Expired.` For a full read of a large object, page on the key instead; see [Deep pages: page on the key, not `$skip`](#deep-pages-page-on-the-key-not-skip).
 
 ### $count - Get Count
 
@@ -2171,6 +2370,208 @@ Fetching ~2,500 records with `$select` on a few columns:
 
 The 10x improvement comes entirely from eliminating round-trip overhead.
 
+### Deep pages: page on the key, not `$skip`
+
+P21 stops an OData SQL command at **30 seconds** and answers **HTTP 404**, the same status as a missing object or a wrong column name, with this body text:
+
+```text
+Execution Timeout Expired.  The timeout period elapsed prior to completion of the operation or the server is not responding.
+```
+
+Retrying repeats the same cost. A `$skip` page is where this usually starts: the server re-reads every row before the offset, so on an object whose rows are expensive to produce, each page is slower than the one before. Measured on a test tenant, 26.1.6004.0 (November 2026), 5,000-row pages with `$orderby` on the key:
+
+| Object | Rows | `$skip=0` | Deeper pages |
+|---|---|---|---|
+| A site view that joins and computes per item | 335,227 | 1.9 s | `$skip=50000` 17.8 s; `$skip=100000`, `200000` and `320000` each **404 at 30.3 s** |
+| `view/p21_view_po_line` | 1,071,130 | 0.4 s | `$skip=500000` 1.9 s |
+| `table/oe_line` | 2,997,761 | 0.3 s | `$skip=2000000` 0.5 s |
+| `view/p21_view_inv_loc` | 603,116 | 0.3 s | `$skip=200000` 0.3 s |
+
+Base tables and simple views ordered on an indexed key stay nearly flat; a view that joins or aggregates does not. An integration reading such a view in production failed the same way about 60,000 rows in.
+
+**Page on the key instead.** Order on a unique key, and start each page after the last key the previous page returned:
+
+```http
+GET /odataservice/odata/view/p21_view_po_line?$select=po_line_uid,po_no,line_no&$orderby=po_line_uid&$top=5000
+GET /odataservice/odata/view/p21_view_po_line?$select=po_line_uid,po_no,line_no&$orderby=po_line_uid&$top=5000&$filter=po_line_uid gt 1234567
+```
+
+Every page then costs about the same. The site view above read end to end in 68 pages, the slowest 2.1 s. For a key of two columns, order on both and filter `a gt x or (a eq x and b gt y)`: `view/p21_view_inv_loc` on `inv_mast_uid,location_id` in 20,000-row pages read 603,116 rows, each exactly once, slowest page 1.1 s.
+
+Notes:
+
+- **The key must be unique and every page must `$orderby` it.** Without a stable order, `$skip` paging over a view can repeat or drop rows; a key filter on a column with duplicates drops the rows that share the last value.
+- **A 404 is ambiguous.** Read the body before you treat a 404 as "not found": `Execution Timeout Expired` means the query ran too long, not that the object is missing.
+- **A narrower `$filter` is the other fix.** Key paging removes the re-read; it does not make one expensive page cheap.
+
+<!-- tabs -->
+
+```python
+"""Read a whole table or view a page at a time on its key, so every page costs the same however deep it is."""
+import re
+import time
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+COLLECTION = "view/p21_view_po_line"      # table/... or view/...
+KEY = "po_line_uid"                       # a unique, numeric column
+COLUMNS = "po_line_uid,po_no,line_no,item_id,qty_ordered"
+PAGE = 5000
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    client.headers.update({"Authorization": f"Bearer {token}", "Accept": "application/json"})
+    last, rows_read, pages, slowest = None, 0, 0, 0.0
+    while True:
+        params = {"$select": COLUMNS, "$orderby": KEY, "$top": str(PAGE)}
+        if last is not None:
+            # The next page starts after the last key seen: no $skip, so no re-read.
+            params["$filter"] = f"{KEY} gt {last}"
+        started = time.perf_counter()
+        r = client.get(f"{BASE_URL}/odataservice/odata/{COLLECTION}", params=params)
+        if r.status_code == 404 and "Execution Timeout Expired" in r.text:
+            raise RuntimeError("P21 stopped the query at its 30 s SQL limit; narrow $filter or shrink PAGE")
+        r.raise_for_status()
+        slowest = max(slowest, time.perf_counter() - started)
+        rows = r.json()["value"]
+        pages += 1
+        rows_read += len(rows)
+        # ... process rows here ...
+        if len(rows) < PAGE:
+            break
+        last = rows[-1][KEY]
+    print(f"{rows_read} rows in {pages} pages; slowest page {slowest:.1f} s")
+```
+
+```csharp
+using System.Diagnostics;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+const string Collection = "view/p21_view_po_line";   // table/... or view/...
+const string Key = "po_line_uid";                    // a unique, numeric column
+const string Columns = "po_line_uid,po_no,line_no,item_id,qty_ordered";
+const int Page = 5000;
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(
+    new MediaTypeWithQualityHeaderValue("application/json"));
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", token);
+
+decimal? last = null;
+long rowsRead = 0;
+var pages = 0;
+var slowest = TimeSpan.Zero;
+while (true)
+{
+    var url = $"{BaseUrl}/odataservice/odata/{Collection}?$select={Columns}&$orderby={Key}&$top={Page}";
+    if (last is not null)
+    {
+        // The next page starts after the last key seen: no $skip, so no re-read.
+        url += "&$filter=" + Uri.EscapeDataString($"{Key} gt {last}");
+    }
+    var watch = Stopwatch.StartNew();
+    using var r = await client.GetAsync(url);
+    var body = await r.Content.ReadAsStringAsync();
+    if ((int)r.StatusCode == 404 && body.Contains("Execution Timeout Expired"))
+    {
+        throw new InvalidOperationException(
+            "P21 stopped the query at its 30 s SQL limit; narrow $filter or shrink Page");
+    }
+    r.EnsureSuccessStatusCode();
+    slowest = watch.Elapsed > slowest ? watch.Elapsed : slowest;
+    using var d = JsonDocument.Parse(body);
+    var rows = d.RootElement.GetProperty("value").EnumerateArray().ToList();
+    pages++;
+    rowsRead += rows.Count;
+    // ... process rows here ...
+    if (rows.Count < Page)
+    {
+        break;
+    }
+    last = rows[^1].GetProperty(Key).GetDecimal();
+}
+Console.WriteLine($"{rowsRead} rows in {pages} pages; slowest page {slowest.TotalSeconds:F1} s");
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers the token endpoint in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on the test tenant on 26.1.6004.0: each read `p21_view_po_line` in 215 pages (1,071,130 rows, slowest page 1.3 s), and, with the collection and key changed, the 335,227-row site view in 68 pages (slowest 2.5 s in Python, 4.7 s in C#).
+
+> **Credit:** *@mrwuss* — from an integration's production load failures, reproduced and measured on a test tenant, November 2026 ([#290](https://github.com/mrwuss/p21-api-documentation/issues/290)).
+
 ---
 
 ## Performance Tips
@@ -2239,6 +2640,7 @@ OData offers no way round it: `toupper(...)` in a `$filter` returns 404, and str
 So a sync reads every item stamped since its last run, folds each ID and applies it: an active item adds or keeps its folded key, a soft-deleted one comes out. Notes:
 
 - **Filter `ge` the stored stamp, not `gt`, and dedupe on `inv_mast_uid`.** Several rows can carry the same stamp, and a `gt` from the last row seen can skip a row saved in the same instant. The date-time literal needs a `T` and a UTC offset, unquoted ([details](#filter-filter-results)).
+- **Rebuild the stored stamp's offset before you filter on it.** OData returns every value with the offset of the moment you read it, and converts a filter literal with the offset in force on the literal's own date. A stamp read on one side of a clock change and filtered on the other is off by an hour, and a `ge` filter then skips that hour. Store the stamp as wall-clock time and attach the offset for its date, or step back an hour and let the dedupe absorb the overlap ([details](#date-time-offsets-what-p21-returns-and-what-a-filter-compares)).
 - **Several item IDs can fold to one key.** Keep a list per key, and remove only the item that was deleted.
 - **A save that changes nothing still moves the stamp**, so expect some rows with nothing new.
 - Writes through other routes (the Inventory REST API, item merges, pricing and costing windows) were not tested; check the stamp moves for any route your integration depends on.
@@ -2642,7 +3044,11 @@ This is a way to add more tracking numbers to a shipment than the Transaction AP
 
 ## OData Schema Refresh
 
-The OData service automatically picks up changes to existing table/view schemas (e.g., column type changes). However, when **new tables or views** are added to the database, the OData service must be manually refreshed:
+When **new tables or views** are added to the database, or **a column is added to an existing view**, the OData service must be refreshed by hand before it serves them. Until then, a `$select` of the new column answers HTTP 404 `Could not find a property named '<column>' ...`, so a release that reads the column before the refresh fails every read of that view. This was observed on a test tenant on 26.1.6004.0 (November 2026) by an integration that added a column to its own view; reproducing it needs rights to change a view, which the read-only checks here did not have. After their refresh, a full comparison of a test and a production tenant against SQL found every table, view and column served, except the only three `timestamp` (rowversion) columns in the database (`fulltext_timestamp` on `inv_mast` and two views of it), which OData does not expose.
+
+A new view is reached by a **consumer key** only when the key's [OData allow-list](00-Authentication.md#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire) names it, so add it to the key's scope as well, on each tenant. A site view named in a key's list reads with 200 through that key (test tenant and production, 26.1.6004.0).
+
+To refresh:
 
 1. Log in to the **SOA Middleware** home page (`https://{hostname}/api/admin`) — this requires the P21 user's **Access to SOA Admin Page** application-security setting to be **Yes**; see [Authentication § Application Security settings that affect API access](00-Authentication.md#application-security-settings-that-affect-api-access)
 2. Go to **Administration** from the menu

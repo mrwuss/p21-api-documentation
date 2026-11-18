@@ -804,6 +804,10 @@
 <td><a href="02-OData-API.html#no-joins-chain-queries-by-uid">02 § No Joins</a></td>
 </tr>
 <tr>
+<td>A deep page 404s with <strong><code>Execution Timeout Expired</code></strong>, or pages get slower as <code>$skip</code> grows</td>
+<td><a href="02-OData-API.html#deep-pages-page-on-the-key-not-skip">02 § Deep pages: page on the key, not <code>$skip</code></a> — P21 stops a query at 30 s and answers 404; filter <code>key gt &lt;last&gt;</code> with <code>$orderby</code></td>
+</tr>
+<tr>
 <td>Page through large result sets (no nextLink)</td>
 <td><a href="02-OData-API.html#pagination-helper">02 § Pagination Helper</a> · <a href="02-OData-API.html#page-size-guidance">02 § Page Size Guidance</a></td>
 </tr>
@@ -828,8 +832,12 @@
 <td><a href="02-OData-API.html#filter-filter-results">02 § $filter</a> — unquoted, <code>T</code>, and a UTC offset (<code>Z</code> or <code>-05:00</code>); encode <code>+</code> as <code>%2B</code></td>
 </tr>
 <tr>
-<td>New table/column missing from OData</td>
-<td><a href="02-OData-API.html#odata-schema-refresh">02 § OData Schema Refresh</a></td>
+<td>A date-time <strong>read from OData does not match its own row</strong> when filtered back, or times are off by an hour (or by five or six with <code>Z</code>)</td>
+<td><a href="02-OData-API.html#date-time-offsets-what-p21-returns-and-what-a-filter-compares">02 § Date-time offsets</a> — values come back with today's server offset, filters convert with the offset of the literal's date, and <code>Z</code> is compared as wall-clock time</td>
+</tr>
+<tr>
+<td>New table/column missing from OData — including a <strong>column added to an existing view</strong></td>
+<td><a href="02-OData-API.html#odata-schema-refresh">02 § OData Schema Refresh</a> — refresh by hand; a new view also goes into each consumer key's allow-list</td>
 </tr>
 <tr>
 <td><strong>Empty-bodied 404 on a table you know exists</strong></td>
