@@ -1150,6 +1150,185 @@ Every `Suppliers` entry needs a `DivisionId`. The examples on this page use `1` 
 
 > **Credit:** *@mrwuss* — observed in production data 26.1, May 2026 ([#176](https://github.com/mrwuss/p21-api-documentation/issues/176)).
 
+### Who a create is recorded as: `created_by` is `Admin`
+
+`POST /api/inventory/parts` records its own `Admin` as the creator of the rows it writes, and the token's user as the last to maintain them. Measured on a test tenant, 26.1.6004.0 (November 2026), on three items created with a password token, a consumer-key token with `username`, and a consumer-key token without one:
+
+| Table | `created_by` | `last_maintained_by` |
+|---|---|---|
+| `inv_mast`, `inv_loc`, `inventory_supplier`, `inventory_supplier_x_loc`, `item_uom` | `Admin` | the token's user, as typed at sign-in; `admin` for a consumer key without `username` |
+| `item_service` | the token's user | the token's user |
+
+So `created_by` on an item created this way doesn't say who created it. Record the person yourself, or read `last_maintained_by` straight after the create, before anyone else saves the item. The Transaction API `Assembly` service records the token's user in both columns ([03 § Assembly defaults on create](03-Transaction-API.md#assembly-defaults-on-create-print-flags-and-the-creating-user)).
+
+The programs below read both columns for an item and its assembly, table by table. They skip `inventory_supplier_x_loc`, which has no `inv_mast_uid` to filter on; reach it through `inventory_supplier_uid`.
+
+<!-- tabs -->
+
+```python
+"""Read who P21 recorded as creating an item's rows and its assembly, table by table."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+ITEM_ID = "WIDGET-002"                    # an item created through POST /api/inventory/parts
+# ---------------------------------------------------------------------------
+
+TABLES = ["inv_mast", "inv_loc", "inventory_supplier", "item_uom", "item_service", "assembly_hdr", "assembly_line"]
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120) as client:
+    token = get_token(client)
+    client.headers.update({"Authorization": f"Bearer {token}", "Accept": "application/json"})
+    odata = f"{BASE_URL}/odataservice/odata/table"
+
+    r = client.get(f"{odata}/inv_mast", params={"$filter": f"item_id eq '{ITEM_ID}'", "$select": "inv_mast_uid"})
+    r.raise_for_status()
+    if not r.json()["value"]:
+        raise SystemExit(f"{ITEM_ID} not found")
+    uid = r.json()["value"][0]["inv_mast_uid"]
+
+    for table in TABLES:
+        select = "created_by,last_maintained_by"
+        if table == "assembly_hdr":
+            select += ",print_compnts_on_pick_ticket"
+        r = client.get(f"{odata}/{table}", params={"$filter": f"inv_mast_uid eq {uid}", "$select": select})
+        if r.status_code == 401:
+            print(f"{table}: not in this token's OData scope")
+            continue
+        r.raise_for_status()
+        for row in r.json()["value"]:
+            extra = {k: v for k, v in row.items() if k not in ("created_by", "last_maintained_by")}
+            print(f"{table}: created_by={row['created_by']!r} last_maintained_by={row['last_maintained_by']!r} {extra or ''}")
+```
+
+```csharp
+using System.Net;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
+// Read who P21 recorded as creating an item's rows and its assembly, table by table.
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+const string ItemId = "WIDGET-002";                  // an item created through POST /api/inventory/parts
+// ---------------------------------------------------------------------------
+
+string[] tables = ["inv_mast", "inv_loc", "inventory_supplier", "item_uom", "item_service", "assembly_hdr", "assembly_line"];
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", await GetTokenAsync(client));
+var odata = $"{BaseUrl}/odataservice/odata/table";
+
+var items = await GetAsync($"{odata}/inv_mast?$filter={Uri.EscapeDataString($"item_id eq '{ItemId}'")}&$select=inv_mast_uid");
+if (items is null || items.Count == 0)
+{
+    Console.WriteLine($"{ItemId} not found");
+    return;
+}
+var uid = items[0]!["inv_mast_uid"]!.GetValue<long>();
+
+foreach (var table in tables)
+{
+    var select = "created_by,last_maintained_by" + (table == "assembly_hdr" ? ",print_compnts_on_pick_ticket" : "");
+    var rows = await GetAsync($"{odata}/{table}?$filter=inv_mast_uid%20eq%20{uid}&$select={select}");
+    if (rows is null)
+    {
+        Console.WriteLine($"{table}: not in this token's OData scope");
+        continue;
+    }
+    foreach (var row in rows)
+    {
+        var flag = row!["print_compnts_on_pick_ticket"] is { } f ? $" print_compnts_on_pick_ticket={f}" : "";
+        Console.WriteLine($"{table}: created_by='{row["created_by"]}' last_maintained_by='{row["last_maintained_by"]}'{flag}");
+    }
+}
+
+// null when the table is outside the token's scope (HTTP 401).
+async Task<JsonArray?> GetAsync(string url)
+{
+    using var r = await client.GetAsync(url);
+    if (r.StatusCode == HttpStatusCode.Unauthorized)
+    {
+        return null;
+    }
+    r.EnsureSuccessStatusCode();
+    return JsonNode.Parse(await r.Content.ReadAsStringAsync())!["value"]!.AsArray();
+}
+
+static async Task<string> GetTokenAsync(HttpClient c)
+{
+    var p = JsonSerializer.Serialize(new { username = Username, password = Password });
+    using var r = await c.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(p, Encoding.UTF8, "application/json"));
+    r.EnsureSuccessStatusCode();
+    return ReadField(await r.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers the token endpoint in XML even when asked for JSON.
+static string ReadField(string p, string f)
+{
+    try
+    {
+        var v = JsonDocument.Parse(p).RootElement.GetProperty(f).GetString();
+        if (!string.IsNullOrEmpty(v))
+        {
+            return v;
+        }
+    }
+    catch (Exception ex) when (
+        ex is JsonException or KeyNotFoundException)
+    {
+    }
+    var m = System.Text.RegularExpressions.Regex.Match(
+        p, $"<{f}>([^<]+)</{f}>");
+    if (!m.Success)
+    {
+        throw new InvalidOperationException(
+            $"No {f} in response: {p[..Math.Min(200, p.Length)]}");
+    }
+    return m.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on the test tenant on 26.1.6004.0 against an item created through this API with a password token and given an assembly through the Transaction API with a consumer-key token: `Admin` and the password user on `inv_mast`, `inv_loc`, `inventory_supplier` and `item_uom`, the password user in both columns of `item_service`, and the consumer-key user, in upper case, in both columns of `assembly_hdr` and `assembly_line`. `item_service`, `assembly_hdr` and `assembly_line` returned HTTP 401 to a consumer key whose OData scope did not list them; the programs report that and go on.
+
+> **Credit:** *@mrwuss* — lead from an integration, verified on a test tenant, November 2026 ([#307](https://github.com/mrwuss/p21-api-documentation/issues/307)).
+
 ---
 
 ## Cloning an Existing Item

@@ -3379,6 +3379,23 @@ For the second case use the **Interactive** `Assembly` window: set `TABPAGE_1.as
 
 > **Credit:** verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by [Alex Westemeier](https://github.com/AWestemeier). **Python and C# examples run on play 26.1.5950.0, 2026-10-10:** each created an assembly (two components, `production_order_processing` `OFF`) on a throwaway item made with the Inventory REST API, set `production_order_processing` to `ON`, changed one component's quantity from 2 to 5, and deleted the other component — every step confirmed by the OData read-back. The component-of-another-assembly refusals above were re-run on the same build.
 
+#### Assembly defaults on create: print flags and the creating user
+
+A create that sends only `inv_mast_item_id` and the components stores the window's defaults for every print flag. On a test tenant, 26.1.6004.0 (November 2026), the new `assembly_hdr` matched `GET /api/v2/defaults/Assembly` exactly:
+
+| Field (label) | Default | Stored |
+|---|---|---|
+| `print_compnts_on_pick_ticket` (*Pick Tickets*) | `ON` | `Y` — components print on pick tickets |
+| `print_components_on_invoice` (*Invoices*) | `OFF` | `N` |
+| `print_return_to_stock_components` | `ON` | `Y` |
+| `print_incomplete_assemblies` | `ON` | `Y` |
+| `print_traveler_with_prodorder` | `OFF` | `N` |
+| `production_order_processing` | `ON` | `Y` |
+
+The defaults are the tenant's, so read `/defaults` on yours and send any flag you need set the other way. `assembly_hdr` and `assembly_line` record the token's user in both `created_by` and `last_maintained_by`, in upper case, unlike the [Inventory REST item create](11-Inventory-REST-API.md#who-a-create-is-recorded-as-created_by-is-admin), which records `Admin` as the creator; the program there reads both.
+
+> **Credit:** *@mrwuss* — lead from an integration, verified on a test tenant, November 2026 ([#307](https://github.com/mrwuss/p21-api-documentation/issues/307)).
+
 #### Defaults and Disabled Fields on Create
 
 **Send `production_order_processing` explicitly.** On a create that omits it, the new assembly came back with `production_order_processing` = `ON`, which makes it a production-order assembly rather than a kit (see [12 § Assembly Behavior Flags](12-Production-Labor-API.md#assembly-behavior-flags)). The `ON` default may come from a system setting rather than the service, so it can differ on your tenant. The field is writable on create — send `ON` or `OFF` deliberately and read `assembly_hdr` back.
@@ -5150,6 +5167,7 @@ Field mappings, each confirmed by read-back:
 - **`required_date` genuinely is required** — order date plus a few days.
 - The PO landed **`approved='Y'`** immediately (config-dependent), so it is receivable straight away.
 - **`po_type` is not settable here** — ours defaulted to `'B'`. Direct-ship (`'D'`) POs cannot be built by this service at all; they come from the Order-window wizard.
+- **A deleted supplier is refused on the header.** A `vendor_id` whose supplier has `supplier.delete_flag` `Y` returns `Failed: 1` with *"Supplier information was not successfully retrieved. Either the supplier ID is not valid or the supplier ID is not valid for the specified vendor ID."* (`Column: vendor_id`), with or without `supplier_id`. On that tenant every deleted supplier's `vendor_supplier` link was deleted too, which is what the message describes. Verified on a test tenant, 26.1.6004.0 (November 2026) ([#307](https://github.com/mrwuss/p21-api-documentation/issues/307)). A refusal worded *"The selected Supplier [id] has been disabled"* is not P21's: it comes from a site's own DynaChange business rule, and its text arrives in `Messages` the same way.
 
 ### PurchaseOrder Service — Editing a Completed PO
 

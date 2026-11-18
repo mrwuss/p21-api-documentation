@@ -48,13 +48,21 @@ This guide covers error handling across all P21 APIs, including HTTP status code
 
 ### Token Endpoint Errors
 
-**401 - Invalid Credentials**
+**401 - Invalid Credentials** (26.1.6004.0, wrong password; the same body for a body with no credential at all)
 ```json
 {
-    "error": "invalid_grant",
-    "error_description": "The user name or password is incorrect."
+    "DateTimeStamp": "/Date(1795021756949)/",
+    "ErrorMessage": "Authentication Failed.",
+    "ErrorType": "P21.Common.Exceptions.UnauthorizedException",
+    "HostName": "p21web-01",
+    "InnerException": "P21.Common.Exceptions.UnauthorizedException: Authentication Failed. ---> P21.Security.Auth.P21AuthenticationException: Authentication Failed. ...",
+    "LogId": "...",
+    "StackTrace": "...",
+    "UserId": null
 }
 ```
+
+It arrives as `application/json` with **no `WWW-Authenticate` header**. A 401 that carries `WWW-Authenticate: Negotiate` or `NTLM` did not come from P21; see [the next section](#401-with-www-authenticate-negotiate-ntlm-the-base-url-is-not-the-p21-api).
 
 **500 - Unrecognized Consumer Key** — *not* a 401
 
@@ -122,11 +130,140 @@ Some middleware instances return XML instead of JSON for token endpoints. If you
 
 > **Do not wait for a newer .NET to fix this.** Re-verified on 26.1.5940.0 against **.NET 9.0.19 and .NET 10.0.11**: identical behavior on both — the no-slash form 401s and the trailing-slash form returns 200. Stripping `Authorization` across a redirect is deliberate `HttpClient` behavior, not a bug being fixed, so the URL is the fix on every runtime.
 
+### 401 with `WWW-Authenticate: Negotiate, NTLM`: the base URL is not the P21 API
+
+When the base URL points at another web site on an IIS server, typically an intranet site with Windows Authentication, every P21 path answers **HTTP 401 with `WWW-Authenticate: Negotiate, NTLM` and an HTML body**, the token endpoint included. Read as a failed login, it looks like a wrong password, and changing the password won't fix it: the request never reached P21.
+
+| Who answered `POST /api/security/token/v2` with no credential (`{}`) | Status | `WWW-Authenticate` | Body |
+|---|---|---|---|
+| The P21 API | 401 | none | JSON, `ErrorType` `P21.Common.Exceptions.UnauthorizedException` |
+| A Windows-authenticated web site in front of it | 401 | `Negotiate, NTLM` | HTML |
+
+That makes a credential-free probe safe to run at startup: it tells the two apart without sending a password or consumer key to a host that is not P21. The programs below probe, refuse to continue on a Windows challenge, and request a token only from P21. The C# client sets `UseDefaultCredentials = false` so it never answers the challenge with the signed-in Windows account.
+
+<!-- tabs -->
+
+```python
+"""Check that a base URL is the P21 API before sending it a credential, then get a token."""
+import re
+import sys
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = sys.argv[1] if len(sys.argv) > 1 else "https://play.example.com"   # your P21 server
+USERNAME = "api_user"
+PASSWORD = "api_pass"
+VERIFY_SSL = False                        # True once you trust the cert chain
+# ---------------------------------------------------------------------------
+
+
+def probe(client: httpx.Client) -> str:
+    """Ask the token endpoint with no credential; say who answered."""
+    r = client.post(f"{BASE_URL}/api/security/token/v2", json={}, headers={"Accept": "application/json"})
+    challenge = r.headers.get("WWW-Authenticate", "")
+    if r.status_code == 401 and re.search(r"\b(Negotiate|NTLM)\b", challenge):
+        return f"not P21: HTTP 401 with a Windows sign-in challenge ({challenge})"
+    try:
+        error_type = r.json().get("ErrorType", "")
+    except ValueError:
+        error_type = ""
+    if r.status_code == 401 and error_type.endswith("UnauthorizedException"):
+        return "P21"
+    return f"unexpected: HTTP {r.status_code}, {r.headers.get('Content-Type')}, {r.text[:120]!r}"
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=60) as client:
+    answer = probe(client)
+    print(f"{BASE_URL}: {answer}")
+    if answer != "P21":
+        raise SystemExit("fix the base URL; no credential was sent")
+    r = client.post(f"{BASE_URL}/api/security/token/v2", json={"username": USERNAME, "password": PASSWORD},
+                    headers={"Accept": "application/json"})
+    r.raise_for_status()
+    print("token issued:", bool(r.json().get("AccessToken")))
+```
+
+```csharp
+using System.Net;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+
+// Check that a base URL is the P21 API before sending it a credential, then get a token.
+// ---- EDIT THESE -----------------------------------------------------------
+var baseUrl = args.Length > 0 ? args[0] : "https://play.example.com";   // your P21 server
+const string Username = "api_user";
+const string Password = "api_pass";
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+    UseDefaultCredentials = false,   // never answer a Windows challenge with your own sign-in
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(1) };
+client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+
+var answer = await ProbeAsync();
+Console.WriteLine($"{baseUrl}: {answer}");
+if (answer != "P21")
+{
+    Console.WriteLine("fix the base URL; no credential was sent");
+    return;
+}
+using var tokenResponse = await client.PostAsync($"{baseUrl}/api/security/token/v2",
+    new StringContent(JsonSerializer.Serialize(new { username = Username, password = Password }),
+                      Encoding.UTF8, "application/json"));
+tokenResponse.EnsureSuccessStatusCode();
+using var token = JsonDocument.Parse(await tokenResponse.Content.ReadAsStringAsync());
+Console.WriteLine($"token issued: {token.RootElement.TryGetProperty("AccessToken", out _)}");
+
+// Ask the token endpoint with no credential; say who answered.
+async Task<string> ProbeAsync()
+{
+    using var r = await client.PostAsync($"{baseUrl}/api/security/token/v2",
+        new StringContent("{}", Encoding.UTF8, "application/json"));
+    var challenge = string.Join(", ", r.Headers.WwwAuthenticate.Select(h => h.Scheme));
+    if (r.StatusCode == HttpStatusCode.Unauthorized && Regex.IsMatch(challenge, @"\b(Negotiate|NTLM)\b"))
+    {
+        return $"not P21: HTTP 401 with a Windows sign-in challenge ({challenge})";
+    }
+    var body = await r.Content.ReadAsStringAsync();
+    var errorType = "";
+    try
+    {
+        if (JsonDocument.Parse(body).RootElement.TryGetProperty("ErrorType", out var t))
+        {
+            errorType = t.GetString() ?? "";
+        }
+    }
+    catch (JsonException)
+    {
+    }
+    if (r.StatusCode == HttpStatusCode.Unauthorized && errorType.EndsWith("UnauthorizedException"))
+    {
+        return "P21";
+    }
+    return $"unexpected: HTTP {(int)r.StatusCode}, {r.Content.Headers.ContentType}, {body[..Math.Min(120, body.Length)]}";
+}
+```
+
+<!-- /tabs -->
+
+Both programs ran on 26.1.6004.0 (November 2026): against a test tenant each reported `P21` and got a token; against an intranet site with Windows Authentication each reported the `Negotiate, NTLM` challenge and stopped before sending a credential.
+
+> **A token request that hangs** was reported by an integration (a grant that sat past the client's timeout and answered at once on a retry). It did not reproduce here: 120 grants on a test tenant and 60 on a production tenant, by password and by consumer key, each answered in under 0.05 s. A repeated grant is harmless: 40 grants in a row for one user each returned a token.
+>
+> **Credit:** *@mrwuss* — leads from an integration, verified November 2026 ([#307](https://github.com/mrwuss/p21-api-documentation/issues/307)).
+
 ### Token Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
 | Invalid credentials | Verify username/password in P21 |
+| 401 with `WWW-Authenticate: Negotiate, NTLM` and an HTML body | The base URL is a Windows-authenticated web site, not P21 — fix the URL ([details](#401-with-www-authenticate-negotiate-ntlm-the-base-url-is-not-the-p21-api)) |
 | Token expired | Refresh token or re-authenticate |
 | Consumer key invalid | Check API Console for correct key |
 | Missing scope | Add required API scope to consumer key |

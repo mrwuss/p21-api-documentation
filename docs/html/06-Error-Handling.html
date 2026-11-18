@@ -670,6 +670,7 @@
 <li><a href="#authentication-errors">Authentication Errors</a><ul>
 <li><a href="#token-endpoint-errors">Token Endpoint Errors</a></li>
 <li><a href="#401-authorization-header-was-not-present-or-bearer-was-missing">401 Authorization header was not present or 'Bearer' was missing</a></li>
+<li><a href="#401-with-www-authenticate-negotiate-ntlm-the-base-url-is-not-the-p21-api">401 with WWW-Authenticate: Negotiate, NTLM: the base URL is not the P21 API</a></li>
 <li><a href="#token-troubleshooting">Token Troubleshooting</a></li>
 </ul>
 </li>
@@ -862,13 +863,20 @@
 <hr />
 <h2 id="authentication-errors">Authentication Errors</h2>
 <h3 id="token-endpoint-errors">Token Endpoint Errors</h3>
-<p><strong>401 - Invalid Credentials</strong></p>
+<p><strong>401 - Invalid Credentials</strong> (26.1.6004.0, wrong password; the same body for a body with no credential at all)</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;invalid_grant&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;error_description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The user name or password is incorrect.&quot;</span>
+<span class="w">    </span><span class="nt">&quot;DateTimeStamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/Date(1795021756949)/&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ErrorMessage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Authentication Failed.&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ErrorType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;P21.Common.Exceptions.UnauthorizedException&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;HostName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;p21web-01&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;InnerException&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;P21.Common.Exceptions.UnauthorizedException: Authentication Failed. ---&gt; P21.Security.Auth.P21AuthenticationException: Authentication Failed. ...&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;LogId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;StackTrace&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UserId&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
 <span class="p">}</span>
 </code></pre></div>
 
+<p>It arrives as <code>application/json</code> with <strong>no <code>WWW-Authenticate</code> header</strong>. A 401 that carries <code>WWW-Authenticate: Negotiate</code> or <code>NTLM</code> did not come from P21; see <a href="#401-with-www-authenticate-negotiate-ntlm-the-base-url-is-not-the-p21-api">the next section</a>.</p>
 <p><strong>500 - Unrecognized Consumer Key</strong> — <em>not</em> a 401</p>
 <p>An unregistered consumer key does not fail as an authentication error. <code>POST /api/security/token/v2</code> returns <strong>HTTP 500</strong> with a <code>TokenException</code>, and the reason is buried in <code>InnerException</code>:</p>
 <div class="highlight"><pre><span></span><code>HTTP 500
@@ -924,6 +932,151 @@
 <blockquote>
 <p><strong>Do not wait for a newer .NET to fix this.</strong> Re-verified on 26.1.5940.0 against <strong>.NET 9.0.19 and .NET 10.0.11</strong>: identical behavior on both — the no-slash form 401s and the trailing-slash form returns 200. Stripping <code>Authorization</code> across a redirect is deliberate <code>HttpClient</code> behavior, not a bug being fixed, so the URL is the fix on every runtime.</p>
 </blockquote>
+<h3 id="401-with-www-authenticate-negotiate-ntlm-the-base-url-is-not-the-p21-api">401 with <code>WWW-Authenticate: Negotiate, NTLM</code>: the base URL is not the P21 API</h3>
+<p>When the base URL points at another web site on an IIS server, typically an intranet site with Windows Authentication, every P21 path answers <strong>HTTP 401 with <code>WWW-Authenticate: Negotiate, NTLM</code> and an HTML body</strong>, the token endpoint included. Read as a failed login, it looks like a wrong password, and changing the password won't fix it: the request never reached P21.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Who answered <code>POST /api/security/token/v2</code> with no credential (<code>{}</code>)</th>
+<th>Status</th>
+<th><code>WWW-Authenticate</code></th>
+<th>Body</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The P21 API</td>
+<td>401</td>
+<td>none</td>
+<td>JSON, <code>ErrorType</code> <code>P21.Common.Exceptions.UnauthorizedException</code></td>
+</tr>
+<tr>
+<td>A Windows-authenticated web site in front of it</td>
+<td>401</td>
+<td><code>Negotiate, NTLM</code></td>
+<td>HTML</td>
+</tr>
+</tbody>
+</table></div>
+<p>That makes a credential-free probe safe to run at startup: it tells the two apart without sending a password or consumer key to a host that is not P21. The programs below probe, refuse to continue on a Windows challenge, and request a token only from P21. The C# client sets <code>UseDefaultCredentials = false</code> so it never answers the challenge with the signed-in Windows account.</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Check that a base URL is the P21 API before sending it a credential, then get a token.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;api_user&quot;</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;api_pass&quot;</span>
+<span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">probe</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ask the token endpoint with no credential; say who answered.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{},</span> <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">})</span>
+    <span class="n">challenge</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;WWW-Authenticate&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">401</span> <span class="ow">and</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\b(Negotiate|NTLM)\b&quot;</span><span class="p">,</span> <span class="n">challenge</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;not P21: HTTP 401 with a Windows sign-in challenge (</span><span class="si">{</span><span class="n">challenge</span><span class="si">}</span><span class="s2">)&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">error_type</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ErrorType&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="n">error_type</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">401</span> <span class="ow">and</span> <span class="n">error_type</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;UnauthorizedException&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;P21&quot;</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;unexpected: HTTP </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">120</span><span class="p">]</span><span class="si">!r}</span><span class="s2">&quot;</span>
+
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">VERIFY_SSL</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">answer</span> <span class="o">=</span> <span class="n">probe</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">answer</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">answer</span> <span class="o">!=</span> <span class="s2">&quot;P21&quot;</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s2">&quot;fix the base URL; no credential was sent&quot;</span><span class="p">)</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">PASSWORD</span><span class="p">},</span>
+                    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">})</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;token issued:&quot;</span><span class="p">,</span> <span class="nb">bool</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">)))</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Net</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.RegularExpressions</span><span class="p">;</span>
+
+<span class="c1">// Check that a base URL is the P21 API before sending it a credential, then get a token.</span>
+<span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">baseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">args</span><span class="p">.</span><span class="n">Length</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_pass&quot;</span><span class="p">;</span>
+<span class="c1">// ---------------------------------------------------------------------------</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="n">HttpClientHandler</span><span class="p">.</span><span class="n">DangerousAcceptAnyServerCertificateValidator</span><span class="p">,</span>
+<span class="w">    </span><span class="n">UseDefaultCredentials</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span><span class="p">,</span><span class="w">   </span><span class="c1">// never answer a Windows challenge with your own sign-in</span>
+<span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromMinutes</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">ParseAdd</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">answer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">ProbeAsync</span><span class="p">();</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;{baseUrl}: {answer}&quot;</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">answer</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;P21&quot;</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">&quot;fix the base URL; no credential was sent&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">tokenResponse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span><span class="s">$&quot;{baseUrl}/api/security/token/v2&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Username</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="p">}),</span>
+<span class="w">                      </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="n">tokenResponse</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">tokenResponse</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;token issued: {token.RootElement.TryGetProperty(&quot;</span><span class="n">AccessToken</span><span class="s">&quot;, out _)}&quot;</span><span class="p">);</span>
+
+<span class="c1">// Ask the token endpoint with no credential; say who answered.</span>
+<span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ProbeAsync</span><span class="p">()</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span><span class="s">$&quot;{baseUrl}/api/security/token/v2&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="s">&quot;{}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">challenge</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kt">string</span><span class="p">.</span><span class="n">Join</span><span class="p">(</span><span class="s">&quot;, &quot;</span><span class="p">,</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Headers</span><span class="p">.</span><span class="n">WwwAuthenticate</span><span class="p">.</span><span class="n">Select</span><span class="p">(</span><span class="n">h</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">h</span><span class="p">.</span><span class="n">Scheme</span><span class="p">));</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">r</span><span class="p">.</span><span class="n">StatusCode</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">HttpStatusCode</span><span class="p">.</span><span class="n">Unauthorized</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">Regex</span><span class="p">.</span><span class="n">IsMatch</span><span class="p">(</span><span class="n">challenge</span><span class="p">,</span><span class="w"> </span><span class="s">@&quot;\b(Negotiate|NTLM)\b&quot;</span><span class="p">))</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s">$&quot;not P21: HTTP 401 with a Windows sign-in challenge ({challenge})&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">errorType</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">body</span><span class="p">).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;ErrorType&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">t</span><span class="p">))</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">errorType</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">GetString</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">JsonException</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">r</span><span class="p">.</span><span class="n">StatusCode</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">HttpStatusCode</span><span class="p">.</span><span class="n">Unauthorized</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">errorType</span><span class="p">.</span><span class="n">EndsWith</span><span class="p">(</span><span class="s">&quot;UnauthorizedException&quot;</span><span class="p">))</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;P21&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s">$&quot;unexpected: HTTP {(int)r.StatusCode}, {r.Content.Headers.ContentType}, {body[..Math.Min(120, body.Length)]}&quot;</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<p>Both programs ran on 26.1.6004.0 (November 2026): against a test tenant each reported <code>P21</code> and got a token; against an intranet site with Windows Authentication each reported the <code>Negotiate, NTLM</code> challenge and stopped before sending a credential.</p>
+<blockquote>
+<p><strong>A token request that hangs</strong> was reported by an integration (a grant that sat past the client's timeout and answered at once on a retry). It did not reproduce here: 120 grants on a test tenant and 60 on a production tenant, by password and by consumer key, each answered in under 0.05 s. A repeated grant is harmless: 40 grants in a row for one user each returned a token.</p>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — leads from an integration, verified November 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/307">#307</a>).</p>
+</blockquote>
 <h3 id="token-troubleshooting">Token Troubleshooting</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -936,6 +1089,10 @@
 <tr>
 <td>Invalid credentials</td>
 <td>Verify username/password in P21</td>
+</tr>
+<tr>
+<td>401 with <code>WWW-Authenticate: Negotiate, NTLM</code> and an HTML body</td>
+<td>The base URL is a Windows-authenticated web site, not P21 — fix the URL (<a href="#401-with-www-authenticate-negotiate-ntlm-the-base-url-is-not-the-p21-api">details</a>)</td>
 </tr>
 <tr>
 <td>Token expired</td>
@@ -2318,6 +2475,7 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 <li><a href="#authentication-errors">Authentication Errors</a><ul>
 <li><a href="#token-endpoint-errors">Token Endpoint Errors</a></li>
 <li><a href="#401-authorization-header-was-not-present-or-bearer-was-missing">401 Authorization header was not present or 'Bearer' was missing</a></li>
+<li><a href="#401-with-www-authenticate-negotiate-ntlm-the-base-url-is-not-the-p21-api">401 with WWW-Authenticate: Negotiate, NTLM: the base URL is not the P21 API</a></li>
 <li><a href="#token-troubleshooting">Token Troubleshooting</a></li>
 </ul>
 </li>
