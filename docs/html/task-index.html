@@ -1047,6 +1047,10 @@
 <td><a href="04-Interactive-API.html#po-line-links-to-backorders-production-order-components-and-sales-orders">04 § PO Line Links to Backorders</a> — Backorders tab <code>linked_qty</code>; approve the order before linking it; move the link before you edit the component or cancel the order; one <code>/transaction</code> POST also works (<a href="04-Interactive-API.html#the-same-link-through-the-transaction-api">how</a>)</td>
 </tr>
 <tr>
+<td><strong>Move part of a PO line's link off a production order component</strong> (and lower the component); <em>"The sum of the linked backorders is greater than the purchase quantity"</em>; an approved order missing from the Backorders tab</td>
+<td><a href="04-Interactive-API.html#moving-part-of-a-link-off-a-component">04 § Moving part of a link off a component</a> — three saves: unlink the component and link the order line, lower the component, relink the rest; decrease before increase; a credit-held order is not listed</td>
+</tr>
+<tr>
 <td><strong>Convert an existing order line to direct ship</strong> — docs said it was refused</td>
 <td><a href="recipes/order-line-to-direct-ship.html">recipe: order-line-to-direct-ship</a> · <a href="04-Interactive-API.html#changing-a-saved-line-to-direct-ship">04 § Changing a saved line to direct ship</a> — the gate is <strong>allocated stock</strong>, not the saved state: set <code>TP_EXTDINFO.extd_info.allocated_qty = 0</code>, then <code>disposition = D</code>; <code>/transaction</code> also needs <code>po_cost</code></td>
 </tr>

@@ -1932,6 +1932,7 @@ See the `examples/python/interactive/` directory:
 | `04_save_and_close.py` | Complete save workflow |
 | `05_response_windows.py` | Handle response dialogs |
 | `06_complex_workflow.py` | Multi-step example |
+| `07_po_link_partial_move.py` | Move part of a PO link off a production order component across two windows ([section](#moving-part-of-a-link-off-a-component)) |
 
 ---
 
@@ -4123,10 +4124,35 @@ Verified on play 26.1.6004.0 (November 2026) on throwaway records (a build-to-st
 
 What a reader trips on:
 
-- **A linked component cannot be edited at all**, in either direction. Move the PO link off it first.
-- **To move a PO from a component to a sales order line, approve the order first.** An unapproved order is not on the Backorders tab, so there is no row to link to.
+- **A linked component cannot be edited at all**, in either direction, while any part of a PO link is on it. Move the whole link off first, even when only part of it should move ([Moving part of a link off a component](#moving-part-of-a-link-off-a-component)).
+- **To move a PO from a component to a sales order line, approve the order first.** An unapproved order is not on the Backorders tab, so there is no row to link to. An approved order on **credit hold** (`oe_hdr.validation_status` `Hold`) is not listed either.
 - **An order holding a PO or transfer link cannot be cancelled.** Move the link back to where it came from, or unlink it, then cancel. A [transfer link](#creating-a-transfer-from-a-sales-order) gives the same message.
-- The verified runs set the decrease before the increase. Linking more than the PO line's quantity was not tried.
+- **In one save, set the decrease before the increase.** A save whose rows add up to more than the PO line's quantity fails with *"The sum of the linked backorders is greater than the purchase quantity."* and *"Update was not successful."*, and writes nothing. The check is on the save: the over-quantity `linked_qty` change itself returns `Status: 1`.
+
+### Moving part of a link off a component
+
+A PO line of 4 is linked to a component; 1 should go to a sales order line, and the component should drop by 1. The component refuses the edit while **any** link is live on it, even with 3 of the 4 still linked and the new quantity covering allocated plus linked. Three saves do it:
+
+1. PurchaseOrder window, Backorders tab, one save: the `PR ORD` row's `linked_qty` from 4 to 0, then the `REG` row's from 0 to 1.
+2. Production Order window, `TABPAGE_18.components`: `qty_per_assembly` lowered, then save.
+3. PurchaseOrder window again: the `PR ORD` row from 0 to 3.
+
+Verified on play 26.1.6004.0 (November 2026) on throwaway records: a build-to-stock production order whose component (`qty_per_assembly` 5, no stock, so 0 allocated) was the item of a one-line PO of 4, and an approved sales order line of 1 for the same item. Each step read back over OData:
+
+| Step | Result |
+|---|---|
+| `PR ORD` row 0 to 4, save | `prod_ord_line_po` row, `quantity` 4, `702` |
+| Component `qty_per_assembly` 5 to 4 (still covers the 4 linked) | `Status: 2`, *"This component has linked PO or Transfer lines.  You can not edit this information."* |
+| `REG` row 0 to 1 with `PR ORD` still at 4, save | the save fails, *"The sum of the linked backorders is greater than the purchase quantity."*; nothing written |
+| `PR ORD` 4 to 3, then `REG` 0 to 1, save | `prod_ord_line_po` `quantity` 3, `702`; `oe_line_po` `quantity_on_po` 1 |
+| Component 5 to 4 (3 linked) | the same refusal |
+| Links back to 4 and 0, then step 1: `PR ORD` 4 to 0, `REG` 0 to 1, save | `prod_ord_line_po` row at `700`, its `quantity` still 4; `oe_line_po` `quantity_on_po` 1 |
+| Step 2: component 5 to 4, save | `qty_per_assembly` and `qty_requested` 4 |
+| Step 3: `PR ORD` 0 to 3, save | the same `prod_ord_line_po` row back at `702`, `quantity` 3; `oe_line_po` unchanged at 1 |
+
+The step 2 save raised one `w_message`, *"Production Order N has the following uncosted components: ... Do you wish to continue?"* (the test component had no cost), answered Yes (`cb_1`). A second approved order whose customer was over its credit limit saved with `validation_status` `Hold` and was not listed on the Backorders tab at all; the step rows use an order that is not on hold.
+
+The Python and C# programs at the end of this section make one PO save each, so steps 1 and 3 are two runs of them (`LINKS` set to the decrease, then the increase). [`07_po_link_partial_move.py`](../examples/python/interactive/07_po_link_partial_move.py) runs all three steps with the guards (the rest must fit the lowered component's quantity less what is allocated) and reads every step back; it ran on play 26.1.6004.0 against the records above, restored to 5 and 4 linked, and moved 1 to the order line.
 
 ### The same link through the Transaction API
 
@@ -4163,8 +4189,8 @@ VERIFY_SSL = False                        # True once you trust the cert chain
 PO_NO = "500100"
 PO_LINE = 1                               # row on the Items tab
 # (order type shown on the tab, order number, linked quantity). "PR ORD" is a
-# production order component, "REG" a sales order line. The verified runs set
-# the decrease before the increase.
+# production order component, "REG" a sales order line. Set the decrease
+# before the increase: a save that links more than the PO line's quantity fails.
 LINKS = [("PR ORD", "1000123", "0"), ("REG", "1001234", "1")]
 # ---------------------------------------------------------------------------
 
@@ -4286,7 +4312,8 @@ const string PoNo = "500100";
 const int PoLine = 1;                                // row on the Items tab
 // order type shown on the tab : order number : linked quantity, comma-separated.
 // "PR ORD" is a production order component, "REG" a sales order line.
-// The verified runs set the decrease before the increase.
+// Set the decrease before the increase: a save that links more than the PO
+// line's quantity fails.
 const string Links = "PR ORD:1000123:0,REG:1001234:1";
 // ---------------------------------------------------------------------------
 
@@ -4452,7 +4479,7 @@ static string ReadField(string p, string f)
 
 Both programs ran on play 26.1.6004.0 against a second set of throwaway records: Python linked the PO line to the component, then moved it to the approved sales order line; C#, with `Links` set to the reverse (`REG` to 0, `PR ORD` to 1), moved it back. Afterwards the order was cancelled, the PO line unlinked, the PO deleted and the production order cancelled.
 
-*Verified by @mrwuss* ([#269](https://github.com/mrwuss/p21-api-documentation/issues/269)).
+*Verified by @mrwuss* ([#269](https://github.com/mrwuss/p21-api-documentation/issues/269), partial move [#317](https://github.com/mrwuss/p21-api-documentation/issues/317)).
 
 ## PurchaseOrder Notes: Repeat Adds, Line Endings, the Grid and Completed POs
 
