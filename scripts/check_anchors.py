@@ -42,10 +42,15 @@ def collect_anchors() -> dict[str, set[str]]:
     return anchors
 
 
+def root_relative_files() -> list[str]:
+    """CLAUDE.md and the path-scoped rules it routes to: their links are docs/-prefixed."""
+    return ["CLAUDE.md"] + sorted(glob.glob(".claude/rules/*.md"))
+
+
 def source_files() -> list[str]:
     """Markdown files whose internal links should resolve."""
     os.chdir(PROJECT_DIR)
-    return glob.glob("docs/*.md") + glob.glob("docs/recipes/*.md") + ["CLAUDE.md"]
+    return glob.glob("docs/*.md") + glob.glob("docs/recipes/*.md") + root_relative_files()
 
 
 def main() -> int:
@@ -57,14 +62,16 @@ def main() -> int:
     anchors = collect_anchors()
     broken: list[tuple[str, str, str]] = []
 
-    for md in source_files():
+    files = source_files()
+    root_relative = set(root_relative_files())
+    for md in files:
         text = io.open(md, encoding="utf-8").read()
-        # CLAUDE.md links are docs/-prefixed; docs pages are relative to themselves.
-        base = "docs" if md == "CLAUDE.md" else os.path.dirname(md).replace(os.sep, "/")
+        # CLAUDE.md and rule links are docs/-prefixed; docs pages are relative to themselves.
+        base = "docs" if md in root_relative else os.path.dirname(md).replace(os.sep, "/")
         for match in LINK_RE.finditer(text):
             target, frag = match.group(1), match.group(2)
-            if md == "CLAUDE.md" and not target:
-                continue  # CLAUDE.md has no generated page of its own
+            if md in root_relative and not target:
+                continue  # CLAUDE.md and the rules have no generated page of their own
             target = target or os.path.basename(md)
             html = (
                 os.path.normpath(os.path.join(base, target))
